@@ -175,3 +175,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - I2 is GREEN: server/tests/test_e2e_sim.py sim variant passes on main after Shiv's S1 follow-up (checked independently). `server.run --sim` works.
 - Done since last sync: L0 screens foundation, L1 patient screen (checked in a browser at 1600x900 and 360 px, no console errors), Swiss-time timestamps, root .gitignore.
 - Next (Shyan): L2 physio, L3 operator, Y6 arm prepare route (server never calls home()/zero_force() today; RUNBOOK step 10 assumes it). Kian: have K0 scripts 01-03 and K2 safety_check.py ready so they run the moment the arm connects. When the technician comes, ask for the robot software version and exact serial and pin flexivrdk in robot/requirements.txt.
+
+**2026-11-14 19:35 · Shyan · arm probe**
+- Connected: NO. `flexivrdk.Robot("Rizon4-062157")` fails on Windows and in WSL with flexivrdk 1.7.0 (and earlier with 1.9.4.1). Robot software is v3.9.3 (from Elements), so the pin is `flexivrdk==1.7.0` plus `numpy`, not 1.9.x.
+- Cause narrowed by packet capture: network, firewall and serial are fine, but the robot only publishes its read-only `flexiv_ddk` topics and none of the `flexiv_rdk` topics. Most likely no RDK licence, or Remote Mode not saved as Ethernet before the power cycle. Ask the technician to check both.
+- Findings in `context/BRINGUP_FINDINGS.md`. No start pose, `K_x_nom`, licence type or wrench yet (all need a connection).
+- Next for Kian: add `robot/requirements.txt` (`flexivrdk==1.7.0`, `numpy`); fix `arm.py` `_send_pose` (1.7.0 `SendCartesianMotionForce` has no `velocity` argument, the current 7-argument call raises TypeError); set `serial` in `robot/config.json`; change "1.9.x" in SETUP/RUNBOOK/recover.py.
