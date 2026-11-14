@@ -44,6 +44,30 @@ def test_bowed_reach_max_error_two_cm():
     assert 0.0 < mean_err < max_err
 
 
+def test_constant_vertical_sag_is_not_path_error():
+    # the limb's weight sags the handle 1.6 cm on the wall spring: device compliance
+    _, pos = min_jerk_reach()
+    pos[:, 2] -= 0.016
+    assert m.path_error(pos, START, END) == pytest.approx((0.0, 0.0), abs=1e-9)
+    # the old measure (no sag removal) called this a failed rep (over 1.5 cm)
+    assert m.path_error(pos, START, END, remove_vertical_sag=False)[0] == pytest.approx(0.016)
+
+
+def test_vertical_wobble_around_the_sag_still_counts():
+    _, pos = min_jerk_reach()
+    s = (pos[:, 0] - START[0]) / 0.30
+    pos[:, 2] += -0.016 + 0.02 * np.sin(2 * np.pi * s)   # sag plus a 2 cm up-down wobble
+    mean_err, max_err = m.path_error(pos, START, END)
+    assert max_err > 0.015
+    assert mean_err > 0.008
+
+
+def test_constant_sideways_offset_still_counts():
+    _, pos = min_jerk_reach()
+    pos[:, 1] += 0.02
+    assert m.path_error(pos, START, END) == pytest.approx((0.02, 0.02), abs=1e-9)
+
+
 def test_rom_is_along_axis_only():
     # Back-and-forth reach covering 0.10..0.25 m along the axis, with sideways wobble.
     s = np.linspace(0.10, 0.25, 50)

@@ -71,12 +71,25 @@ def rom(pos, start, end) -> float:
     return float(along.max() - along.min())
 
 
-def path_error(pos, start, end) -> tuple[float, float]:
-    """(mean, max) perpendicular distance from ``pos`` to the reach line, metres."""
+VERTICAL_AXIS = 2   # base z is up (the arm is mounted upright)
+
+
+def path_error(pos, start, end, remove_vertical_sag: bool = True) -> tuple[float, float]:
+    """(mean, max) perpendicular distance from ``pos`` to the reach line, metres.
+
+    With ``remove_vertical_sag`` (default) the mean vertical (base z) part of the
+    perpendicular offset over the slice is subtracted first. The limb's weight rests on
+    the across-path wall spring and sags the handle by a constant amount (8 N on
+    K_WALL 500 N/m is 1.6 cm), which is the device's compliance, not the person's
+    control, and on its own exceeded the 1.5 cm success limit. Vertical wobble around
+    that mean and every sideways offset still count. See DECISIONS.md.
+    """
     p = _as_points(pos, "pos")
     s, axis, _ = _reach(start, end)
     rel = p - s
     perp = rel - np.outer(rel @ axis, axis)
+    if remove_vertical_sag:
+        perp[:, VERTICAL_AXIS] -= perp[:, VERTICAL_AXIS].mean()
     d = np.linalg.norm(perp, axis=1)
     return float(d.mean()), float(d.max())
 

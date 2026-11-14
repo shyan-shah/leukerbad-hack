@@ -422,6 +422,26 @@ def test_stock_patient_session_never_trips(strength):
     assert max(float(np.linalg.norm(s.vel)) for s in samples) < 0.40
 
 
+def test_weak_patient_auto_dial_falls_despite_gravity_sag():
+    # 0.3 strength: the limb sags the handle 1.2-1.6 cm on the walls, which alone used to fail
+    # the 1.5 cm path-error test and hold weak patients at +1 (see DECISIONS.md)
+    eng, arm, samples, reps = make(SimPatient(strength=0.3), dial=1.0, auto=True)
+    eng.run_until_reps(8, max_s=200)
+    assert len(reps) == 8 and all(r.completed for r in reps)
+    out_z = np.array([s.pos[2] for s in samples if s.phase == "out"])
+    assert START[2] - out_z.mean() > 0.012            # the sag is still there
+    assert all(r.path_err_mean_m < 0.005 for r in reps)
+    assert eng.dial < 0.5
+    dials = [r.dial for r in reps] + [eng.dial]
+    assert all(b <= a for a, b in zip(dials, dials[1:]))   # falls, never rises
+
+
+def test_limp_patient_auto_dial_stays_at_full_assist():
+    eng, arm, samples, reps = make(SimPatient(strength=0.0), dial=1.0, auto=True)
+    eng.run_until_reps(4, max_s=120)
+    assert len(reps) == 4 and eng.dial == 1.0
+
+
 # --------------------------------------------------------------------------- arm's own work
 
 def test_lightly_pushing_carried_patient_does_not_score_about_one():
