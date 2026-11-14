@@ -1,8 +1,8 @@
 # CLAUDE.md — Leukerbad Robotics Hackathon (14–16 Nov)
 
 ## Team
-- Team is **Shyan, Shiv, Kian**. Each runs their own Claude Code session.
-- You are one of three Claudes working in parallel on this repo. Assume the others are pushing to `main` at the same time.
+- Team is **5 people** (hackathon requirement): **Shyan, Shiv, Kian** + 2 still being recruited (see `context/TASKS.md`). Each runs their own Claude Code session.
+- You are one of up to five Claudes working in parallel on this repo. Assume the others are pushing to `main` at the same time.
 
 ## Branching
 - Always work on and push to `main`. Never leave work on a separate branch.
