@@ -42,3 +42,10 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Clamps are pure helpers (clamp_target, clamp_stiffness, check_trip) importable from robot.arm. home() ramps at 0.05 m/s (no move primitive confirmed). Angular vel/acc limits are module constants (0.5 rad/s, 2.0 rad/s^2), not in Limits.
 - Next: K0 answers into robot/BRINGUP.md and robot/config.json, then on-arm test of K1 and K2.
 - Shiv: robot.arm now exports ArmState and Limits, so S1 can drop its fallback dataclasses. Note: after any hold (not only a trip) set_target/set_stiffness are ignored until start_compliance().
+
+**2026-11-14 · Shyan · Y0b Y0c Y0d Y3**
+- Y0b done: server/db.py SQLite storage (patients, sessions, reps, all with simulated; real and simulated cannot mix; forward migration for new contract fields).
+- Y0c done: server/simulate.py writes 14 days of SIMULATED history for "Anna (SIMULATED)" (dial +0.94 to -0.35, contribution 0.19 to 0.85, one bad day, forces within the 15 N resistance design).
+- Y0d done: server/export.py; generated files are committed in server/exports/ with a plain-English README. Mat and Gio can use server/exports/ now: yes.
+- Y3 done: server/note.py template session note (no AI, no diagnosis, SIMULATED label when relevant). 34 server tests pass.
+- Next: Y1 API (REST + WebSocket) against the engine interface in MASTER_PLAN 4.4.

@@ -1,0 +1,8 @@
+[
+  {
+    "id": "sim-anna",
+    "display_name": "Anna (SIMULATED)",
+    "simulated": true,
+    "n_sessions": 14
+  }
+]

@@ -21,13 +21,13 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | S3 `software/adapt.py` (auto dial) | Shiv | software/ | Todo |
 | S4 `software/engine.py` (100 Hz loop, rep state machine, hands-off rule) | Shiv | software/ | Todo |
 | S5 `software/assess.py` (SHOULD) | Shiv | software/ | Todo |
-| Y0a `server/contract.py`: Sample, RepResult, SessionSummary | Shyan | server/ | Todo |
-| Y0b `server/db.py`: SQLite storage | Shyan | server/ | Todo |
-| Y0c `server/simulate.py`: 14 days of labelled simulated history | Shyan | server/ | Todo |
-| Y0d `server/export.py`: JSON/CSV exports for Mat and Gio | Shyan | server/ | Todo |
+| Y0a `server/contract.py`: Sample, RepResult, SessionSummary | Shyan | server/ | Done |
+| Y0b `server/db.py`: SQLite storage | Shyan | server/ | Done |
+| Y0c `server/simulate.py`: 14 days of labelled simulated history | Shyan | server/ | Done |
+| Y0d `server/export.py`: JSON/CSV exports for Mat and Gio | Shyan | server/ | Done |
 | Y1 Contract v1 and `server/api.py` (REST + WebSocket) | Shyan | server/ | Todo |
 | Y2 `server/run.py` and `server/watch.py` | Shyan | server/ | Todo |
-| Y3 `server/note.py` session note | Shyan | server/ | Todo |
+| Y3 `server/note.py` session note | Shyan | server/ | Done |
 | Y4 End-to-end sim test | Shyan | server/ | Todo |
 | Y5 `server/API.md` handover for Mat and Gio | Shyan | server/ | Todo |
 | B0 Therapist interviews in Leukerbad (3 by Sat evening, 5 by Sun midday) | Mat, Gio | business/ | Todo |
