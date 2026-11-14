@@ -10,6 +10,11 @@ Track 4: Elderly Care & Rehabilitation (unconfirmed, the team still has to pick)
 
 ## Solution
 
+## Registration (locked 17:00, 14 Nov)
+- Team lead (Shyan) fills one form for everyone: team name, track, and name, email, phone and date of birth for each member.
+- **One piece of hardware per team.** Limited items are confirmed by email.
+- The lead signs the Hackathon Agreement for the whole team, and it binds every member.
+
 ## Hardware available
 Shared pool, about CHF 1M of hardware across the carnival. **Ask a technician before switching anything on.**
 - **Arms:** Flexiv Rizon 4, Franka Emika, 2× RobCo, AgileX arm, reBot Arm B601, 2× OpenArm + leader, 13× SO-101

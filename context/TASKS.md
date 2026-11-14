@@ -7,6 +7,4 @@ Folder owners (placeholder, change if needed): robot/ = Kian, software/ = Shiv, 
 | Robot hardware build & wiring | Kian | robot/ | Todo |
 | Control / perception software | Shiv | software/ | Todo |
 | Demo script, video & pitch | Shyan | demo/ | Todo |
-| Recruit 2 more teammates | Shyan | — | In progress |
-| TBD | Recruit #4 | TBD | Todo |
-| TBD | Recruit #5 | TBD | Todo |
+| Register team by 17:00 on 14 Nov (name, track, members, 1 hardware item, sign agreement) | Shyan | — | Todo |
