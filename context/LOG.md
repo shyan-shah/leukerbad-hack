@@ -29,3 +29,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 **2026-11-14 · Shyan · Y0a**
 - Y0a done: server/contract.py with Sample, RepResult, SessionSummary including the v1 fields (Sample.phase, Sample.q, RepResult.rescued), to_dict/from_dict, 7 passing tests. Shiv can import `from server.contract import Sample, RepResult, SessionSummary` now.
 - Next: Y0b storage, Y0c simulated history, Y0d exports.
+
+**2026-11-14 · Kian · K5**
+- K5 done: runbook covers start, fault, shutdown. Files: `robot/RUNBOOK.md`, `robot/recover.py` (connect, print fault state, ClearFault, Enable, restore K_x_nom, Stop; `--check` changes nothing).
+- Stub until K2: every `TODO(confirm on arm)` (names, e-stop location, serial, Elements steps, ClearFault behaviour, SwitchMode holds pose) must be checked on the robot. recover.py tested offline only (--help, clean exit without flexivrdk).
+- Next: finalise RUNBOOK after K2 sign-off; fill in exact home/zero commands once K1 and Y2 land.
+- Blockers: none. Shyan: RUNBOOK assumes `server.run` Ctrl+C calls hold() then close() as in Y2.
