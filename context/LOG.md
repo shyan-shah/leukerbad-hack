@@ -117,3 +117,10 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - command() per sections 4.2/4.4: reach axis = the base axis the path lies along (diagonal paths raise); walls K_WALL on the other two axes, target always on the path segment. Assist leads the hand toward the min-jerk reference by at most MAX_LEAD, target on the hand when ahead; resist puts the target MAX_LEAD behind the hand toward the start in both phases. rescued=True raises the dial to >= 0.6 on the assist side and goes transparent on the resist side. Constants (K_WALL, K_ASSIST, K_RESIST, MAX_LEAD, REACH_M, T_OUT_S, T_BACK_S, RESCUE_DIAL) at the top of the file for K3 tuning.
 - Next: S1 sim_arm, then S4 engine.
 - Blockers: none.
+
+**2026-11-14 · Shiv · S1**
+- S1 done: SimArm passes 21 tests, matches Arm interface (python -m pytest software/tests/test_sim_arm.py -q).
+- software/sim_arm.py: same method names and signatures as robot/arm.py (checked by test). Imports ArmState, Limits, clamp_target, clamp_stiffness, check_trip straight from robot.arm (K1 had already landed, so there is no local fallback). Box, lead, k_max clamps, speed/force/box trips and the 0.2 s watchdog therefore behave the same as on the real arm. Physics: 1.5 kg, 8 N s/m, per-axis spring, stiffness applied 50 ms after the call. Reported force = patient effort + passive limb load (8 N down + 5 N s/m drag) when present, exactly 0 when patient.present is False.
+- Simulated patient routine: rest 1.5 s at start, 3 s min-jerk reach, 0.5 s dwell, 3 s return. Phase changes wait for the hand to arrive (10 s timeout). Reach set by attributes arm.reach_axis/reach_sign/reach_m (default x, +1, 0.30 m). realtime=True runs a 100 Hz thread started by connect(); realtime=False uses step(dt). Like Arm, get_state() needs connect() first.
+- Next: S4 engine on SimArm(realtime=False).
+- Blockers: none. Note for Shyan: call arm.connect() on SimArm before Engine.start(), the same as for Arm.
