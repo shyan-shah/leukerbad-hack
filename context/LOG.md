@@ -206,3 +206,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - metrics.path_error removes the mean vertical sag (see DECISIONS). In the sim, path error went from 14.6-15.4 mm (all sag) to about 0.9 mm. The 0.3-strength auto dial now falls 1.0, 0.85, ..., 0.1, -0.05, -0.2, -0.35 over 10 reps (it used to stick at -0.05). A limp 0.0 patient still stays at +1 (contribution 0). New tests: 3 in test_metrics, 2 in test_engine. software + server tests: 259 passed, 1 skipped (node).
 - Note: the stock 0.2 patient now also falls into resistance, because the sim's 0.2 patient completes reaches alone with contribution 0.99. That's a sim-patient calibration point, not an engine rule.
 - For Shyan, Mat and Gio: path error on screens and in exports now means "off the line, not counting the constant sag". Older stored reps include the sag.
+
+**2026-11-14 21:10 · Shyan · arm probe**
+- Connected: STILL NO. Re-ran at 20:03: 5/5 failed on Windows and 5/5 in WSL with `flexivrdk==1.7.0` (robot software v3.9.3). Firewalls ruled out on both; a second capture again shows the robot offering only `flexiv_ddk` topics, no `flexiv_rdk`.
+- Elements Studio 3.9.3 runs on Shyan's laptop (desktop shortcut "Start Flexiv Studio.bat") and sees the robot, so the single blocker is robot-side: RDK licence missing, or Remote Mode not saved as Ethernet and power-cycled.
+- `context/BRINGUP_FINDINGS.md` updated (Studio launch command, probe counts). Still no start pose, `K_x_nom`, licence type or wrench.
+- Next for Kian: Shiv has already fixed `_send_pose` (20:37 entry); still open are `robot/requirements.txt` (pin 1.7.0 + numpy) and the serial in config.json. Next for Shyan: check the licence page and Remote Mode setting in Studio. (Probe times in this entry are laptop clock, one hour behind Swiss time.)

@@ -9,8 +9,8 @@ Nothing in `robot/` was edited. For Kian.
 
 | Where | RDK | Attempts | Result |
 |---|---|---|---|
-| Windows, `C:\venvs\flexiv17` (Python 3.12.10) | 1.7.0 | 5, 20 s apart | failed |
-| WSL Ubuntu 22.04, mirrored networking (Python 3.10) | 1.7.0 | 5, 20 s apart, then 3 more with Elements Studio closed | failed |
+| Windows, `C:\venvs\flexiv17` (Python 3.12.10) | 1.7.0 | 5 at 19:19 and 5 at 20:03, 20 s apart | failed |
+| WSL Ubuntu 22.04, mirrored networking (Python 3.10) | 1.7.0 | 8 around 19:21, 5 at 20:05 (Studio closed), 20 s apart | failed |
 | Windows, temp venv (earlier today) | 1.9.4.1 | 27 | failed |
 
 So none of these could be read: `fault()`, `operational()`, `mode()`, `info()` (licence type, `K_x_nom`,
@@ -27,6 +27,12 @@ A passive capture on the robot interface during a probe shows:
   `rt/flexiv_ddk/non_stream_rpc/..._request` and `_reply`.
 - The RDK asks for `rt/flexiv_rdk/RPC/..._request` and `_reply`, `rt/flexiv_rdk/heartbeat/...`,
   `rt/flexiv_rdk/rt_states/...`, `rt/flexiv_rdk/motion_commands/...`. **The robot offers none of them.**
+
+The 20:05 capture shows the same thing. Firewalls are ruled out: Windows has inbound allow rules for the
+Python interpreters, the WSL (Hyper-V) firewall default is inbound Allow, and the capture shows traffic both ways.
+
+Elements sees the robot and the RDK does not, which is the pattern for "Remote Mode for RDK not active or
+RDK licence missing".
 
 Reading: the robot's RDK server is not running. The robot is only publishing its read-only data stream
 (Flexiv "DDK"). Most likely causes, in order:
@@ -55,8 +61,19 @@ Settings → Remote Mode must be Ethernet, saved, then power-cycle."
 | Start pose (`tcp_pose`, `q`) | unknown | needs a connection |
 | Wrench with nothing touching | unknown | needs a connection |
 
-Elements Studio 3.9.3 (Linux build) runs on Shyan's laptop in WSL and connects to the robot:
-`wsl -d Ubuntu-22.04 -u shyan -- bash -lc "~/flexiv/studio-3.9.3/run_studio.sh"`.
+### Elements Studio 3.9.3 launch (works)
+
+Runs on Shyan's laptop in WSL (Ubuntu 22.04, WSLg, mirrored networking) and its scanner finds the robot.
+One click: `C:\Users\shyan\Desktop\Start Flexiv Studio.bat`, then REFRESH and Connect in the window. Command:
+
+```
+wsl -d Ubuntu-22.04 -u shyan -- bash -lc "~/flexiv/studio-3.9.3/run_studio.sh"
+```
+
+`run_studio.sh` does what Flexiv's own `run_FlexivElements.sh` would, without storing a sudo password:
+`LD_LIBRARY_PATH=./lib`, `QT_QPA_PLATFORM_PLUGIN_PATH=./plugins`, `QT_QPA_PLATFORM=xcb`,
+`QTWEBENGINE_DISABLE_SANDBOX=1`, then `./FlexivElementsStudio -p ubuntu_pc` (the other flags default to
+`./specs_ui/`, `./user_data_ui/`, `./userDataTemplate/`). Flexiv's `setup_FlexivElements.sh` was not run.
 The RDK cannot connect whether Studio is open or closed.
 
 ## 4. `robot/arm.py` and `robot/recover.py` against flexivrdk 1.7.0
@@ -81,6 +98,10 @@ From introspecting the installed 1.7.0 module (signatures and field lists). Not 
 | Missing in 1.7.0, present in 1.9 | `SetMaxContactTorque`, `SetJointInertiaScale`, `SendMultiCartesianMotionForce`, `SetTimelinessFailureLimit`, `actions`, `lite`; fields `RobotInfo.has_FT_sensor`, `RobotStates.timestamp`, `.temperature`, `.tau_interact` | not used by `arm.py` or `recover.py` |
 
 ## 5. What Kian must change
+
+Status at 21:10 Swiss time: items 1 and 2 are already done on main (`robot/requirements.txt` has
+`flexivrdk==1.7.*` and `numpy`; Shiv fixed `_send_pose` with Kian's OK). Items 3 to 5 are still open, and
+the table in section 4 describes `arm.py` as it was before that fix.
 
 1. **`robot/requirements.txt`** (new file): `flexivrdk==1.7.0` and `numpy`. The 1.7.0 wheel does not pull in
    numpy and `import flexivrdk` fails without it. There is a Python 3.12 Windows wheel. 1.7.0 is the only 1.7.x.
