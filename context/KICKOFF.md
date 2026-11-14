@@ -19,14 +19,14 @@ One agent per package. Packages under the same person touch different files, so 
 | `robot/` | Kian | `arm.py` (the only code that talks to the Flexiv), safety limits, bring-up scripts |
 | `software/` | Shiv | control engine: paths, assist as needed, resistance, rep detection, metrics, simulated arm and patient |
 | `server/` | Shyan | data layer: data contract, SQLite storage, API, simulated history, exports for Mat and Gio |
-| `demo/`, `business/` | Mat and Gio | website, screens, pitch deck, validation. They read `exports/` and later the API |
+| `demo/`, `business/` | Mat and Gio | website, screens, pitch deck, validation. They read `server/exports/` and later the API |
 | `context/` | shared | append to LOG.md and DECISIONS.md, update your own rows in TASKS.md |
 
 ## Rules for every agent
 
 1. `git pull origin main` before you start and again before you push. Work on `main`.
 2. Only create or edit files your package lists. Never edit another person's folder. If you need something from it, write a blocker line in `context/LOG.md`.
-3. You may import from another folder, never write to it.
+3. You may import from another folder, never write to it. Import direction is one way: `software/` may import only `server.contract` from `server/`; `server/` may import anything from `software/`; both may import `robot.arm`. Nothing is written at the repo root.
 4. Python **3.12**. Each folder has its own `requirements.txt` (`robot/`, `software/`, `server/`). Do not create a root one.
 5. Tests live in `<folder>/tests/` and run from the repo root with `python -m pytest <folder>/tests -q`.
 6. No CSV logging. Storage is SQLite in `server/`. If you need to save something for debugging, write it under `<folder>/scratch/` (git-ignored by you).
@@ -247,7 +247,7 @@ Create the three dataclasses exactly as in "Shared conventions" above, plus `to_
 Tables: `patients(id TEXT PRIMARY KEY, display_name TEXT, simulated INTEGER NOT NULL)`, `sessions` (columns of `SessionSummary`), `reps` (columns of `RepResult`, primary key `(session_id, idx)`). Every table has `simulated`.
 
 ```python
-def connect(path="data/rehab.db") -> sqlite3.Connection   # creates the folder and tables if missing
+def connect(path="server/data/rehab.db") -> sqlite3.Connection   # creates the folder and tables if missing
 def upsert_patient(conn, id, display_name, simulated) -> None
 def save_session(conn, s: SessionSummary) -> None          # insert or update
 def save_rep(conn, r: RepResult) -> None
@@ -256,7 +256,7 @@ def list_sessions(conn, patient_id) -> list[SessionSummary]
 def list_reps(conn, session_id) -> list[RepResult]
 ```
 
-`data/` is git-ignored (add `data/` and `exports/` handling to a `server/.gitignore` only, do not touch a root one).
+The database lives in `server/data/`, which is git-ignored: create `server/.gitignore` containing the single line `data/`. Do not create a root `.gitignore` and do not write anything outside `server/`.
 
 **Tests:** use a temp file; save and reload gives equal objects; saving the same rep twice does not duplicate; a real session cannot be saved under a simulated patient or the reverse (raise `ValueError`).
 
@@ -276,23 +276,23 @@ If Shiv's `software/sim_patient.py` exists by the time you start, generate reps 
 
 **Tests:** 14 sessions exist; every row has `simulated=1`; same seed gives identical data; first-day mean contribution is lower than last-day.
 
-**Run:** `python -m pytest server/tests/test_simulate.py -q` then `python -m server.simulate` to fill `data/rehab.db`.
+**Run:** `python -m pytest server/tests/test_simulate.py -q` then `python -m server.simulate` to fill `server/data/rehab.db`.
 
 ### Y0d: exports for Mat and Gio
 
-**Files:** `server/export.py`, `server/tests/test_export.py`, `exports/README.md`.
+**Files:** `server/export.py`, `server/tests/test_export.py`, `server/exports/README.md`, and the generated files in `server/exports/` (these ARE committed).
 
 ```python
-def export_all(conn, out_dir="exports") -> list[str]   # returns the files written
+def export_all(conn, out_dir="server/exports") -> list[str]   # returns the files written
 ```
 
-Writes `exports/patients.json`, `exports/sessions.json` (one row per session with per-session means of every metric), `exports/reps.csv` (one row per rep), and `exports/latest_session.json`. Every row keeps `simulated`. `exports/README.md` explains each file and column in plain English for non-coders, and states in its first line that rows with `simulated: true` must be labelled "simulated" wherever they are shown. Commit the generated export files so Mat and Gio can use them without running Python.
+Writes `server/exports/patients.json`, `server/exports/sessions.json` (one row per session with per-session means of every metric), `server/exports/reps.csv` (one row per rep), and `server/exports/latest_session.json`. Every row keeps `simulated`. `server/exports/README.md` explains each file and column in plain English for non-coders, and states in its first line that rows with `simulated: true` must be labelled "simulated" wherever they are shown. Commit the generated export files so Mat and Gio can use them without running Python.
 
 **Tests:** files exist and parse; row counts match the database; every row has the `simulated` field.
 
 **Run:** `python -m pytest server/tests/test_export.py -q` then `python -m server.export`.
 
-**LOG line for each:** `Y0x done: <what exists>, Mat and Gio can use exports/ yes/no`.
+**LOG line for each:** `Y0x done: <what exists>, Mat and Gio can use server/exports/ yes/no`.
 
 ---
 
@@ -330,4 +330,4 @@ Start `business/claims.md` with columns: claim, number, source link, exact quote
 
 ### Website and deck
 
-Wait for `exports/` to appear on main (Shyan's package Y0d), then build from those files. Anything marked simulated stays labelled simulated on every page and slide. How the live screens connect to the robot is decided on Sunday.
+Wait for `server/exports/` to appear on main (Shyan's package Y0d), then build from those files. Anything marked simulated stays labelled simulated on every page and slide. How the live screens connect to the robot is decided on Sunday.

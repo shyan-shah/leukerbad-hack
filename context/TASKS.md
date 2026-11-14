@@ -20,5 +20,5 @@ Package details and ready-to-paste prompts are in `context/KICKOFF.md`.
 | API (REST + WebSocket) and end-to-end run script | Shyan | server/ | Waiting on MASTER_PLAN |
 | B0 Therapist interviews in Leukerbad (3 by Sat evening, 5 by Sun midday) | Mat, Gio | business/ | Todo |
 | B1 Claims table with checked sources | Mat, Gio | business/ | Todo |
-| Website, screens, pitch deck, backup video | Mat, Gio | demo/ | Waiting on exports/ |
+| Website, screens, pitch deck, backup video | Mat, Gio | demo/ | Waiting on server/exports/ |
 | Register team by 17:00 on 14 Nov (name, track, members, 1 hardware item, sign agreement) | Shyan | n/a | Done (hardware: Flexiv Rizon 4) |
