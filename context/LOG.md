@@ -163,3 +163,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - metrics.contribution / rep_metrics: optional robot_force (the arm's commanded spring force); the engine passes it (DECISIONS). A 0.05-strength patient carried at D=+1 now scores 0.46 instead of 0.99. Note: in the sim a 0.1-strength patient still scores about 0.94, because the frictionless hand moves on 2.5 N; re-check on the real arm.
 - engine: the resist-side stall rescue now ramps to transparent over 1 s in 0.1 s steps (DECISIONS). The logged case peaks at 0.20 m/s with no trip, where the one-step drop reached 0.43 m/s and tripped.
 - Tests: software/ suite passes, 174 tests (stock-patient engine tests added). server/tests/test_e2e_sim.py passes (2 passed, 69 s, run in a throwaway venv); the rest of server/tests also pass (62 passed, 1 skipped). The S4 blocker is cleared: `server.run --sim` works at any strength.
+
+**2026-11-14 · Shiv · sync**
+- Changed: S1 follow-up done; the sim patient now reaches on the engine's cue. Contribution counts the arm's spring work, and the resist-side rescue ramps over 1 s (see the entry above and DECISIONS). The software/ suite passes 174 tests.
+- For Shyan: server/tests/test_e2e_sim.py now passes on main (it was failing since S4); Y4's sim variant can be marked done. `server.run --sim` works at any `--strength`.
+- For Kian (K3): the resist rescue ramp uses 0.1 s steps because of the stiffness latency; if the real arm's set_stiffness latency is over 100 ms, tell Shiv so the step can be lengthened. Weak-patient path error from 1.2-1.6 cm limb sag (K_WALL 500) still holds weak users at +1.
+- Next: re-check contribution and the auto dial on the real arm once K3 tuning lands; S5 assess is ready to wire into the API if Shyan wants it.

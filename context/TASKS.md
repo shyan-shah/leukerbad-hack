@@ -16,7 +16,7 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | S0b `software/reps.py`: rep detection | Shiv | software/ | Done |
 | S0c `software/paths.py`: line path, min-jerk, lead target | Shiv | software/ | Done |
 | S0d `software/sim_patient.py`: simulated hand and patient | Shiv | software/ | Done |
-| S1 `software/sim_arm.py` (same interface as Arm) | Shiv | software/ | Done; follow-up needed: patient timing out of step with engine (LOG S4 blocker) |
+| S1 `software/sim_arm.py` (same interface as Arm) | Shiv | software/ | Done (patient timing follow-up fixed, 39d9d0b) |
 | S2 `software/controller.py` (dial to target and stiffness) | Shiv | software/ | Done |
 | S3 `software/adapt.py` (auto dial) | Shiv | software/ | Done |
 | S4 `software/engine.py` (100 Hz loop, rep state machine, hands-off rule) | Shiv | software/ | Done |
