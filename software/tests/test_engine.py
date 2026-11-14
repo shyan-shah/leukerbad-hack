@@ -1,12 +1,11 @@
 """Tests for software/engine.py (package S4), run on SimArm(realtime=False).
 
 Two simulated patients are used:
-- the stock ``SimPatient`` inside ``SimArm`` (its own time-based out/back routine), for the
-  limp patient and the hands-off cases, where the patient's timing does not matter;
-- ``CuedPatient`` (defined here, test only): a SimPatient that reaches when the engine starts
-  the out phase and returns when it starts the back phase, aiming a little past the end of the
-  reach ("reaching through" the target). SimArm's own routine runs on its own clock and drifts
-  out of step with the engine (see context/LOG.md, S4 blocker), so the adaptive tests use this.
+- the stock ``SimPatient`` inside ``SimArm``, whose routine starts a reach when the engine's
+  stiffness leaves the soft hold (see software/sim_arm.py);
+- ``CuedPatient`` (defined here, test only): a SimPatient whose goal follows the engine's phase
+  directly, with an adjustable overshoot, for cases that need a specific behaviour (a patient
+  who refuses to reach, or one who stalls against resistance).
 Everything here is simulated.
 """
 
@@ -390,3 +389,87 @@ def test_module_constants_match_section_4_2():
     assert engine_mod.OUT_DONE == 0.9 and engine_mod.OUT_TIMEOUT_S == 10.0
     assert engine_mod.STALL_SPEED == 0.01
     assert engine_mod.STALL_ASSIST_S == 1.5 and engine_mod.STALL_RESIST_S == 3.0
+
+
+# --------------------------------------------------------------------------- stock SimPatient
+
+def test_stock_patient_strong_auto_dial_falls_below_0_3_within_8_reps():
+    # SimArm's own patient: reaches on the engine's cue (stiffness leaves the soft hold)
+    eng, arm, samples, reps = make(SimPatient(strength=1.0), dial=1.0, auto=True)
+    eng.run_until_reps(8, max_s=200)
+    assert len(reps) == 8
+    assert all(r.completed for r in reps)
+    assert min([r.dial for r in reps[1:]] + [eng.dial]) < 0.3
+    assert reps[0].contribution > 0.6
+    assert arm.get_state().fault is None
+
+
+def test_stock_patient_strong_full_resistance_completes_without_trip():
+    eng, arm, samples, reps = make(SimPatient(strength=1.0), dial=-1.0, auto=False)
+    eng.run_until_reps(3, max_s=120)
+    assert len(reps) == 3
+    assert all(r.completed and not r.rescued for r in reps)
+    assert all(12.0 <= r.peak_force_n <= 22.0 for r in reps)
+    assert arm.get_state().fault is None
+
+
+@pytest.mark.parametrize("strength", [0.0, 0.3, 0.8])
+def test_stock_patient_session_never_trips(strength):
+    eng, arm, samples, reps = make(SimPatient(strength=strength), dial=1.0, auto=True)
+    eng.run_until_reps(12, max_s=300)
+    assert len(reps) == 12
+    assert arm.get_state().fault is None
+    assert max(float(np.linalg.norm(s.vel)) for s in samples) < 0.40
+
+
+# --------------------------------------------------------------------------- arm's own work
+
+def test_lightly_pushing_carried_patient_does_not_score_about_one():
+    # 0.05 strength at full assist: the arm's spring does most of the work
+    eng, arm, samples, reps = make(SimPatient(strength=0.05), dial=1.0, auto=False)
+    eng.run_until_reps(2, max_s=60)
+    assert len(reps) == 2
+    assert all(r.contribution < 0.6 for r in reps)
+
+
+def test_contribution_includes_commanded_spring_force():
+    eng, arm, samples, reps = make(cued(0.05), dial=1.0, auto=False)
+    eng.run_until_reps(1, max_s=60)
+    out = [s for s in samples if s.rep_idx == 0 and s.phase == "out"]
+    t = np.array([s.t for s in out])
+    pos = np.array([s.pos for s in out])
+    f = np.array([s.force for s in out])
+    end = (START[0] + REACH, START[1], START[2])
+    person_only = rep_metrics(t, pos, f, START, end)["contribution"]
+    assert person_only > 0.9                       # the old rule called this patient able
+    assert reps[0].contribution < person_only - 0.3
+
+
+# --------------------------------------------------------------------------- resist rescue ramp
+
+def test_resist_rescue_ramps_to_transparent_without_lurch():
+    # strong patient aiming exactly at the end: against full resistance it stalls at about
+    # 2/3 of the reach while pushing about 15 N (the case that tripped with a one-step drop)
+    eng, arm, samples, reps = make(cued(1.0, overshoot=0.0), dial=-1.0, auto=False, spy=True)
+    eng.run_until_reps(1, max_s=40)
+    assert reps[0].rescued is True
+    assert arm.get_state().fault is None
+    assert max(float(np.linalg.norm(s.vel)) for s in samples) < 0.40
+    # the reach-axis stiffness went down in several steps, not one
+    kx = [k[0] for k in arm.stiffness]
+    i = kx.index(max(kx))
+    steps = []
+    for k in kx[i:]:
+        if steps and k > steps[-1]:
+            break
+        steps.append(k)
+    assert steps[0] == pytest.approx(300.0) and steps[-1] == 0.0
+    assert len(steps) >= 8
+
+
+def test_resist_rescue_one_step_drop_would_trip(monkeypatch):
+    # guards the test above: with no ramp the same patient trips the speed limit
+    monkeypatch.setattr(engine_mod, "RESIST_RAMP_S", 1e-6)
+    eng, arm, samples, reps = make(cued(1.0, overshoot=0.0), dial=-1.0, auto=False)
+    eng.run_until_reps(1, max_s=40)
+    assert arm.get_state().fault is not None and "speed" in arm.get_state().fault

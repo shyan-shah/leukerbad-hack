@@ -108,6 +108,49 @@ def test_contribution_half_and_half():
     assert m.contribution(force, vel, START, END) == pytest.approx(0.5)
 
 
+def test_contribution_counts_robot_spring_work_when_given():
+    # person pushes 1 N, arm's spring pulls 3 N, both along the motion: person did 1/4
+    vel = np.tile([0.1, 0.0, 0.0], (10, 1))
+    force = np.tile([1.0, 0.0, 0.0], (10, 1))
+    robot = np.tile([3.0, 0.0, 0.0], (10, 1))
+    assert m.contribution(force, vel, START, END) == pytest.approx(1.0)   # old rule: ~1
+    assert m.contribution(force, vel, START, END, robot_force=robot) == pytest.approx(0.25)
+
+
+def test_contribution_robot_force_resisting_or_across_counts_nothing():
+    vel = np.tile([0.1, 0.0, 0.0], (10, 1))
+    force = np.tile([5.0, 0.0, 0.0], (10, 1))
+    resisting = np.tile([-4.0, 0.0, 0.0], (10, 1))     # resist mode: negative robot work
+    walls = np.tile([0.0, 6.0, -6.0], (10, 1))         # tunnel walls: across the reach
+    assert m.contribution(force, vel, START, END, robot_force=resisting) == pytest.approx(1.0)
+    assert m.contribution(force, vel, START, END, robot_force=walls) == pytest.approx(1.0)
+
+
+def test_contribution_with_robot_force_does_not_double_count():
+    # the person holds back (-2 N) while the arm pulls (+5 N): only the arm's work counts
+    vel = np.tile([0.1, 0.0, 0.0], (10, 1))
+    force = np.tile([-2.0, 0.0, 0.0], (10, 1))
+    robot = np.tile([5.0, 0.0, 0.0], (10, 1))
+    assert m.contribution(force, vel, START, END, robot_force=robot) == 0.0
+    assert m.contribution(np.zeros((10, 3)), np.zeros((10, 3)), START, END,
+                          robot_force=robot) == 0.0             # no work at all
+
+
+def test_contribution_robot_force_shape_checked():
+    vel = np.tile([0.1, 0.0, 0.0], (10, 1))
+    with pytest.raises(ValueError):
+        m.contribution(vel, vel, START, END, robot_force=np.zeros((9, 3)))
+
+
+def test_rep_metrics_passes_robot_force():
+    t, pos = min_jerk_reach()
+    force = np.tile([1.0, 0.0, 0.0], (len(t), 1))
+    robot = np.tile([1.0, 0.0, 0.0], (len(t), 1))
+    assert m.rep_metrics(t, pos, force, START, END)["contribution"] == pytest.approx(1.0)
+    r = m.rep_metrics(t, pos, force, START, END, robot_force=robot)
+    assert r["contribution"] == pytest.approx(0.5)
+
+
 # --- rep_metrics ------------------------------------------------------------
 
 def test_rep_metrics_keys_and_values():

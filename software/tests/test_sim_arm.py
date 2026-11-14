@@ -157,7 +157,8 @@ def test_assist_spring_carries_limp_patient():
 def test_force_sign_positive_when_pushing_plus_x():
     arm = make_arm(strength=1.0)
     states = run_on_path(arm, 6.0)
-    pushing = [s for s in states if s.vel[0] > 0.05]
+    # before the last 5 cm: near the end the patient brakes (force < 0 while still moving +x)
+    pushing = [s for s in states if s.vel[0] > 0.05 and s.pos[0] - START[0] < 0.25]
     assert pushing, "patient never moved toward +x"
     assert all(s.force[0] > 0 for s in pushing)
 
@@ -273,3 +274,44 @@ def test_realtime_thread_advances_and_watchdog_fires():
         assert st.mode == "hold" and "watchdog" in st.fault
     finally:
         arm.close()
+
+
+# ------------------------------------------------------------------ patient cue
+
+def test_patient_reaches_on_cue_from_soft_hold_only():
+    arm = make_arm(strength=1.0)
+    arm.start_compliance()
+    for _ in range(300):                           # 3 s at the soft hold: before the first
+        arm.get_state()                            # cue it rests 1.5 s, then reaches alone
+        arm.set_target(START)
+        arm.step(DT)
+    assert arm._cued is False
+    arm2 = make_arm(strength=1.0)
+    arm2.start_compliance()
+    arm2.set_target(START)
+    arm2.step(DT)
+    assert arm2._intent == "rest"
+    arm2.set_stiffness(0.0, WALL, WALL)            # leaves the soft hold: the engine's cue
+    arm2.step(STIFFNESS_LATENCY_S + DT)
+    assert arm2._intent == "out" and arm2._cued
+    arm2._intent = "back"
+    arm2.set_stiffness(100.0, WALL, WALL)          # mid-rep change (rescue, dial): not a cue
+    arm2.step(STIFFNESS_LATENCY_S + DT)
+    assert arm2._intent == "back"
+
+
+def test_cued_patient_does_not_start_alone_and_near_start_is_along_reach():
+    arm = make_arm(strength=1.0)
+    arm.start_compliance()
+    arm.set_stiffness(0.0, WALL, WALL)
+    arm.step(STIFFNESS_LATENCY_S + DT)             # cued once: engine-driven from now on
+    arm._intent = "rest"
+    arm._pos = np.array(START) + np.array([0.0, 0.0, -0.03])   # 3 cm limb sag, on the start
+    for _ in range(400):
+        arm._update_intent()
+        arm._t += DT
+    assert arm._intent == "rest"                   # waits for the next cue
+    arm._intent = "back"
+    arm._intent_t0 = arm._t - 3.0
+    arm._update_intent()
+    assert arm._intent == "rest"                   # sag does not hide "back at the start"

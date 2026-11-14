@@ -34,11 +34,17 @@ Rep state machine (section 4.2):
 - Stall rescue: on the assist side, along-path speed under ``STALL_SPEED`` for
   ``STALL_ASSIST_S`` before 90% phase progress marks the rep rescued (the controller raises
   the dial to at least 0.6). On the resist side (dial < 0) a ``STALL_RESIST_S`` stall marks it
-  rescued (the controller goes transparent). Not applied at exactly transparent.
+  rescued and the resistance is ramped down to transparent over ``RESIST_RAMP_S`` in steps of
+  ``RESIST_RAMP_STEP_S`` (a one-step drop made a patient pushing against it lurch and trip the
+  speed limit; see DECISIONS.md). Steps are at least 0.1 s apart so each stiffness change can
+  take effect on the arm before the next. Not applied at exactly transparent.
 
 Metrics: every RepResult metric (duration, ROM, path error, SPARC, force, contribution) is
 computed on the ``out`` phase slice only, as section 4.2 requires for contribution. If SPARC
-is undefined (the hand did not move) it is reported as 0.0.
+is undefined (the hand did not move) it is reported as 0.0. Contribution counts the arm's
+own work: each out sample also records the commanded spring force ``K * (target - hand)``
+of the command in effect at that sample (the one sent on the previous tick), passed to
+``metrics.contribution`` as ``robot_force``.
 
 Drivers: ``start()`` runs the 100 Hz thread for a real-time arm (``Arm`` or
 ``SimArm(realtime=True)``). For ``SimArm(realtime=False)`` no thread is started; the caller
@@ -81,6 +87,8 @@ STALL_SPEED = 0.01           # m/s along the path
 STALL_ASSIST_S = 1.5         # s stall on the assist side before rescue
 STALL_RESIST_S = 3.0         # s stall on the resist side before dropping to transparent
 STALL_MAX_PROGRESS = 0.9     # stall rescue only before this phase progress
+RESIST_RAMP_S = 1.0          # s, resist-side rescue ramps the resistance to 0 over this
+RESIST_RAMP_STEP_S = 0.1     # s between ramp steps (10 steps over RESIST_RAMP_S)
 EXERCISE = "reach_line"
 
 
@@ -256,6 +264,7 @@ class Engine:
         self._last_force_t: float | None = None
         self._latch: np.ndarray | None = None
         self._k_sent: tuple[float, float, float] | None = None
+        self._cmd: tuple[np.ndarray, np.ndarray] | None = None  # (target, k) last sent
         self._clear_rep()
 
     def _clear_rep(self) -> None:
@@ -263,11 +272,13 @@ class Engine:
         self._rep_dial = 0.0
         self._rep_t0 = 0.0
         self._rescued = False
+        self._rescued_at = 0.0
         self._stall_since: float | None = None
         self._completed = False
         self._out_t: list[float] = []
         self._out_pos: list[tuple[float, float, float]] = []
         self._out_force: list[tuple[float, float, float]] = []
+        self._out_robot: list[tuple[float, float, float]] = []
 
     def _progress(self, pos) -> float:
         start = np.asarray(self.path.start)
@@ -297,6 +308,7 @@ class Engine:
             self._near_since = None
             self._latch = None
             self._k_sent = None  # re-send stiffness if compliance is restarted
+            self._cmd = None
             self._emit(t, state, _tup3(pos), dial, "idle", -1)
             return
 
@@ -330,6 +342,7 @@ class Engine:
             self._out_t.append(t)
             self._out_pos.append(_tup3(pos))
             self._out_force.append(_tup3(force))
+            self._out_robot.append(self._spring_force(pos))
         # the Sample is labelled with the phase it was recorded in (the tick that reaches
         # OUT_DONE is the last "out" sample, the tick that gets back to the start the last "back")
         label_phase, label_idx = self._phase, self._rep_idx
@@ -357,14 +370,16 @@ class Engine:
                 limit = STALL_ASSIST_S if dial > 0 else STALL_RESIST_S
                 if t_arm - self._stall_since >= limit:
                     self._rescued = True
+                    self._rescued_at = t_arm
             else:
                 self._stall_since = None
 
         # command
         if self._phase in ("out", "back"):
             self._latch = None
-            target, k = controller.command(dial, self._phase, s, t_arm - self._phase_t0,
-                                           pos, self.path, self._rescued)
+            d_cmd, rescued_cmd = self._rescue_dial(dial, t_arm)
+            target, k = controller.command(d_cmd, self._phase, s, t_arm - self._phase_t0,
+                                           pos, self.path, rescued_cmd)
         else:
             kh = float(self.arm.limits.k_hold)
             k = (kh, kh, kh)
@@ -381,8 +396,26 @@ class Engine:
         if k != self._k_sent:
             self.arm.set_stiffness(*k)
             self._k_sent = k
+        self._cmd = (np.asarray(target, dtype=float), np.asarray(k, dtype=float))
         self._emit(t, state, target, dial, label_phase,
                    label_idx if label_phase != "idle" else -1)
+
+    def _rescue_dial(self, dial: float, t_arm: float) -> tuple[float, bool]:
+        """(dial, rescued) for controller.command. Resist-side rescue ramps the dial to 0."""
+        if not self._rescued or dial >= 0:
+            return dial, self._rescued
+        elapsed = t_arm - self._rescued_at
+        if elapsed >= RESIST_RAMP_S:
+            return dial, True                      # controller goes transparent
+        step = int(elapsed / RESIST_RAMP_STEP_S + 1e-9) * RESIST_RAMP_STEP_S
+        return dial * (1.0 - step / RESIST_RAMP_S), False
+
+    def _spring_force(self, pos) -> tuple[float, float, float]:
+        """Arm's force on the hand from the command in effect: K * (target - hand)."""
+        if self._cmd is None:
+            return (0.0, 0.0, 0.0)
+        target, k = self._cmd
+        return _tup3(k * (target - np.asarray(pos, dtype=float)))
 
     def _begin_rep(self, t_arm: float, t: float, dial: float) -> None:
         self._clear_rep()
@@ -410,9 +443,10 @@ class Engine:
         t = np.asarray(self._out_t)
         pos = np.asarray(self._out_pos)
         force = np.asarray(self._out_force)
+        robot = np.asarray(self._out_robot)
         start, end = self.path.start, self.path.end
         try:
-            return rep_metrics(t, pos, force, start, end)
+            return rep_metrics(t, pos, force, start, end, robot_force=robot)
         except ValueError:
             # SPARC is undefined when the hand did not move; everything else still holds.
             vel = np.gradient(pos, t, axis=0)
@@ -423,7 +457,7 @@ class Engine:
                 "path_err_mean_m": err_mean, "path_err_max_m": err_max, "sparc": 0.0,
                 "peak_force_n": peak, "mean_force_n": mean,
                 "contribution": contribution(force, vel, start, end,
-                                             dt=float(np.median(np.diff(t)))),
+                                             dt=float(np.median(np.diff(t))), robot_force=robot),
             }
 
     def _finish_rep(self, dial_now: float, aborted: bool) -> None:

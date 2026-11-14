@@ -155,36 +155,55 @@ def sparc(speed, fs, padlevel=4, fc=10.0, amp_th=0.05) -> float:
     return float(new_sal)
 
 
-def contribution(force, vel, start, end, dt: float = 0.01) -> float:
+def contribution(force, vel, start, end, dt: float = 0.01, robot_force=None) -> float:
     """Share of the movement done by the person, 0..1.
 
     Team-defined index, not a clinically validated measure.
 
     ``f`` is the person's force projected on the reach axis and ``v`` the
-    hand velocity projected on it. Person's work ``Wp = sum(max(0, f*v))*dt``,
-    robot's work ``Wr = sum(max(0, -f*v))*dt``. Returns ``Wp / (Wp + Wr)``,
-    or 0.0 if both are under 1e-6 J. ``dt`` defaults to the 100 Hz convention.
+    hand velocity projected on it. Person's work ``Wp = sum(max(0, f*v))*dt``.
+    Robot's work ``Wr``:
+
+    - ``robot_force`` not given (original S0a rule): ``Wr = sum(max(0, -f*v))*dt``,
+      i.e. robot work is inferred only when the person's force opposes the motion.
+    - ``robot_force`` given, shape (N, 3), the arm's force on the hand (for the
+      impedance arm the commanded spring ``K * (target - hand)`` per axis):
+      ``Wr = sum(max(0, fr*v))*dt`` with ``fr`` its projection on the reach axis.
+      This counts the arm's own positive work, so a patient pushing lightly while
+      the arm carries them is no longer scored about 1. The inferred term above
+      is not added, so nothing is counted twice.
+
+    Returns ``Wp / (Wp + Wr)``, or 0.0 if both are under 1e-6 J. ``dt`` defaults
+    to the 100 Hz convention.
     """
     fo = _as_points(force, "force")
     ve = _as_points(vel, "vel")
     if fo.shape != ve.shape:
         raise ValueError(f"force {fo.shape} and vel {ve.shape} must have the same shape")
     _, axis, _ = _reach(start, end)
-    p = (fo @ axis) * (ve @ axis)
+    v = ve @ axis
+    p = (fo @ axis) * v
     wp = float(np.sum(np.maximum(0.0, p)) * dt)
-    wr = float(np.sum(np.maximum(0.0, -p)) * dt)
+    if robot_force is None:
+        wr = float(np.sum(np.maximum(0.0, -p)) * dt)
+    else:
+        fr = _as_points(robot_force, "robot_force")
+        if fr.shape != ve.shape:
+            raise ValueError(f"robot_force {fr.shape} and vel {ve.shape} must have the same shape")
+        wr = float(np.sum(np.maximum(0.0, (fr @ axis) * v)) * dt)
     if wp < 1e-6 and wr < 1e-6:
         return 0.0
     return wp / (wp + wr)
 
 
-def rep_metrics(t, pos, force, start, end) -> dict:
+def rep_metrics(t, pos, force, start, end, robot_force=None) -> dict:
     """All metrics for one repetition, keys named as in ``RepResult``.
 
     Returns ``duration_s, rom_m, path_err_mean_m, path_err_max_m, sparc,
     peak_force_n, mean_force_n, contribution``. Velocity is
     ``numpy.gradient(pos, t)``; SPARC uses its magnitude (speed) with
-    ``fs = 1 / median(diff(t))``.
+    ``fs = 1 / median(diff(t))``. ``robot_force`` (optional, (N, 3)) is passed
+    to :func:`contribution`.
     """
     tt = np.asarray(t, dtype=float).reshape(-1)
     p = _as_points(pos, "pos")
@@ -209,5 +228,5 @@ def rep_metrics(t, pos, force, start, end) -> dict:
         "sparc": sparc(speed, 1.0 / dt),
         "peak_force_n": peak,
         "mean_force_n": mean,
-        "contribution": contribution(f, vel, start, end, dt=dt),
+        "contribution": contribution(f, vel, start, end, dt=dt, robot_force=robot_force),
     }

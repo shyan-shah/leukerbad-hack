@@ -23,12 +23,29 @@ Stiffness changes take effect ``STIFFNESS_LATENCY_S`` after the call (latest
 value wins), like the real arm's worker thread.
 
 Patient intent: the simulated person follows a simple out-and-back routine
-along the reach (rest at the start, a minimum-jerk reach to the end over
-``PATIENT_REACH_S``, a short dwell, a minimum-jerk return). Phase changes wait
-for the hand to actually arrive (with a timeout), so a weak patient keeps
-trying while the arm helps. The reach is ``reach_axis`` / ``reach_sign`` /
-``reach_m`` (attributes, defaults x, +1, 0.30 m). The timings are team-chosen
-simulation parameters, not measured values.
+along the reach (rest at the start, a minimum-jerk reach over ``PATIENT_REACH_S``,
+a short dwell, a minimum-jerk return). The reach is ``reach_axis`` /
+``reach_sign`` / ``reach_m`` (attributes, defaults x, +1, 0.30 m).
+
+- Cue: the reach starts when the applied stiffness leaves the all-axes
+  ``k_hold`` soft hold, which is what the engine does when it arms a rep (a
+  therapist saying "go"). The cue overrides whatever the patient was doing.
+  Stiffness changes that do not start from the soft hold (rescue, dial changes
+  mid-rep) are not a cue. Before the first cue, the patient starts a reach on
+  its own after resting ``PATIENT_REST_S`` at the start (for use without an
+  engine).
+- The reach aims ``PATIENT_OVERSHOOT`` of the way along the line (past the end,
+  "reaching through the target") so a strong patient still completes a reach
+  against resistance. It counts as arrived at ``PATIENT_END_PROGRESS``, the same
+  progress at which the engine starts its back phase, and the goal then
+  settles at the end of the line (it never goes on to the overshoot point).
+- "At the start" is measured along the reach axis only, like the engine, so the
+  limb load sagging the handle does not hide it.
+- Phase changes otherwise wait for the hand to arrive (with a timeout), so a
+  weak patient keeps trying while the arm helps.
+
+The timings and the overshoot are team-chosen simulation parameters, not
+measured values.
 
 Not simulated: joint angles (``q`` is seven zeros), orientation (fixed at the
 start orientation), robot-side velocity limits and faults.
@@ -64,8 +81,9 @@ PATIENT_REACH_S = 3.0            # min-jerk reach time out and back (peak 0.19 m
 PATIENT_REST_S = 1.5             # rest near the start before reaching again (engine arms after 1.0 s)
 PATIENT_DWELL_S = 0.5            # pause at the end before returning
 PATIENT_PHASE_TIMEOUT_S = 10.0   # give up waiting for the hand and move on
-PATIENT_END_PROGRESS = 0.92      # hand progress counted as "arrived at the end"
-PATIENT_NEAR_START_M = 0.02      # hand distance counted as "back at the start"
+PATIENT_END_PROGRESS = 0.90      # hand progress counted as "arrived" (= engine's OUT_DONE)
+PATIENT_NEAR_START_M = 0.02      # distance along the reach counted as "back at the start"
+PATIENT_OVERSHOOT = 1.3          # the reach aims this far along the line (1.0 = the end)
 
 DEFAULT_QUAT = (0.0, 0.0, 1.0, 0.0)   # matches the robot/config.json start orientation
 ZERO_Q = (0.0,) * 7
@@ -108,6 +126,8 @@ class SimArm:
         self._intent = "rest"
         self._intent_t0 = self._t
         self._near_start_since: float | None = None
+        self._cued = False            # True once an engine cue has been seen
+        self._s_from = 0.0            # progress the dwell/back starts from
 
         self._running = False
         self._thread: threading.Thread | None = None
@@ -266,26 +286,41 @@ class SimArm:
         u[self.reach_axis] = 1.0 if self.reach_sign >= 0 else -1.0
         return u * float(self.reach_m)
 
+    def _at_hold_stiffness(self) -> bool:
+        return bool(np.allclose(self._k, float(self.limits.k_hold)))
+
+    def _set_intent(self, intent: str) -> None:
+        self._intent = intent
+        self._intent_t0 = self._t
+        self._near_start_since = None
+
+    def _cue_reach(self) -> None:
+        """Engine cue (stiffness left the soft hold): start a reach now, whatever the state."""
+        self._cued = True
+        self._set_intent("out")
+
+    def _progress(self, pos: np.ndarray) -> float:
+        d = self._reach_vector()
+        return float((pos - np.array(self.start_pos)) @ d / (d @ d))
+
     def _goal(self, t: float) -> np.ndarray:
         """Where the simulated person is aiming at time t (no state change)."""
         start = np.array(self.start_pos)
         d = self._reach_vector()
         tau = t - self._intent_t0
         if self._intent == "out":
-            return start + min_jerk(0.0, 1.0, PATIENT_REACH_S, tau) * d
+            return start + min_jerk(0.0, PATIENT_OVERSHOOT, PATIENT_REACH_S, tau) * d
         if self._intent == "dwell":
-            return start + d
+            return start + self._s_from * d
         if self._intent == "back":
-            return start + min_jerk(1.0, 0.0, PATIENT_REACH_S, tau) * d
+            return start + min_jerk(self._s_from, 0.0, PATIENT_REACH_S, tau) * d
         return start
 
     def _update_intent(self) -> None:
-        start = np.array(self.start_pos)
-        d = self._reach_vector()
-        s = float((self._pos - start) @ d / (d @ d))
+        s = self._progress(self._pos)
         tau = self._t - self._intent_t0
         timed_out = tau >= PATIENT_PHASE_TIMEOUT_S
-        near_start = float(np.linalg.norm(self._pos - start)) <= PATIENT_NEAR_START_M
+        near_start = abs(s) * float(self.reach_m) <= PATIENT_NEAR_START_M
 
         nxt = None
         if self._intent == "rest":
@@ -296,10 +331,12 @@ class SimArm:
                 self._near_start_since = None
             rested = (self._near_start_since is not None
                       and self._t - self._near_start_since >= PATIENT_REST_S)
-            if rested or timed_out:
+            if not self._cued and (rested or timed_out):  # engine-driven: wait for the cue
                 nxt = "out"
         elif self._intent == "out":
-            if (tau >= PATIENT_REACH_S and s >= PATIENT_END_PROGRESS) or timed_out:
+            if s >= PATIENT_END_PROGRESS or timed_out:
+                # arrived: settle at the end; gave up: stay where the hand is
+                self._s_from = 1.0 if s >= PATIENT_END_PROGRESS else float(np.clip(s, 0.0, 1.0))
                 nxt = "dwell"
         elif self._intent == "dwell":
             if tau >= PATIENT_DWELL_S:
@@ -308,9 +345,7 @@ class SimArm:
             if (tau >= PATIENT_REACH_S and near_start) or timed_out:
                 nxt = "rest"
         if nxt is not None:
-            self._intent = nxt
-            self._intent_t0 = self._t
-            self._near_start_since = None
+            self._set_intent(nxt)
 
     def _person_force(self, t: float, pos: np.ndarray, vel: np.ndarray) -> np.ndarray:
         """Force the person applies to the handle: effort plus passive limb load."""
@@ -327,8 +362,11 @@ class SimArm:
         h = dt / n
         for _ in range(n):
             if self._k_pending is not None and self._t >= self._k_pending[1]:
+                was_hold = self._at_hold_stiffness()
                 self._k = self._k_pending[0]
                 self._k_pending = None
+                if was_hold and not self._at_hold_stiffness():
+                    self._cue_reach()
             self._update_intent()
             if self._mode in ("compliant", "hold"):
                 f = (self._k * (self._target - self._pos)
