@@ -145,3 +145,10 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - starting_dial(reps, reach_m=0.30) uses the last 3 transparent reps. If none was completed: +1.0. Otherwise ability = mean(completed share, ROM / (0.9 x reach) capped at 1, mean contribution), and dial = 1 - 1.6 x ability, clamped to [-0.3, +1.0] and rounded to 0.05. A session never starts beyond -0.3; auto takes it further. assessment() returns the components for a screen. Labelled everywhere "team heuristic, not a clinical assessment".
 - Next: S1 follow-up (sim patient timing, see the S4 blocker). Not wired into the API: Shyan can call it after 3 reps at dial 0 if wanted.
 - Blockers: none new.
+
+**2026-11-14 · Shiv · sync**
+- Changed: S4 engine and S5 assess are on main, and the software/ suite passes 158 tests. TASKS rows S0b-S5 are marked Done (S0b-S3 had been finished earlier but were still listed as Todo).
+- Sim check (not committed): with a patient that reaches when the engine starts each rep, one auto session of 10 limp reps then 10 strong reps holds the dial at +1.00 (contribution 0.00), then lowers it +1.00 -> -0.50 (7 strong reps to reach about 0, 0.15 per rep), with no trips. With the stock SimArm patient the strong reps get contribution about 0, and the speed trip fires after 2 strong reps (S4 blocker).
+- Caveat: in the frictionless sim, contribution is close to all-or-nothing. A 0.05-strength patient already scores 0.99, because any push keeps the hand ahead of the 4 s reference. Weak patients keep the dial at +1 only because limb sag puts path error at about 1.6 cm, over the 1.5 cm limit. Re-check on the real arm (K3) before relying on the auto dial for weak users.
+- Next: S1 follow-up fix in software/sim_arm.py (start the patient's reach on the engine's stiffness change, and measure "near start" along the reach axis). Then rerun server/tests/test_e2e_sim.py.
+- For Shyan: server/tests/test_e2e_sim.py::test_e2e_sim now runs (engine exists) and fails on a 300 s timeout until the S1 fix. `server.run --sim` currently stalls after a trip. Use `--mock` for demos meanwhile.
