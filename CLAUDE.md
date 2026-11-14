@@ -1,7 +1,9 @@
 # CLAUDE.md — Leukerbad Robotics Hackathon (14–16 Nov)
 
 ## Team
-- Team is **Shyan, Shiv, Kian** (rules allow 2 to 5; any new members get listed in `context/TASKS.md`). Each runs their own Claude Code session.
+- Team is **Shyan, Shiv, Kian, Mat, Gio**. Shyan, Shiv and Kian build the backend and robot. Mat and Gio own the demo, website, pitch and validation. Each coder runs several Claude Code sessions.
+- Folders: `robot/` = Kian, `software/` = Shiv, `server/` = Shyan, `demo/` and `business/` = Mat and Gio.
+- Start from `context/KICKOFF.md` (and `context/MASTER_PLAN.md` once it exists, which supersedes it).
 - You are one of several Claudes working in parallel on this repo. Assume the others are pushing to `main` at the same time.
 
 ## Branching
