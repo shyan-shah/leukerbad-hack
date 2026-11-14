@@ -25,3 +25,7 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Kian: K3 must measure handle force with an empty handle versus a relaxed arm (the hands-off rule depends on it) and how long SetCartesianImpedance blocks.
 - Shiv: SimArm must report a passive limb load when the patient is present, zero when absent. Contribution uses the out phase only.
 - Mat, Gio: no claim marked [U] goes on a slide; [B] claims only after one of you has opened the source. NICE and RATULS are the first two to read.
+
+**2026-11-14 · Shyan · Y0a**
+- Y0a done: server/contract.py with Sample, RepResult, SessionSummary including the v1 fields (Sample.phase, Sample.q, RepResult.rescued), to_dict/from_dict, 7 passing tests. Shiv can import `from server.contract import Sample, RepResult, SessionSummary` now.
+- Next: Y0b storage, Y0c simulated history, Y0d exports.
