@@ -100,3 +100,8 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Next: K0 bring-up with the technician (find exact flexivrdk 1.9.x, add robot/requirements.txt pinned), then K4 measurements into config.json/SETUP.md.
 - For everyone: on Windows, firewall rules for a uv venv must include the base interpreter (sys._base_executable), not just Scripts\python.exe.
 - Blockers: none yet; flexivrdk version waits on the technician.
+
+**2026-11-14 15:20 · Kian · sync**
+- Changed: robot/RUNBOOK.md step 6 now activates C:\venvs\leukerbad\Scripts\activate (was .venv placeholder), pointing to robot/SETUP.md.
+- Next: K0 bring-up with the technician; add robot/requirements.txt with the pinned flexivrdk 1.9.x.
+- Blockers: none.

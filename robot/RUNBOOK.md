@@ -31,7 +31,7 @@ E-stop location: TODO(confirm on arm) (from `robot/BRINGUP.md` answer 8).
 4. **Elements.** On the teach pendant / Elements: robot is in **Remote mode, Ethernet**; no fault shown; note the robot software version. If Remote mode had to be changed, power cycle. TODO(confirm on arm)
 5. **E-stop release.** E-stop holder releases the e-stop, then keeps a hand on it from here on.
 6. **Laptop.** Ethernet cable plugged in; IP is `192.168.2.x`. Open a terminal at the repo root, activate the venv:
-   `.venv\Scripts\activate` TODO(confirm on arm): venv path on the arm laptop.
+   `C:\venvs\leukerbad\Scripts\activate` (outside the repo and OneDrive; setup and firewall steps in `robot/SETUP.md`).
 7. **Status check** (changes nothing):
    `python robot/recover.py --check`
    Expect `connected True`, `fault False`. If it cannot connect, see **Faults: cannot connect**.
