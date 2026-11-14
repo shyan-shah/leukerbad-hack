@@ -60,3 +60,46 @@ def test_screens_have_no_external_urls():
     for f in SCREENS.iterdir():
         if f.suffix in {".html", ".js", ".css"}:
             assert not pat.search(f.read_text(encoding="utf-8")), f"external URL in {f.name}"
+
+
+def test_patient_screen_served(no_site):
+    r = no_site.get("/screens/patient.html")
+    assert r.status_code == 200
+    assert "./common.js" in r.text and "./track.js" in r.text and "simBanner" in r.text
+    assert "javascript" in no_site.get("/screens/track.js").headers["content-type"]
+
+
+TRACK_CHECK = r"""
+import { Track } from "./track.js";
+const ok = (c, msg) => { if (!c) { console.error("FAIL " + msg); process.exit(1); } };
+const near = (a, b) => Math.abs(a - b) < 1e-9;
+const S = (t, x, phase = "out", tx = null) => ({ t, phase, pos: [0.45 + x, 0, 0.3], target: tx === null ? null : [0.45 + tx, 0, 0.3] });
+let k = new Track(0.30);
+let r = k.update(S(0, 0.0, "out"));
+ok(r.s === null, "mid-rep open waits for rest");
+r = k.update(S(1, 0.0, "idle"));
+ok(near(r.s, 0), "start at rest is 0");
+r = k.update(S(2, 0.15, "out", 0.20));
+ok(near(r.s, 0.5) && near(r.targetS, 0.2 / 0.3), "half reach and target ahead");
+r = k.update(S(3, 0.36));
+ok(near(r.s, 1), "track grows past min length");
+r = k.update(S(0.1, 0.0, "idle"));
+ok(near(r.s, 0) && near(k.len, 0.30), "new session resets");
+k = new Track(0.30);
+k.update({ t: 0, phase: "idle", pos: [0, 0.5, 0] });
+r = k.update({ t: 1, phase: "out", pos: [0.001, 0.35, 0] });
+ok(k.axis === 1 && k.sign === -1 && near(r.s, 0.5), "detects axis y, negative direction");
+console.log("ok");
+"""
+
+
+def test_track_geometry_with_node(tmp_path):
+    import shutil
+    import subprocess
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    shutil.copy(SCREENS / "track.js", tmp_path / "track.js")
+    (tmp_path / "check.mjs").write_text(TRACK_CHECK, encoding="utf-8")
+    p = subprocess.run([node, str(tmp_path / "check.mjs")], capture_output=True, text=True, timeout=30)
+    assert p.returncode == 0 and "ok" in p.stdout, p.stdout + p.stderr

@@ -127,3 +127,8 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 
 **2026-11-14 15:21 · Shyan · L0**
 - L0 done: /screens/ mounted, common.js and style.css ready
+
+**2026-11-14 15:30 · Shyan · L1**
+- L1 done: /screens/patient.html (mode word, dial gauge, reach track with hand and target dots, force bar, reps, last-rep contribution, hold/fault and waiting overlays, SIMULATED badge). Fits one projector screen and phone width.
+- Reach start/axis/length are inferred in screens/track.js from samples (API does not send them); unit-tested via node.
+- Next: L2 physio screen, L3 operator screen. Blockers: none.
