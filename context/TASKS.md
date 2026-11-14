@@ -6,12 +6,12 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 
 | Task | Owner | Folder | Status |
 |------|-------|--------|--------|
-| K0 Flexiv bring-up with technician: pinned RDK 1.9.x, read pose + force, handle + payload, soft hold, free axis, answers in robot/BRINGUP.md | Kian | robot/ | Todo |
-| K1 `robot/arm.py` per MASTER_PLAN 4.3 (clamps, trips, watchdog, stiffness worker) | Kian | robot/ | Todo |
+| K0 Flexiv bring-up with technician: pinned RDK 1.9.x, read pose + force, handle + payload, soft hold, free axis, answers in robot/BRINGUP.md | Kian | robot/ | In progress |
+| K1 `robot/arm.py` per MASTER_PLAN 4.3 (clamps, trips, watchdog, stiffness worker) | Kian | robot/ | In progress |
 | K2 On-arm safety checks and technician sign-off (`robot/SAFETY.md`) | Kian | robot/ | Todo |
 | K3 Tuning measurements (`robot/TUNING.md`) | Kian | robot/ | Todo |
-| K4 Start pose, seating, workspace (`robot/config.json`, `robot/SETUP.md`) | Kian | robot/ | Todo |
-| K5 Run book and `robot/recover.py` | Kian | robot/ | Todo |
+| K4 Start pose, seating, workspace (`robot/config.json`, `robot/SETUP.md`) | Kian | robot/ | In progress |
+| K5 Run book and `robot/recover.py` | Kian | robot/ | In progress |
 | S0a `software/metrics.py`: ROM, path error, force, SPARC, contribution | Shiv | software/ | Done |
 | S0b `software/reps.py`: rep detection | Shiv | software/ | Todo |
 | S0c `software/paths.py`: line path, min-jerk, lead target | Shiv | software/ | Todo |

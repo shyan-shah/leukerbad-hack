@@ -94,3 +94,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - SimPatient(strength, tremor_n, seed, present=True). effort() returns zero when present is False, which S1 and S4 need for the hands-off rule. simulate_reach returns t/pos/vel/force/target plus "simulated": True. It reuses paths.lead_target and min_jerk. The patient's PD gains (150 N/m, 5 N s/m), the 1.5 s reach and the 0.5 s dwell are team-chosen sim values.
 - Next: S1 sim_arm, then S2 to S4.
 - Blockers: none.
+
+**2026-11-14 15:05 · Kian · sync**
+- Changed: arm-laptop venv at C:\venvs\leukerbad (uv, Python 3.12.16, outside OneDrive); robot offline tests pass in it (18). New robot/SETUP.md: venv + firewall steps (allow BOTH the venv python.exe launcher and the uv base python.exe), K4 workspace section still TODO. Added context/EVENT.md (opening-slide info). Root .gitignore now also ignores .env and .claude/settings.local.json.
+- Next: K0 bring-up with the technician (find exact flexivrdk 1.9.x, add robot/requirements.txt pinned), then K4 measurements into config.json/SETUP.md.
+- For everyone: on Windows, firewall rules for a uv venv must include the base interpreter (sys._base_executable), not just Scripts\python.exe.
+- Blockers: none yet; flexivrdk version waits on the technician.

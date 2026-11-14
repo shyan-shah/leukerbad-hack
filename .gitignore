@@ -13,3 +13,7 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Secrets / local Claude settings
+.env
+.claude/settings.local.json
