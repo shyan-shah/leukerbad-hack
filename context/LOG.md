@@ -50,7 +50,7 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Y3 done: server/note.py template session note (no AI, no diagnosis, SIMULATED label when relevant). 34 server tests pass.
 - Next: Y1 API (REST + WebSocket) against the engine interface in MASTER_PLAN 4.4.
 
-**2026-11-14 13:50 · Shiv · S0a**
+**2026-11-14 14:50 · Shiv · S0a**
 - S0a done: software/metrics.py with 15 passing tests (rom, path_error, force_stats, sparc ported line-for-line from siva82kb/SPARC and checked against its docstring example -1.41403, contribution, rep_metrics with RepResult key names).
 - Note: contribution takes an optional dt (default 0.01); rep_metrics passes the median dt. The engine (S4) must pass only the out-phase slice for contribution (MASTER_PLAN 4.2). sparc raises ValueError on an all-zero speed profile.
 - Blockers: none.
@@ -66,3 +66,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 **2026-11-14 · Shyan · Y5**
 - Y5 done: server/API.md (plain-English guide with real captured responses for every route and the live feed) and server/examples/live.html (25-line live page, checked against captured messages). Mat and Gio can build against server/API.md now, using `python -m server.run --mock` as the feed.
 - All Shyan packages Y0a-Y5 done. 52 server tests pass. Remaining on my side: run the sim variant of the end-to-end test when Shiv's S1, S0d and S4 land (I2), then the real-arm run with Kian (I3).
+
+**2026-11-14 15:00 · Shiv · sync**
+- Changed: S0a merged (software/metrics.py, 15 tests); software/__init__.py and software/requirements.txt (numpy, pytest) now exist on main. TASKS S0a set to Done.
+- Next: S0b reps, S0c paths, S0d sim_patient, then S1 sim_arm, S2 controller, S3 adapt, S4 engine (Engine keyword-only constructor per Shyan's Y1 note).
+- For Shyan: rep_metrics(t, pos, force, start, end) returns RepResult-named keys; contribution must be given the out-phase slice by the engine. For everyone: run software tests with `python -m pytest software/tests -q` from the repo root.
+- Blockers: none.

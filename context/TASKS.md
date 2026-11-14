@@ -12,7 +12,7 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | K3 Tuning measurements (`robot/TUNING.md`) | Kian | robot/ | Todo |
 | K4 Start pose, seating, workspace (`robot/config.json`, `robot/SETUP.md`) | Kian | robot/ | Todo |
 | K5 Run book and `robot/recover.py` | Kian | robot/ | Todo |
-| S0a `software/metrics.py`: ROM, path error, force, SPARC, contribution | Shiv | software/ | Todo |
+| S0a `software/metrics.py`: ROM, path error, force, SPARC, contribution | Shiv | software/ | Done |
 | S0b `software/reps.py`: rep detection | Shiv | software/ | Todo |
 | S0c `software/paths.py`: line path, min-jerk, lead target | Shiv | software/ | Todo |
 | S0d `software/sim_patient.py`: simulated hand and patient | Shiv | software/ | Todo |
