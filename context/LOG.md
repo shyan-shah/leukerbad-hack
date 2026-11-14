@@ -35,3 +35,10 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Stub until K2: every `TODO(confirm on arm)` (names, e-stop location, serial, Elements steps, ClearFault behaviour, SwitchMode holds pose) must be checked on the robot. recover.py tested offline only (--help, clean exit without flexivrdk).
 - Next: finalise RUNBOOK after K2 sign-off; fill in exact home/zero commands once K1 and Y2 land.
 - Blockers: none. Shyan: RUNBOOK assumes `server.run` Ctrl+C calls hold() then close() as in Y2.
+
+**2026-11-14 · Kian · K1**
+- K1 done: arm.py matches section 4.3, offline tests pass (18/18), on-arm test pending.
+- Serial, force sign, start pose and reach axis are loaded from robot/config.json and are still PLACEHOLDERS (listed in its "placeholders" key); connect() refuses the placeholder serial, home() refuses a placeholder start pose. flexivrdk is imported lazily inside connect().
+- Clamps are pure helpers (clamp_target, clamp_stiffness, check_trip) importable from robot.arm. home() ramps at 0.05 m/s (no move primitive confirmed). Angular vel/acc limits are module constants (0.5 rad/s, 2.0 rad/s^2), not in Limits.
+- Next: K0 answers into robot/BRINGUP.md and robot/config.json, then on-arm test of K1 and K2.
+- Shiv: robot.arm now exports ArmState and Limits, so S1 can drop its fallback dataclasses. Note: after any hold (not only a trip) set_target/set_stiffness are ignored until start_compliance().

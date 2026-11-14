@@ -1,0 +1,18 @@
+{
+  "_README": "PLACEHOLDER VALUES. Nothing here has been measured on the arm yet. Replace each value from robot/BRINGUP.md (K0) and robot/SETUP.md (K4), then remove its key from 'placeholders'. robot/arm.py refuses to connect with the placeholder serial and refuses to home() to a placeholder start pose.",
+  "placeholders": ["serial", "force_sign", "start_pose", "reach_axis"],
+
+  "serial": "Rizon4-XXXXXX",
+
+  "_force_sign": "K0 question 5: +1 if pushing the handle toward +x gives ext_wrench_in_world[0] > 0, else -1. Arm reports force = force_sign * ext_wrench_in_world[:3] so that force is what the PERSON applies.",
+  "force_sign": 1,
+
+  "_reach_axis": "Base axis of the forward reach: 0 = x, 1 = y. The workspace box (0.35 m along the reach, 0.10 m across and up) is laid out along it.",
+  "reach_axis": 0,
+
+  "_start_pose": "K0 question 7 / K4: tcp_pose is x, y, z (m) then qw, qx, qy, qz in the world frame. q is the 7 joint angles (rad) or null.",
+  "start_pose": {
+    "tcp_pose": [0.45, 0.0, 0.30, 0.0, 0.0, 1.0, 0.0],
+    "q": null
+  }
+}
