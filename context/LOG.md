@@ -191,3 +191,8 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 **2026-11-14 20:37 · Shiv · robot/ fix for flexivrdk 1.7.0 (with Kian's OK)**
 - Shiv made this change in robot/ with Kian's OK: arm.py `_send_pose` now calls `SendCartesianMotionForce(pose, wrench, max_lin_vel, max_ang_vel, max_lin_acc, max_ang_acc)`. That's 6 args, matching 1.7.0 (extra velocity vector removed). test_arm_offline.py expects 6 args. New robot/requirements.txt (`flexivrdk==1.7.*`, `numpy`). recover.py lines 13 and 61 now say 1.7.x. robot/tests + software/tests: 192 passed.
 - Left for Kian: recover.py comments at lines 83 and 117 still say "1.9.x". ZeroFTSensor name and `primitive_states()["terminated"]` still need checking on a connected arm.
+
+**2026-11-14 21:00 · Shiv · Plan B for the RDK licence risk (software/PLAN_B.md)**
+- flexivrdk 1.7.0 Python has only NRT modes (no RT at all). Flexiv's v1.x manual gives non-real-time features to the "Standard" licence and real-time streaming and dynamics to "Professional", so NRT_CARTESIAN_MOTION_FORCE is probably Standard (not verified). The visible risk is having no licence at all, which leaves no mode working.
+- Plan B if the Cartesian mode is refused but primitives work: FloatingCartesian free drive, engine with the dial locked at 0 (measurement only), new `software/freedrive_arm.py` behind the same Arm interface. Joint impedance was rejected (needs our own IK, loses the tunnel walls). Recommendation and probe script are in PLAN_B.md.
+- For Kian: run the PLAN_B.md section 4 licence probe on first connect and record `info().license_type`. For Shyan: if plan B is used, add `--freedrive` to server/run.py (FreeDriveArm, `dial=0.0, auto=False`).
