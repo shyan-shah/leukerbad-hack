@@ -49,3 +49,8 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Y0d done: server/export.py; generated files are committed in server/exports/ with a plain-English README. Mat and Gio can use server/exports/ now: yes.
 - Y3 done: server/note.py template session note (no AI, no diagnosis, SIMULATED label when relevant). 34 server tests pass.
 - Next: Y1 API (REST + WebSocket) against the engine interface in MASTER_PLAN 4.4.
+
+**2026-11-14 13:50 · Shiv · S0a**
+- S0a done: software/metrics.py with 15 passing tests (rom, path_error, force_stats, sparc ported line-for-line from siva82kb/SPARC and checked against its docstring example -1.41403, contribution, rep_metrics with RepResult key names).
+- Note: contribution takes an optional dt (default 0.01); rep_metrics passes the median dt. The engine (S4) must pass only the out-phase slice for contribution (MASTER_PLAN 4.2). sparc raises ValueError on an all-zero speed profile.
+- Blockers: none.
