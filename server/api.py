@@ -10,6 +10,7 @@ robot.arm.Arm is marked real.
 from __future__ import annotations
 
 import asyncio
+import mimetypes
 import os
 import queue
 import threading
@@ -31,6 +32,8 @@ from .note import session_note
 
 WS_HZ = 30
 REPO = Path(__file__).resolve().parents[1]
+SCREENS = Path(__file__).resolve().parent / "screens"
+mimetypes.add_type("text/javascript", ".js")  # Windows registry can map .js to text/plain; browsers then refuse ES modules
 
 
 def is_real_arm(arm: Any) -> bool:
@@ -329,6 +332,7 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
         finally:
             hub.clients.discard(ws)
 
+    app.mount("/screens", StaticFiles(directory=str(SCREENS), html=True), name="screens")  # before "/" so it is not shadowed
     site = Path(site_dir) if site_dir else REPO / "demo" / "site"
     if site.is_dir() and any(site.iterdir()):
         app.mount("/", StaticFiles(directory=str(site), html=True), name="site")

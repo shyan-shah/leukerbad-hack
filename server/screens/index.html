@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rehab station screens</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bar">
+  <h1>Rehab station</h1>
+  <div class="row">
+    <span id="dot" class="dot connecting"></span>
+    <span id="status" class="small muted">connecting</span>
+    <span id="badge" class="badge none">NO DATA</span>
+  </div>
+</div>
+<nav class="cards">
+  <a class="card" href="patient.html"><span class="title">Patient</span><span class="sub">Live reach, force and dial</span></a>
+  <a class="card" href="physio.html"><span class="title">Physio</span><span class="sub">Reps, history and session note</span></a>
+  <a class="card" href="operator.html"><span class="title">Operator</span><span class="sub">Start, stop, dial and hold</span></a>
+</nav>
+<script type="module">
+import { connectLive, api, simBanner } from "./common.js";
+const $ = id => document.getElementById(id);
+const badge = $("badge");
+const onData = m => simBanner(badge, m.simulated);
+connectLive(onData, onData, s => { $("dot").className = `dot ${s}`; $("status").textContent = s; });
+api.get("/api/state").then(st => simBanner(badge, st.session ? st.session.simulated : undefined)).catch(() => {});
+</script>
+</body>
+</html>

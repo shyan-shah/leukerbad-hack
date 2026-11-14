@@ -124,3 +124,6 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Simulated patient routine: rest 1.5 s at start, 3 s min-jerk reach, 0.5 s dwell, 3 s return. Phase changes wait for the hand to arrive (10 s timeout). Reach set by attributes arm.reach_axis/reach_sign/reach_m (default x, +1, 0.30 m). realtime=True runs a 100 Hz thread started by connect(); realtime=False uses step(dt). Like Arm, get_state() needs connect() first.
 - Next: S4 engine on SimArm(realtime=False).
 - Blockers: none. Note for Shyan: call arm.connect() on SimArm before Engine.start(), the same as for Arm.
+
+**2026-11-14 15:21 · Shyan · L0**
+- L0 done: /screens/ mounted, common.js and style.css ready
