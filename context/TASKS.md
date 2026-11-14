@@ -25,10 +25,10 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | Y0b `server/db.py`: SQLite storage | Shyan | server/ | Done |
 | Y0c `server/simulate.py`: 14 days of labelled simulated history | Shyan | server/ | Done |
 | Y0d `server/export.py`: JSON/CSV exports for Mat and Gio | Shyan | server/ | Done |
-| Y1 Contract v1 and `server/api.py` (REST + WebSocket) | Shyan | server/ | Todo |
-| Y2 `server/run.py` and `server/watch.py` | Shyan | server/ | Todo |
+| Y1 Contract v1 and `server/api.py` (REST + WebSocket) | Shyan | server/ | Done |
+| Y2 `server/run.py` and `server/watch.py` | Shyan | server/ | Done (mock); --sim waits for S4 |
 | Y3 `server/note.py` session note | Shyan | server/ | Done |
-| Y4 End-to-end sim test | Shyan | server/ | Todo |
+| Y4 End-to-end sim test | Shyan | server/ | Done (mock); sim variant waits for S1, S4 |
 | Y5 `server/API.md` handover for Mat and Gio | Shyan | server/ | Todo |
 | B0 Therapist interviews in Leukerbad (3 by Sat evening, 5 by Sun midday) | Mat, Gio | business/ | Todo |
 | B1 Claims table with checked sources | Mat, Gio | business/ | Todo |

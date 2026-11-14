@@ -54,3 +54,11 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - S0a done: software/metrics.py with 15 passing tests (rom, path_error, force_stats, sparc ported line-for-line from siva82kb/SPARC and checked against its docstring example -1.41403, contribution, rep_metrics with RepResult key names).
 - Note: contribution takes an optional dt (default 0.01); rep_metrics passes the median dt. The engine (S4) must pass only the out-phase slice for contribution (MASTER_PLAN 4.2). sparc raises ValueError on an all-zero speed profile.
 - Blockers: none.
+
+**2026-11-14 · Shyan · Y1 Y2 Y4**
+- Y1 done: server/api.py, every route of MASTER_PLAN 4.6 plus WS /ws/live at 30 Hz; `simulated` set from the arm type (only robot.arm.Arm counts as real). Optional operator token (`--lan`) guards start/stop/dial/go; /api/hold is never guarded.
+- Y2 done: `python -m server.run --mock | --sim | --robot [SERIAL]` and `python -m server.watch`. Tested on a live server process: session start, reps, auto dial +1.00 to -0.60, stop, note.
+- Added server/mock.py: stand-in engine with the 4.4 interface, all output SIMULATED. Use `--mock` until Shiv's engine is on main; it is also a live feed for Mat and Gio.
+- Y4 done: server/tests/test_e2e_sim.py. Mock variant passes; the SimArm + Engine variant skips until S1, S0d, S4 land, then runs automatically (this is the I2 check). 51 server tests pass.
+- Shiv: the server calls `Engine(arm=, session_id=, patient_id=, simulated=, dial=, auto=, on_sample=, on_rep=, reach_axis=arm.reach_axis)` with keyword arguments only, exactly as in 4.4. If you add `go()` to the engine, /api/go will call it.
+- Kian: run.py `--robot` with no serial uses `Arm.from_config()`; Ctrl+C and crashes call hold() then close().
