@@ -82,3 +82,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - S0c done: software/paths.py with 19 passing tests (LinePath length/axis/point_at/closest, min_jerk, lead_target capped by max_lead_m and the path ends).
 - Next: S0b reps, S0d sim_patient.
 - Blockers: none.
+
+**2026-11-14 15:06 · Shiv · S0b**
+- S0b done: software/reps.py (progress, segment_reps, RepDetector) with 14 passing tests.
+- Notes for S4 engine: a too-short excursion (under min_duration_s, i.e. threshold jitter) after a rep_start closes with None, not rep_end; check detector.in_rep. Finished reps are in detector.reps as (i_start, i_end, completed). A rep still out when the recording stops is not returned.
+- Next: S0c paths, S0d sim_patient, then S1-S4.
+- Blockers: none.
