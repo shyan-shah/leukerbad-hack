@@ -1,0 +1,2 @@
+flexivrdk==1.7.*
+numpy

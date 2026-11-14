@@ -295,7 +295,7 @@ class Arm:
     def _send_pose(self, pos: Sequence[float], quat: Sequence[float]) -> None:
         lim = self.limits
         self._robot.SendCartesianMotionForce(
-            [*map(float, pos), *map(float, quat)], [0.0] * 6, [0.0] * 6,
+            [*map(float, pos), *map(float, quat)], [0.0] * 6,
             lim.max_linear_vel, MAX_ANGULAR_VEL, lim.max_linear_acc, MAX_ANGULAR_ACC)
 
     def _set_impedance(self, k3: Sequence[float]) -> None:

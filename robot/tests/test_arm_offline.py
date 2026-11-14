@@ -194,11 +194,11 @@ def test_set_target_is_clamped_and_passes_velocity_limits(arm):
     a, robot = arm
     a.start_compliance()
     a.set_target((START[0] + 0.20, START[1], START[2]))
-    pose, wrench, vel, max_lv, max_av, max_la, max_aa = robot.last("SendCartesianMotionForce")
+    pose, wrench, max_lv, max_av, max_la, max_aa = robot.last("SendCartesianMotionForce")
     assert math.dist(pose[:3], START) == pytest.approx(LIM.max_lead_m)
     assert pose[3:] == pytest.approx([0.0, 0.0, 1.0, 0.0])
     assert max_lv == LIM.max_linear_vel and max_la == LIM.max_linear_acc
-    assert wrench == [0.0] * 6 and vel == [0.0] * 6
+    assert wrench == [0.0] * 6
 
 
 def test_stiffness_worker_applies_clamped_value_with_nominal_rotation(arm):

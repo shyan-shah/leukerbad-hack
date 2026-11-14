@@ -10,7 +10,7 @@ What it does, in order:
      an axis was at 0 N/m leaves that axis floppy for the next program,
   6. Stop() so the robot ends in IDLE, enabled, at nominal stiffness.
 
-Usage (from the repo root, arm laptop, pinned flexivrdk 1.9.x installed):
+Usage (from the repo root, arm laptop, pinned flexivrdk 1.7.x installed):
   python robot/recover.py --check                 # status only, changes nothing
   python robot/recover.py                         # full recovery, asks for confirmation
   python robot/recover.py --serial Rizon4-XXXXXX  # override the serial from robot/config.json
@@ -58,7 +58,7 @@ def import_rdk():
     except ImportError:
         raise SystemExit(
             "[recover] flexivrdk is not installed. Run: pip install -r robot/requirements.txt\n"
-            "          (pinned 1.9.x. Never a plain 'pip install flexivrdk': 2.x is the wrong robot family.)"
+            "          (pinned 1.7.x. Never a plain 'pip install flexivrdk': 2.x is the wrong robot family.)"
         ) from None
     return flexivrdk
 
