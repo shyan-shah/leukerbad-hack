@@ -105,3 +105,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Changed: robot/RUNBOOK.md step 6 now activates C:\venvs\leukerbad\Scripts\activate (was .venv placeholder), pointing to robot/SETUP.md.
 - Next: K0 bring-up with the technician; add robot/requirements.txt with the pinned flexivrdk 1.9.x.
 - Blockers: none.
+
+**2026-11-14 · Shiv · S3**
+- S3 done: software/adapt.py (next_dial, mode_of) with 9 passing tests (python -m pytest software/tests/test_adapt.py -q). The software/ suite passes: 69 tests.
+- Rules per section 4.2: success -0.15, failure +0.10, else hold, clamped to [auto_floor (-0.6), 1.0]. A rescued rep counts as failure. On the resist side (dial < 0) success does not need contribution > 0.6. The result is rounded to 6 decimals so five successes from 1.0 land on exactly 0.25 and crossing zero is exactly transparent.
+- Next: S1 sim_arm, S2 controller, then S4 engine.
+- Blockers: none.
