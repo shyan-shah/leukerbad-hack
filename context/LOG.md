@@ -111,3 +111,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Rules per section 4.2: success -0.15, failure +0.10, else hold, clamped to [auto_floor (-0.6), 1.0]. A rescued rep counts as failure. On the resist side (dial < 0) success does not need contribution > 0.6. The result is rounded to 6 decimals so five successes from 1.0 land on exactly 0.25 and crossing zero is exactly transparent.
 - Next: S1 sim_arm, S2 controller, then S4 engine.
 - Blockers: none.
+
+**2026-11-14 · Shiv · S2**
+- S2 done: controller covers assist, transparent, resist, 33 tests (python -m pytest software/tests/test_controller.py -q).
+- command() per sections 4.2/4.4: reach axis = the base axis the path lies along (diagonal paths raise); walls K_WALL on the other two axes, target always on the path segment. Assist leads the hand toward the min-jerk reference by at most MAX_LEAD, target on the hand when ahead; resist puts the target MAX_LEAD behind the hand toward the start in both phases. rescued=True raises the dial to >= 0.6 on the assist side and goes transparent on the resist side. Constants (K_WALL, K_ASSIST, K_RESIST, MAX_LEAD, REACH_M, T_OUT_S, T_BACK_S, RESCUE_DIAL) at the top of the file for K3 tuning.
+- Next: S1 sim_arm, then S4 engine.
+- Blockers: none.
