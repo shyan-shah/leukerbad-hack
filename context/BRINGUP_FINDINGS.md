@@ -1,127 +1,159 @@
-# Arm bring-up findings (Shyan, 2026-11-14 about 19:30)
+# Arm bring-up findings (Shyan, 2026-11-14, updated about 21:25 Swiss time)
 
-Read-only work from Shyan's laptop. Nothing was enabled, moved, changed or updated on the robot.
-Nothing in `robot/` was edited. For Kian.
+**The arm is connected.** Read-only work from Shyan's laptop: nothing was enabled, moved, changed or
+updated on the robot by these scripts, and nothing in `robot/` was edited. For Kian.
 
-## 1. Probe result: NOT CONNECTED
+## 1. Probe result: CONNECTED
 
-`flexivrdk.Robot("Rizon4-062157")` fails every time with "Failed to connect" after a 2 s search.
+`flexivrdk.Robot("Rizon4-062157")` connected on the first attempt from Windows
+(`C:\venvs\flexiv17`, Python 3.12.10, `flexivrdk==1.7.0`, numpy), laptop clock 20:19:43.
 
-| Where | RDK | Attempts | Result |
-|---|---|---|---|
-| Windows, `C:\venvs\flexiv17` (Python 3.12.10) | 1.7.0 | 5 at 19:19 and 5 at 20:03, 20 s apart | failed |
-| WSL Ubuntu 22.04, mirrored networking (Python 3.10) | 1.7.0 | 8 around 19:21, 5 at 20:05 (Studio closed), 20 s apart | failed |
-| Windows, temp venv (earlier today) | 1.9.4.1 | 27 | failed |
+What fixed it: Shyan set Settings → Remote Mode to **Ethernet** in Elements Studio and rebooted the robot.
+Before that the robot only published its read-only `flexiv_ddk` topics and none of the `flexiv_rdk` ones
+(seen in a packet capture), so every RDK version failed with "Failed to connect". Network, firewall and
+serial were never the problem.
 
-So none of these could be read: `fault()`, `operational()`, `mode()`, `info()` (licence type, `K_x_nom`,
-software version), `tcp_pose`, `q`, wrench. **The start pose and the three wrench readings are not captured.**
+| Getter | Value |
+|---|---|
+| `connected()` | True |
+| `fault()` | False |
+| `operational()` | **True** |
+| `operational_status()` | `READY` |
+| `estop_released()` | True |
+| `mode()` | `IDLE` |
+| `busy()` / `stopped()` | False / True |
+| `recovery()` / `reduced()` | False / False |
 
-## 2. Why it fails (packet capture, not a guess)
+**Safety note: the robot was already enabled (`operational() == True`, status `READY`) when the probe
+connected.** The probe never calls `Enable()`. So in Auto (Remote) mode after boot the arm is live as soon as
+a program switches mode. Treat it as enabled whenever it is powered: e-stop holder in place before any script
+that does more than read.
 
-A passive capture on the robot interface during a probe shows:
+## 2. `info()`
 
-- The laptop and the robot do talk DDS. The network, firewall and serial are fine.
-- The serial is right: the robot's topics are named `Rizon4_062157`.
-- The robot (nodes `ext_ethernet_default_node`, `ext_ethernet_rt_udp_node`) offers only these topics:
-  `rt/flexiv_ddk/basic_stream_data/Rizon4_062157`, `rt/flexiv_ddk/robot_log/...`,
-  `rt/flexiv_ddk/non_stream_rpc/..._request` and `_reply`.
-- The RDK asks for `rt/flexiv_rdk/RPC/..._request` and `_reply`, `rt/flexiv_rdk/heartbeat/...`,
-  `rt/flexiv_rdk/rt_states/...`, `rt/flexiv_rdk/motion_commands/...`. **The robot offers none of them.**
+| Field | Value |
+|---|---|
+| `serial_num` | `Rizon4-062157` |
+| `model_name` | `Rizon4` |
+| `software_ver` | `v3.9.3` |
+| `license_type` | **`RDK-Professional+TDK-Standard`** (RDK log line: "Validated license: RDK-Professional") |
+| `K_x_nom` | **`[10000, 10000, 10000, 1500, 1500, 1500]`** (N/m, N/m, N/m, Nm/rad x3) |
+| `K_q_nom` | `[6000, 6000, 4200, 4200, 1500, 1500, 1500]` |
+| `DoF` | 7 |
+| `q_min` (rad) | `[-2.7926, -2.2690, -2.9671, -1.8675, -2.9671, -1.3963, -2.9671]` |
+| `q_max` (rad) | `[2.7926, 2.2690, 2.9671, 2.6878, 2.9671, 4.5379, 2.9671]` |
+| `dq_max` (rad/s) | `[2.094, 2.094, 2.443, 2.443, 4.887, 4.887, 4.887]` |
+| `tau_max` (Nm) | `[123, 123, 64, 64, 39, 39, 39]` |
 
-The 20:05 capture shows the same thing. Firewalls are ruled out: Windows has inbound allow rules for the
-Python interpreters, the WSL (Hyper-V) firewall default is inbound Allow, and the capture shows traffic both ways.
+`k_max` in `arm.py` `Limits` is well under the nominal 10000 N/m, so stiffness clamping is set by our own limit.
 
-Elements sees the robot and the RDK does not, which is the pattern for "Remote Mode for RDK not active or
-RDK licence missing".
-
-Reading: the robot's RDK server is not running. The robot is only publishing its read-only data stream
-(Flexiv "DDK"). Most likely causes, in order:
-
-1. **No RDK licence installed on this robot.** Flexiv's manual lists "install an RDK license through
-   Flexiv Elements" as step 1 of activating the RDK server. Not verified: nobody has read the licence page yet.
-2. Remote Mode is on but not set to "Ethernet" (Elements Studio log at 19:00 shows it being enabled, then
-   switched to GPIO, then enabled again), or the robot was not power-cycled after the last change.
-3. Less likely: RDK 1.7.0 and robot 3.9.3 name their topics differently. Flexiv's table pairs v3.9 with RDK v1.7.
-
-**What to ask the technician / organisers:** "Does Rizon4-062157 have an RDK licence installed? In Elements,
-Settings → Remote Mode must be Ethernet, saved, then power-cycle."
-
-## 3. Facts confirmed today
-
-| Item | Value | How we know |
-|---|---|---|
-| Serial for the RDK | `Rizon4-062157` | robot's own DDS topic names |
-| Internal serial shown by Elements | `A02L-07-M2-062157` | Elements Studio log |
-| Controller IP | `192.168.2.100` | ping, Studio connects to it |
-| Laptop | `Ethernet 3`, static `192.168.2.110/24`, no gateway | ipconfig |
-| Robot software | v3.9.3 | reported by Shyan from Elements; the robot's last update package is `FSP_v3.9.3`. Not read through the RDK. |
-| Elements tool selected | another team's `Seat_Assembly_tool` | reported by Shyan. Expect a force offset until our handle is set as the tool. |
-| Licence type | unknown | needs a connection or the Elements licence page |
-| `K_x_nom` | unknown | needs a connection |
-| Start pose (`tcp_pose`, `q`) | unknown | needs a connection |
-| Wrench with nothing touching | unknown | needs a connection |
-
-### Elements Studio 3.9.3 launch (works)
-
-Runs on Shyan's laptop in WSL (Ubuntu 22.04, WSLg, mirrored networking) and its scanner finds the robot.
-One click: `C:\Users\shyan\Desktop\Start Flexiv Studio.bat`, then REFRESH and Connect in the window. Command:
+## 3. Start pose (arm placed by hand by Shyan, read at 20:19 laptop clock)
 
 ```
-wsl -d Ubuntu-22.04 -u shyan -- bash -lc "~/flexiv/studio-3.9.3/run_studio.sh"
+tcp_pose = [0.805597, 0.449626, 0.619889, 0.720262, -0.127445, -0.104004, -0.673917]   # x y z (m), qw qx qy qz, world frame
+q        = [0.983714, -1.800170, -1.986748, 0.989766, -1.113379, 0.253691, 1.555811]   # rad
+flange_pose = [0.780451, 0.401946, 0.437905, 0.727380, -0.008484, 0.022648, -0.685809]
+tcp_vel  = about 0 (under 0.0006 on every axis)
 ```
 
-`run_studio.sh` does what Flexiv's own `run_FlexivElements.sh` would, without storing a sudo password:
-`LD_LIBRARY_PATH=./lib`, `QT_QPA_PLATFORM_PLUGIN_PATH=./plugins`, `QT_QPA_PLATFORM=xcb`,
-`QTWEBENGINE_DISABLE_SANDBOX=1`, then `./FlexivElementsStudio -p ubuntu_pc` (the other flags default to
-`./specs_ui/`, `./user_data_ui/`, `./userDataTemplate/`). Flexiv's `setup_FlexivElements.sh` was not run.
-The RDK cannot connect whether Studio is open or closed.
+A second read 2 minutes later matched to 0.01 mm, so the arm is holding still.
 
-## 4. `robot/arm.py` and `robot/recover.py` against flexivrdk 1.7.0
+`robot/config.json` snippet (format already matches: x, y, z, qw, qx, qy, qz, then 7 joint angles):
 
-From introspecting the installed 1.7.0 module (signatures and field lists). Not run against the robot.
+```json
+"serial": "Rizon4-062157",
+"start_pose": {
+  "tcp_pose": [0.805597, 0.449626, 0.619889, 0.720262, -0.127445, -0.104004, -0.673917],
+  "q": [0.983714, -1.800170, -1.986748, 0.989766, -1.113379, 0.253691, 1.555811]
+}
+```
+
+Then remove `"serial"` and `"start_pose"` from `placeholders`.
+
+**Three cautions before trusting this pose:**
+
+1. **`tcp_pose` depends on the selected tool.** The active tool is another team's `Seat_Assembly_tool`, whose
+   TCP is offset from the flange by `[-0.050, 0.020, 0.182]` m plus a rotation. If the tool is changed to our
+   handle (or to `Flange`), the same arm posture gives a different `tcp_pose`. `q` and `flange_pose` do not
+   change. Re-read `tcp_pose` after the tool is set and before `home()` is ever used.
+2. **The reach direction is not along a base axis.** The TCP is at x = 0.81, y = 0.45, so a forward reach
+   from here is probably diagonal in the world frame. `config.json` `reach_axis` (0 = x, 1 = y) and
+   `force_sign` are still placeholders and need a decision or a measurement.
+3. **The arm may be near the edge of its reach.** The flange is about 0.88 m from the base axis horizontally.
+   Check there is really 35 cm of travel away from the body from this pose before using it for the demo.
+
+## 4. Wrench with nothing touching (`states().ext_wrench_in_world`, 5 s apart)
+
+| Reading | Fx (N) | Fy (N) | Fz (N) | Mx (Nm) | My (Nm) | Mz (Nm) |
+|---|---|---|---|---|---|---|
+| 1 | -1.293 | -0.446 | 12.520 | -1.255 | -0.199 | -0.090 |
+| 2 | -1.344 | -0.492 | 12.532 | -1.270 | -0.181 | -0.091 |
+| 3 | -1.772 | -0.583 | 12.509 | -1.307 | -0.048 | -0.106 |
+
+- **Offset is about 12.6 N, almost all +z.** The selected tool `Seat_Assembly_tool` is configured as
+  1.338 kg (13.1 N of weight) with CoM `[0.027, 0.032, 0.016]` m. The offset is about that weight, so the
+  likely cause is that this tool is selected in software but not mounted. Not verified by looking at the flange.
+- **Drift over 10 s:** Fx moved 0.48 N, Fy 0.14 N, Fz 0.02 N.
+- **Consequences:** Shiv's engine refuses to start when the empty handle reads over 3 N, and `trip_force`
+  is 40 N, so the force must be fixed before any session: set our handle as the tool (mass and CoM), then
+  `zero_force()` with nobody touching.
+- **`states().ft_sensor_raw` reads all zeros**, and the model is `Rizon4` (not 4s). That suggests there is no
+  wrist force/torque sensor and the wrench is estimated from joint torques. If so, expect more noise than a
+  sensor would give, and `ZeroFTSensor` needs testing on this arm (see section 5).
+
+Tools stored on the robot: `Flange`, `Seat_Assembly_tool`, `E_RubberKnife`, `E_RubberKnife_copy`,
+`Flexiv-GN01`, `Robotiq-2F-85`, `Robotiq-Hand-E`, `GripperDahuan`, `Mirka-AIROS-550CV`, `OnRobot-Sander`.
+Our handle is not among them.
+
+## 5. `robot/arm.py` and `robot/recover.py` against flexivrdk 1.7.0
+
+"Live" means read from the connected robot. "Signature" means read from the installed module only; these
+are commands, so they were not called (read-only rule).
 
 | Call or field | In 1.7.0 | Verdict |
 |---|---|---|
-| `flexivrdk.Robot(serial)` | `Robot(robot_sn, network_interface_whitelist=[], verbose=True)` | OK (no `lite` argument in 1.7) |
-| `fault()`, `operational()`, `Enable()`, `Stop()` | same | OK |
-| `ClearFault()` | `ClearFault(timeout_sec=30) -> bool` | OK |
-| `SwitchMode(Mode.NRT_CARTESIAN_MOTION_FORCE)` | exists | OK |
-| `SwitchMode(Mode.NRT_PRIMITIVE_EXECUTION)` | exists | OK |
-| **`SendCartesianMotionForce(pose, wrench, velocity, max_linear_vel, max_angular_vel, max_linear_acc, max_angular_acc)`** | `SendCartesianMotionForce(pose, wrench, max_linear_vel, max_angular_vel, max_linear_acc, max_angular_acc)` | **DIFFERENT. 1.7.0 has no `velocity` argument. `arm.py` line 297 to 299 passes 7 positional arguments and will raise `TypeError`.** |
-| `SetCartesianImpedance(K_x)` | `SetCartesianImpedance(K_x, Z_x=[0.7]*6)` | OK |
-| `SetMaxContactWrench([6 values])` | same, one list of 6 | OK |
-| `ExecutePrimitive("ZeroFTSensor", dict())` | `ExecutePrimitive(primitive_name, input_params, block_until_started=True)` | Signature OK. Primitive name not checkable offline. |
-| `primitive_states().get("terminated")` | returns a `dict` | Signature OK. The `"terminated"` key is not checkable offline. |
-| `states().tcp_pose`, `.tcp_vel`, `.ext_wrench_in_world`, `.q` | all four fields exist | OK |
-| `info().K_x_nom` | exists (also `license_type`, `software_ver`, `serial_num`, `model_name`) | OK |
-| `flexivrdk.Tool`, `ToolParams.mass`, `.CoM` | exist: `Tool.Add/Switch/Update/Remove/exist/list/name/params` | OK (not used in `arm.py` today) |
-| Missing in 1.7.0, present in 1.9 | `SetMaxContactTorque`, `SetJointInertiaScale`, `SendMultiCartesianMotionForce`, `SetTimelinessFailureLimit`, `actions`, `lite`; fields `RobotInfo.has_FT_sensor`, `RobotStates.timestamp`, `.temperature`, `.tau_interact` | not used by `arm.py` or `recover.py` |
+| `flexivrdk.Robot(serial)` | `Robot(robot_sn, network_interface_whitelist=[], verbose=True)` | OK, live |
+| `fault()`, `operational()`, `mode()`, `info()`, `states()` | same | OK, live |
+| `info().K_x_nom` | 6 values | OK, live |
+| `states().tcp_pose` (7), `.tcp_vel` (6), `.ext_wrench_in_world` (6), `.q` (7) | all present | OK, live |
+| `primitive_states()` | returns a dict; live value `{'primitiveName': 'Hold', 'terminated': 0, 'timePeriod': ...}` | OK, live. The `"terminated"` key exists. |
+| `flexivrdk.Tool(robot)`, `.name()`, `.list()`, `.params()`; `ToolParams.mass`, `.CoM`, `.inertia`, `.tcp_location` | present | OK, live (getters). `Tool.Add/Switch/Update/Remove` exist, signature only. Not used in `arm.py` today. |
+| `ClearFault()` | `ClearFault(timeout_sec=30) -> bool` | OK, signature |
+| `Enable()`, `Stop()` | no arguments | OK, signature |
+| `SwitchMode(Mode.NRT_CARTESIAN_MOTION_FORCE)` / `Mode.NRT_PRIMITIVE_EXECUTION` | both enum members exist | OK, signature. Not yet proven that the licence allows the switch, but `RDK-Professional` should. |
+| `SendCartesianMotionForce(...)` | `(pose[7], wrench[6]=0, max_linear_vel=0.5, max_angular_vel=1.0, max_linear_acc=2.0, max_angular_acc=5.0)` | **Was wrong (7 arguments with a 1.9-only `velocity`), now fixed on main** by Shiv with Kian's OK: `arm.py` passes 6 arguments. |
+| `SetCartesianImpedance(K_x)` | `(K_x[6], Z_x[6]=[0.7]*6)` | OK, signature |
+| `SetMaxContactWrench([6])` | one list of 6 | OK, signature |
+| `ExecutePrimitive("ZeroFTSensor", dict())` | `(primitive_name, input_params, block_until_started=True)` | Signature OK. **Whether `ZeroFTSensor` exists and works on this arm is untested** and is the main open API question, given `ft_sensor_raw` is all zeros. |
+| In 1.9 but not in 1.7.0 | `SetMaxContactTorque`, `SetJointInertiaScale`, `SendMultiCartesianMotionForce`, `SetTimelinessFailureLimit`, `actions`, `lite`; fields `RobotInfo.has_FT_sensor`, `RobotStates.timestamp`, `.temperature`, `.tau_interact` | not used by `arm.py` or `recover.py` |
 
-## 5. What Kian must change
+## 6. What Kian does next, in order
 
-Status at 21:10 Swiss time: items 1 and 2 are already done on main (`robot/requirements.txt` has
-`flexivrdk==1.7.*` and `numpy`; Shiv fixed `_send_pose` with Kian's OK). Items 3 to 5 are still open, and
-the table in section 4 describes `arm.py` as it was before that fix.
+Already done on main: `robot/requirements.txt` (`flexivrdk==1.7.*`, `numpy`) and the `_send_pose` fix.
 
-1. **`robot/requirements.txt`** (new file): `flexivrdk==1.7.0` and `numpy`. The 1.7.0 wheel does not pull in
-   numpy and `import flexivrdk` fails without it. There is a Python 3.12 Windows wheel. 1.7.0 is the only 1.7.x.
-   This pin follows Flexiv's table (robot v3.9 with RDK v1.7); it is not proven by a connection yet.
-2. **`robot/arm.py` `_send_pose`**: drop the third argument (`[0.0] * 6`, the velocity) so the call is
-   `SendCartesianMotionForce(pose, [0.0]*6, max_linear_vel, MAX_ANGULAR_VEL, max_linear_acc, MAX_ANGULAR_ACC)`.
-   Safer: pass the limits by keyword, which works on both 1.7 and 1.9. `robot/tests/test_arm_offline.py` line 197 unpacks 7 values (`pose, wrench, vel, max_lv, ...`) and needs the same change; its fake robot accepts any arguments, which is why the tests pass today.
-3. **`robot/config.json`**: set `"serial": "Rizon4-062157"` and remove `"serial"` from `placeholders`.
-   `start_pose` stays a placeholder until the arm connects. The format is already right
-   (`tcp_pose` = x, y, z, qw, qx, qy, qz; `q` = 7 joint angles in rad), so the values from
-   `states().tcp_pose` and `states().q` paste straight in:
-   ```json
-   "start_pose": { "tcp_pose": [x, y, z, qw, qx, qy, qz], "q": [q1, q2, q3, q4, q5, q6, q7] }
-   ```
-4. **Docs**: `robot/SETUP.md`, `robot/RUNBOOK.md` and `robot/recover.py` say "1.9.x". Change to 1.7.0.
-5. **Once connected**: set our handle as the tool (not `Seat_Assembly_tool`) before zeroing or reading force.
+1. **`robot/config.json`**: set `"serial": "Rizon4-062157"` and remove it from `placeholders`. The arm will
+   not connect through `robot.arm` until this is done.
+2. **Tool first, with the technician**: mount the handle, add it as a tool (mass under 100 g error, CoM),
+   and switch to it instead of `Seat_Assembly_tool`. This changes `tcp_pose` and should remove the 12.6 N offset.
+3. **Re-read the start pose** with the handle tool active
+   (`C:\venvs\flexiv17\Scripts\python.exe %TEMP%\flexiv_diag\read_state2.py Rizon4-062157` on Shyan's laptop,
+   or K0 script `01_read.py`), then paste `tcp_pose` and `q` into `config.json`. Until then use the snippet
+   in section 3 only together with `Seat_Assembly_tool`.
+4. **Test `ZeroFTSensor`** with nobody touching and the e-stop held, and confirm the wrench reads about 0 N
+   afterwards. If the primitive is refused, tell Shiv (the engine has an empty-handle baseline as a fallback).
+5. **Decide `reach_axis` and measure `force_sign`** (push toward the reach direction, read the sign).
+6. **Run the licence check in `software/PLAN_B.md` section 4**: with `RDK-Professional`, plan A
+   (`NRT_CARTESIAN_MOTION_FORCE`) should be allowed; the first `SwitchMode` proves it.
+7. **Docs**: change the remaining "1.9.x" mentions in `robot/SETUP.md`, `robot/RUNBOOK.md`, `robot/recover.py`.
+   Add to the RUNBOOK that the arm comes up already enabled in Auto (Remote) mode.
 
-## 6. Ready on Shyan's laptop
+## 7. Tools on Shyan's laptop
 
-- `C:\venvs\flexiv17`: Python 3.12.10, `flexivrdk==1.7.0`, numpy. Use this for the arm.
-- `C:\venvs\leukerbad`: project requirements, no `flexivrdk`. Offline tests: 256 passed.
-- Read-only probe script (prints state, info, pose, joints and three wrench samples, writes JSON):
-  `%TEMP%\flexiv_diag\read_state2.py`. Run: `C:\venvs\flexiv17\Scripts\python.exe read_state2.py Rizon4-062157`.
+- `C:\venvs\flexiv17`: Python 3.12.10, `flexivrdk==1.7.0`, numpy. This one connects to the arm.
+- `C:\venvs\leukerbad`: project requirements, no `flexivrdk`. Offline tests: 256 passed (earlier today).
+- `%TEMP%\flexiv_diag\read_state2.py`: read-only probe (state, info, pose, joints, three wrench samples, JSON).
+  `%TEMP%\flexiv_diag\read_tool.py`: read-only tool and primitive-state getters.
+- Elements Studio 3.9.3 (Linux build in WSL): `C:\Users\shyan\Desktop\Start Flexiv Studio.bat`, then REFRESH
+  and Connect. Command: `wsl -d Ubuntu-22.04 -u shyan -- bash -lc "~/flexiv/studio-3.9.3/run_studio.sh"`.
+- Laptop network: `Ethernet 3` static `192.168.2.110/24`, no gateway. Controller `192.168.2.100`.
+  Internal serial shown by Elements: `A02L-07-M2-062157`.
