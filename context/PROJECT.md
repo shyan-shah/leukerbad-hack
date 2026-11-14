@@ -1,5 +1,7 @@
 # Project — Leukerbad Robotics Hackathon (14–16 Nov)
 
+> **Partly superseded (14 Nov, 15:00).** `context/MASTER_PLAN.md` is the current plan. Where this file differs, MASTER_PLAN wins. In particular: logs are SQLite in `server/`, not CSV; the arm interface is the one in MASTER_PLAN section 4.3; team is 5 with Mat and Gio on demo and business; and we no longer claim that robots or more repetitions give better recovery (see MASTER_PLAN section 1).
+
 ## Track
 Track 4: Elderly Care & Rehabilitation (confirmed). Example problems from the slides (you can also define your own):
 - **Fetch and hand over**: pick up an object and hand it over safely. Suggested kit: Flexiv Rizon 4, WUJI hand, RealSense.

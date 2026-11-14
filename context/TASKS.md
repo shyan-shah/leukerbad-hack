@@ -2,23 +2,40 @@
 
 Folder owners: robot/ = Kian, software/ = Shiv, server/ = Shyan, demo/ and business/ = Mat and Gio.
 
-Package details and ready-to-paste prompts are in `context/KICKOFF.md`.
+Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, B0, B1) and `context/MASTER_PLAN.md` section 5 (everything else).
 
 | Task | Owner | Folder | Status |
 |------|-------|--------|--------|
 | K0 Flexiv bring-up with technician: pinned RDK 1.9.x, read pose + force, handle + payload, soft hold, free axis, answers in robot/BRINGUP.md | Kian | robot/ | Todo |
-| `robot/arm.py` with speed/force/workspace limits (interface frozen in MASTER_PLAN.md) | Kian | robot/ | Waiting on MASTER_PLAN |
+| K1 `robot/arm.py` per MASTER_PLAN 4.3 (clamps, trips, watchdog, stiffness worker) | Kian | robot/ | Todo |
+| K2 On-arm safety checks and technician sign-off (`robot/SAFETY.md`) | Kian | robot/ | Todo |
+| K3 Tuning measurements (`robot/TUNING.md`) | Kian | robot/ | Todo |
+| K4 Start pose, seating, workspace (`robot/config.json`, `robot/SETUP.md`) | Kian | robot/ | Todo |
+| K5 Run book and `robot/recover.py` | Kian | robot/ | Todo |
 | S0a `software/metrics.py`: ROM, path error, force, SPARC, contribution | Shiv | software/ | Todo |
 | S0b `software/reps.py`: rep detection | Shiv | software/ | Todo |
 | S0c `software/paths.py`: line path, min-jerk, lead target | Shiv | software/ | Todo |
 | S0d `software/sim_patient.py`: simulated hand and patient | Shiv | software/ | Todo |
-| Engine: assist as needed, resistance, dial, live loop, sim arm | Shiv | software/ | Waiting on MASTER_PLAN |
+| S1 `software/sim_arm.py` (same interface as Arm) | Shiv | software/ | Todo |
+| S2 `software/controller.py` (dial to target and stiffness) | Shiv | software/ | Todo |
+| S3 `software/adapt.py` (auto dial) | Shiv | software/ | Todo |
+| S4 `software/engine.py` (100 Hz loop, rep state machine, hands-off rule) | Shiv | software/ | Todo |
+| S5 `software/assess.py` (SHOULD) | Shiv | software/ | Todo |
 | Y0a `server/contract.py`: Sample, RepResult, SessionSummary | Shyan | server/ | Todo |
 | Y0b `server/db.py`: SQLite storage | Shyan | server/ | Todo |
 | Y0c `server/simulate.py`: 14 days of labelled simulated history | Shyan | server/ | Todo |
 | Y0d `server/export.py`: JSON/CSV exports for Mat and Gio | Shyan | server/ | Todo |
-| API (REST + WebSocket) and end-to-end run script | Shyan | server/ | Waiting on MASTER_PLAN |
+| Y1 Contract v1 and `server/api.py` (REST + WebSocket) | Shyan | server/ | Todo |
+| Y2 `server/run.py` and `server/watch.py` | Shyan | server/ | Todo |
+| Y3 `server/note.py` session note | Shyan | server/ | Todo |
+| Y4 End-to-end sim test | Shyan | server/ | Todo |
+| Y5 `server/API.md` handover for Mat and Gio | Shyan | server/ | Todo |
 | B0 Therapist interviews in Leukerbad (3 by Sat evening, 5 by Sun midday) | Mat, Gio | business/ | Todo |
 | B1 Claims table with checked sources | Mat, Gio | business/ | Todo |
-| Website, screens, pitch deck, backup video | Mat, Gio | demo/ | Waiting on server/exports/ |
+| B2 Verify the claims list (MASTER_PLAN section 7) | Mat, Gio | business/ | Todo |
+| B3 Market model | Mat, Gio | business/ | Todo |
+| B4 Deck | Mat, Gio | demo/ | Sunday |
+| B5 Script, rehearsal, backup video | Mat, Gio | demo/ | Sunday |
+| B6 Website and screens | Mat, Gio | demo/ | Waiting on server/exports/ |
+| B7 Pilot outreach drafts | Mat, Gio | business/ | Sunday |
 | Register team by 17:00 on 14 Nov (name, track, members, 1 hardware item, sign agreement) | Shyan | n/a | Done (hardware: Flexiv Rizon 4) |
