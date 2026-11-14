@@ -1,0 +1,24 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Live dial</title></head>
+<body style="font:20px system-ui;background:#111;color:#eee;padding:24px">
+<div id="tag"></div>
+<div>Dial: <b id="dial">waiting...</b> <span id="mode"></span></div>
+<div>Phase: <span id="phase"></span> &nbsp; Reps: <span id="reps">0</span></div>
+<div>Last rep: <span id="last"></span></div>
+<script>
+const host = location.host || "127.0.0.1:8000";            // works when opened from the server or as a file
+const ws = new WebSocket(`ws://${host}/ws/live`);
+const $ = id => document.getElementById(id);
+ws.onmessage = e => {
+  const m = JSON.parse(e.data);
+  $("tag").innerHTML = m.simulated ? '<b style="background:#c00;padding:2px 8px">SIMULATED</b>' : "REAL ROBOT";
+  if (m.type === "sample") {
+    $("dial").textContent = m.dial.toFixed(2);
+    $("mode").textContent = m.dial > 0.05 ? "(assist)" : m.dial < -0.05 ? "(resist)" : "(free)";
+    $("phase").textContent = m.phase; $("reps").textContent = m.rep_count;
+  } else if (m.type === "rep") {
+    $("last").textContent = `#${m.idx}: ${(m.rom_m * 100).toFixed(1)} cm, peak ${m.peak_force_n.toFixed(1)} N`;
+  }
+};
+</script>
+</body></html>

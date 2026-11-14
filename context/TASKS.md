@@ -29,7 +29,7 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | Y2 `server/run.py` and `server/watch.py` | Shyan | server/ | Done (mock); --sim waits for S4 |
 | Y3 `server/note.py` session note | Shyan | server/ | Done |
 | Y4 End-to-end sim test | Shyan | server/ | Done (mock); sim variant waits for S1, S4 |
-| Y5 `server/API.md` handover for Mat and Gio | Shyan | server/ | Todo |
+| Y5 `server/API.md` handover for Mat and Gio | Shyan | server/ | Done |
 | B0 Therapist interviews in Leukerbad (3 by Sat evening, 5 by Sun midday) | Mat, Gio | business/ | Todo |
 | B1 Claims table with checked sources | Mat, Gio | business/ | Todo |
 | B2 Verify the claims list (MASTER_PLAN section 7) | Mat, Gio | business/ | Todo |

@@ -62,3 +62,7 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Y4 done: server/tests/test_e2e_sim.py. Mock variant passes; the SimArm + Engine variant skips until S1, S0d, S4 land, then runs automatically (this is the I2 check). 51 server tests pass.
 - Shiv: the server calls `Engine(arm=, session_id=, patient_id=, simulated=, dial=, auto=, on_sample=, on_rep=, reach_axis=arm.reach_axis)` with keyword arguments only, exactly as in 4.4. If you add `go()` to the engine, /api/go will call it.
 - Kian: run.py `--robot` with no serial uses `Arm.from_config()`; Ctrl+C and crashes call hold() then close().
+
+**2026-11-14 · Shyan · Y5**
+- Y5 done: server/API.md (plain-English guide with real captured responses for every route and the live feed) and server/examples/live.html (25-line live page, checked against captured messages). Mat and Gio can build against server/API.md now, using `python -m server.run --mock` as the feed.
+- All Shyan packages Y0a-Y5 done. 52 server tests pass. Remaining on my side: run the sim variant of the end-to-end test when Shiv's S1, S0d and S4 land (I2), then the real-arm run with Kian (I3).

@@ -164,3 +164,15 @@ def test_real_arm_session_marked_real(tmp_path):
         # a simulated session can never be added to a real patient
         app.state.hub.is_real = lambda arm: False
         assert c.post("/api/session/start", json={"patient_id": "p-real", "dial": 0.5}).status_code == 409
+
+
+def test_serves_site_folder_without_hiding_api(tmp_path):
+    site = tmp_path / "site"
+    site.mkdir()
+    (site / "index.html").write_text("<h1>physio view</h1>")
+    app = create_app(MockArm, tmp_path / "s.db", engine_factory=FAST, site_dir=site)
+    with TestClient(app) as c:
+        assert "physio view" in c.get("/").text
+        assert c.get("/api/health").json()["ok"] is True
+        with c.websocket_connect("/ws/live"):
+            pass
