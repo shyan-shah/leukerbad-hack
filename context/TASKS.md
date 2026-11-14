@@ -1,6 +1,6 @@
 # Tasks
 
-Folder owners: robot/ = Kian, software/ = Shiv (packages S0b to S5 handed to Shyan on 14 Nov, see DECISIONS), server/ = Shyan, demo/ and business/ = Mat and Gio.
+Folder owners: robot/ = Kian, software/ = Shiv, server/ = Shyan, demo/ and business/ = Mat and Gio.
 
 Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, B0, B1) and `context/MASTER_PLAN.md` section 5 (everything else).
 
@@ -13,14 +13,14 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | K4 Start pose, seating, workspace (`robot/config.json`, `robot/SETUP.md`) | Kian | robot/ | Todo |
 | K5 Run book and `robot/recover.py` | Kian | robot/ | Todo |
 | S0a `software/metrics.py`: ROM, path error, force, SPARC, contribution | Shiv | software/ | Done |
-| S0b `software/reps.py`: rep detection | Shyan (from Shiv) | software/ | Todo |
-| S0c `software/paths.py`: line path, min-jerk, lead target | Shyan (from Shiv) | software/ | Todo |
-| S0d `software/sim_patient.py`: simulated hand and patient | Shyan (from Shiv) | software/ | Todo |
-| S1 `software/sim_arm.py` (same interface as Arm) | Shyan (from Shiv) | software/ | Todo |
-| S2 `software/controller.py` (dial to target and stiffness) | Shyan (from Shiv) | software/ | Todo |
-| S3 `software/adapt.py` (auto dial) | Shyan (from Shiv) | software/ | Todo |
-| S4 `software/engine.py` (100 Hz loop, rep state machine, hands-off rule) | Shyan (from Shiv) | software/ | Todo |
-| S5 `software/assess.py` (SHOULD) | Shyan (from Shiv) | software/ | Todo |
+| S0b `software/reps.py`: rep detection | Shiv | software/ | Todo |
+| S0c `software/paths.py`: line path, min-jerk, lead target | Shiv | software/ | Todo |
+| S0d `software/sim_patient.py`: simulated hand and patient | Shiv | software/ | Todo |
+| S1 `software/sim_arm.py` (same interface as Arm) | Shiv | software/ | Todo |
+| S2 `software/controller.py` (dial to target and stiffness) | Shiv | software/ | Todo |
+| S3 `software/adapt.py` (auto dial) | Shiv | software/ | Todo |
+| S4 `software/engine.py` (100 Hz loop, rep state machine, hands-off rule) | Shiv | software/ | Todo |
+| S5 `software/assess.py` (SHOULD) | Shiv | software/ | Todo |
 | Y0a `server/contract.py`: Sample, RepResult, SessionSummary | Shyan | server/ | Done |
 | Y0b `server/db.py`: SQLite storage | Shyan | server/ | Done |
 | Y0c `server/simulate.py`: 14 days of labelled simulated history | Shyan | server/ | Done |
