@@ -11,7 +11,7 @@ Nothing in `robot/` was edited. For Kian.
 |---|---|---|---|
 | Windows, `C:\venvs\flexiv17` (Python 3.12.10) | 1.7.0 | 5, 20 s apart | failed |
 | WSL Ubuntu 22.04, mirrored networking (Python 3.10) | 1.7.0 | 5, 20 s apart, then 3 more with Elements Studio closed | failed |
-| Windows, temp venv (earlier today) | 1.9.4.1 | more than 30 | failed |
+| Windows, temp venv (earlier today) | 1.9.4.1 | 27 | failed |
 
 So none of these could be read: `fault()`, `operational()`, `mode()`, `info()` (licence type, `K_x_nom`,
 software version), `tcp_pose`, `q`, wrench. **The start pose and the three wrench readings are not captured.**
@@ -87,7 +87,7 @@ From introspecting the installed 1.7.0 module (signatures and field lists). Not 
    This pin follows Flexiv's table (robot v3.9 with RDK v1.7); it is not proven by a connection yet.
 2. **`robot/arm.py` `_send_pose`**: drop the third argument (`[0.0] * 6`, the velocity) so the call is
    `SendCartesianMotionForce(pose, [0.0]*6, max_linear_vel, MAX_ANGULAR_VEL, max_linear_acc, MAX_ANGULAR_ACC)`.
-   Safer: pass the limits by keyword, which works on both 1.7 and 1.9. The offline test's fake robot needs the same change.
+   Safer: pass the limits by keyword, which works on both 1.7 and 1.9. `robot/tests/test_arm_offline.py` line 197 unpacks 7 values (`pose, wrench, vel, max_lv, ...`) and needs the same change; its fake robot accepts any arguments, which is why the tests pass today.
 3. **`robot/config.json`**: set `"serial": "Rizon4-062157"` and remove `"serial"` from `placeholders`.
    `start_pose` stays a placeholder until the arm connects. The format is already right
    (`tcp_pose` = x, y, z, qw, qx, qy, qz; `q` = 7 joint angles in rad), so the values from
