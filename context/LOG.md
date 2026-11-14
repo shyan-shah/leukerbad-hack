@@ -88,3 +88,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Notes for S4 engine: a too-short excursion (under min_duration_s, i.e. threshold jitter) after a rep_start closes with None, not rep_end; check detector.in_rep. Finished reps are in detector.reps as (i_start, i_end, completed). A rep still out when the recording stops is not returned.
 - Next: S0c paths, S0d sim_patient, then S1-S4.
 - Blockers: none.
+
+**2026-11-14 · Shiv · S0d**
+- S0d done: software/sim_patient.py with 12 passing tests (python -m pytest software/tests/test_sim_patient.py -q). The software/ suite passes: 60 tests.
+- SimPatient(strength, tremor_n, seed, present=True). effort() returns zero when present is False, which S1 and S4 need for the hands-off rule. simulate_reach returns t/pos/vel/force/target plus "simulated": True. It reuses paths.lead_target and min_jerk. The patient's PD gains (150 N/m, 5 N s/m), the 1.5 s reach and the 0.5 s dwell are team-chosen sim values.
+- Next: S1 sim_arm, then S2 to S4.
+- Blockers: none.
