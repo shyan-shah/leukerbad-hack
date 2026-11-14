@@ -12,10 +12,10 @@ from __future__ import annotations
 import math
 import threading
 import time
-from datetime import datetime
 
 import numpy as np
 
+from . import clock
 from .contract import RepResult, Sample, SessionSummary
 from .stats import mode_of
 
@@ -68,7 +68,7 @@ class MockEngine:
     def start(self) -> None:
         if hasattr(self.arm, "start_compliance"):
             self.arm.start_compliance()
-        self.started_at = datetime.now().isoformat(timespec="seconds")
+        self.started_at = clock.now_iso()
         self._thread = threading.Thread(target=self._run, name="mock-engine", daemon=True)
         self._thread.start()
 
@@ -79,7 +79,7 @@ class MockEngine:
         if hasattr(self.arm, "hold"):
             self.arm.hold()
         return SessionSummary(self.session_id, self.patient_id, self.started_at,
-                              datetime.now().isoformat(timespec="seconds"), "reach_line",
+                              clock.now_iso(), "reach_line",
                               self.rep_count, True)
 
     def set_dial(self, dial: float, auto: bool | None = None) -> None:

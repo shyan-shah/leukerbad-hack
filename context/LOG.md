@@ -72,3 +72,8 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Next: S0b reps, S0c paths, S0d sim_patient, then S1 sim_arm, S2 controller, S3 adapt, S4 engine (Engine keyword-only constructor per Shyan's Y1 note).
 - For Shyan: rep_metrics(t, pos, force, start, end) returns RepResult-named keys; contribution must be given the out-phase slice by the engine. For everyone: run software tests with `python -m pytest software/tests -q` from the repo root.
 - Blockers: none.
+
+**2026-11-14 · Shyan · housekeeping**
+- Timestamps fixed: new server/clock.py, api.py and mock.py now write Europe/Zurich time whatever the laptop's zone (was an hour behind on UK laptops). Same string format, so sorting, exports and notes are unchanged. Added tzdata to server/requirements.txt (Windows needs it): re-run pip install -r server/requirements.txt.
+- Added a root .gitignore (__pycache__, .venv, .pytest_cache, editor/OS files). Kian, Shiv: no more stray __pycache__ in robot/ and software/.
+- 87 tests pass, 1 skipped (end-to-end, waiting for S1, S0d, S4).

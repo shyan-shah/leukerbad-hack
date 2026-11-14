@@ -15,7 +15,6 @@ import queue
 import threading
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -25,7 +24,7 @@ from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import db
+from . import clock, db
 from .contract import RepResult, Sample, SessionSummary
 from .export import export_all, session_row
 from .note import session_note
@@ -132,7 +131,7 @@ class Hub:
             with self.db_lock:
                 n = db.count_reps(self.conn, self.session.session_id)
                 s = SessionSummary(**(self.session.to_dict() | {
-                    "ended_at": datetime.now().isoformat(timespec="seconds"), "n_reps": n}))
+                    "ended_at": clock.now_iso(), "n_reps": n}))
                 db.save_session(self.conn, s)
                 if self.exports_dir:
                     export_all(self.conn, self.exports_dir)
@@ -234,9 +233,9 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             name = body.display_name or body.patient_id
             if sim and "SIMULATED" not in name.upper():
                 name = f"{name} (SIMULATED)"
-            sid = f"{datetime.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:4]}"
+            sid = f"{clock.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:4]}"
             summary = SessionSummary(session_id=sid, patient_id=body.patient_id,
-                                     started_at=datetime.now().isoformat(timespec="seconds"),
+                                     started_at=clock.now_iso(),
                                      ended_at=None, exercise="reach_line", n_reps=0, simulated=sim)
             with hub.db_lock:
                 try:
