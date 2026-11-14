@@ -26,7 +26,21 @@ Rep state machine (section 4.2):
   (completed) or after ``OUT_TIMEOUT_S`` (not completed), then ``back``.
 - ``back``: same law toward the start. Ends within ``NEAR_START_M`` of the start, or after
   ``BACK_TIMEOUT_S`` (team choice, so a hand that never returns cannot hang the session).
-- Occupied: force magnitude above ``F_PRESENT`` within the last ``OCCUPIED_WINDOW_S``.
+- Occupied: the baseline-relative force magnitude was above ``F_PRESENT`` within the last
+  ``OCCUPIED_WINDOW_S``, counting only ticks where both the raw value and the value smoothed
+  over ``FORCE_FILTER_S`` are above it. A noise spike alone (raw only) does not count, and
+  letting go is seen as soon as the raw value drops (no added filter delay).
+
+Force baseline (the real arm's sensor reads several N with nothing touching it, see
+context/BRINGUP_FINDINGS.md and DECISIONS.md): ``start()`` averages ``BASELINE_N`` force
+readings BEFORE compliance starts, with the handle empty (the same "nobody touching" rule
+as ``zero_force``), and refuses to start with a RuntimeError if that baseline is over
+``MAX_BASELINE_N`` (sensor not zeroed, or something resting on the handle). Every force
+the engine uses (occupancy, Samples, metrics) is ``state.force - baseline``. While the
+phase is idle and the handle is not occupied the baseline follows the raw reading with
+time constant ``BASELINE_TRACK_S``, so slow drift does not build up while the handle is
+empty. Drift while the handle is held is not tracked (re-zero between sets on the real arm).
+For ``SimArm`` the simulated patient keeps hands off while the baseline is taken.
 - Hands-off rule, assist side only (dial > 0): if the handle is not occupied during a rep the
   rep ends now as not completed and the phase goes to idle. While the handle is empty the
   target is latched at the point where the hand was when it became empty (``K_HOLD``), so an
@@ -81,8 +95,12 @@ ARM_DWELL_S = 1.0            # s at the start (and occupied) before a rep is arm
 OUT_DONE = 0.9               # progress that completes the out phase
 OUT_TIMEOUT_S = 10.0         # s, out phase gives up (not completed)
 BACK_TIMEOUT_S = 10.0        # s, back phase gives up and the rep ends anyway (team choice)
-F_PRESENT = 1.5              # N, handle force magnitude meaning "a hand is on it"
+F_PRESENT = 1.5              # N, handle force magnitude (relative to the baseline) meaning "a hand is on it"
 OCCUPIED_WINDOW_S = 0.5      # s, occupied if force exceeded F_PRESENT within this window
+FORCE_FILTER_S = 0.05        # s, smoothing time constant of the force used for occupancy (noise)
+BASELINE_N = 30              # force readings averaged for the empty-handle baseline at start()
+MAX_BASELINE_N = 3.0         # N, a larger empty-handle baseline refuses to start (not zeroed)
+BASELINE_TRACK_S = 20.0      # s, time constant of baseline tracking while idle and empty (drift)
 STALL_SPEED = 0.01           # m/s along the path
 STALL_ASSIST_S = 1.5         # s stall on the assist side before rescue
 STALL_RESIST_S = 3.0         # s stall on the resist side before dropping to transparent
@@ -137,6 +155,9 @@ class Engine:
 
         self.path: LinePath | None = None
         self._t0: float | None = None
+        self.force_baseline = np.zeros(3)   # N, empty-handle sensor reading (set by start())
+        self._f_filt: np.ndarray | None = None
+        self._last_tick_t: float | None = None
         self._reset_rep_state()
 
     # ------------------------------------------------------------------ interface (4.4)
@@ -150,6 +171,16 @@ class Engine:
             self.arm.reach_axis = self.reach_axis
             self.arm.reach_sign = self.reach_sign
             self.arm.reach_m = self.reach_m
+        baseline = self._measure_baseline()
+        mag = float(np.linalg.norm(baseline))
+        if mag > MAX_BASELINE_N:
+            raise RuntimeError(
+                f"force sensor reads {mag:.1f} N with the handle empty "
+                f"(fx {baseline[0]:+.1f}, fy {baseline[1]:+.1f}, fz {baseline[2]:+.1f} N; limit "
+                f"{MAX_BASELINE_N:.1f} N). The sensor is not zeroed or something is resting on the "
+                "handle. With nobody touching the arm, run arm.zero_force() (robot/RUNBOOK.md), "
+                "then start the session again.")
+        self.force_baseline = baseline
         self.arm.start_compliance()
         start = np.asarray(self.arm.start_pos, dtype=float)
         end = start.copy()
@@ -161,6 +192,24 @@ class Engine:
         if getattr(self.arm, "realtime", True):
             self._thread = threading.Thread(target=self._loop, name="engine", daemon=True)
             self._thread.start()
+
+    def _measure_baseline(self) -> np.ndarray:
+        """Mean of BASELINE_N force readings, handle empty, before compliance starts."""
+        realtime = getattr(self.arm, "realtime", True)
+        patient = getattr(self.arm, "patient", None) if hasattr(self.arm, "reach_m") else None
+        was_present = getattr(patient, "present", None)
+        if patient is not None:
+            patient.present = False          # the simulated person follows the procedure
+        try:
+            readings = []
+            for i in range(BASELINE_N):
+                readings.append(np.asarray(self.arm.get_state().force, dtype=float))
+                if realtime and i < BASELINE_N - 1:
+                    time.sleep(DT)
+            return np.mean(readings, axis=0)
+        finally:
+            if patient is not None:
+                patient.present = was_present
 
     def stop(self) -> SessionSummary:
         """``arm.hold()``, thread joined. Returns the session summary."""
@@ -295,7 +344,14 @@ class Engine:
             self._t0 = t_arm
         t = t_arm - self._t0
         pos = np.asarray(state.pos, dtype=float)
-        force = np.asarray(state.force, dtype=float)
+        raw_force = np.asarray(state.force, dtype=float)
+        force = raw_force - self.force_baseline
+        dt_tick = DT if self._last_tick_t is None else float(np.clip(t_arm - self._last_tick_t, 0.0, 0.1))
+        self._last_tick_t = t_arm
+        if self._f_filt is None:
+            self._f_filt = force.copy()
+        else:
+            self._f_filt = self._f_filt + (force - self._f_filt) * min(1.0, dt_tick / FORCE_FILTER_S)
         with self._lock:
             dial = self._dial
             self._arm_mode = state.mode
@@ -309,14 +365,19 @@ class Engine:
             self._latch = None
             self._k_sent = None  # re-send stiffness if compliance is restarted
             self._cmd = None
-            self._emit(t, state, _tup3(pos), dial, "idle", -1)
+            self._emit(t, state, _tup3(pos), dial, "idle", -1, force)
             return
 
-        # occupied?
-        if float(np.linalg.norm(force)) > F_PRESENT:
+        # occupied? (baseline-relative force; raw AND smoothed above F_PRESENT)
+        if (float(np.linalg.norm(force)) > F_PRESENT
+                and float(np.linalg.norm(self._f_filt)) > F_PRESENT):
             self._last_force_t = t_arm
         occupied = (self._last_force_t is not None
                     and t_arm - self._last_force_t <= OCCUPIED_WINDOW_S)
+        # follow slow sensor drift while the handle is empty and nothing is happening
+        if self._phase == "idle" and not occupied:
+            self.force_baseline = (self.force_baseline
+                                   + (raw_force - self.force_baseline) * (dt_tick / BASELINE_TRACK_S))
 
         s = self._progress(pos)
         near_start = abs(s) * self.reach_m <= NEAR_START_M
@@ -398,7 +459,7 @@ class Engine:
             self._k_sent = k
         self._cmd = (np.asarray(target, dtype=float), np.asarray(k, dtype=float))
         self._emit(t, state, target, dial, label_phase,
-                   label_idx if label_phase != "idle" else -1)
+                   label_idx if label_phase != "idle" else -1, force)
 
     def _rescue_dial(self, dial: float, t_arm: float) -> tuple[float, bool]:
         """(dial, rescued) for controller.command. Resist-side rescue ramps the dial to 0."""
@@ -426,9 +487,10 @@ class Engine:
         self._rep_dial = dial
         self._rep_t0 = t
 
-    def _emit(self, t: float, state, target, dial: float, phase: str, rep_idx: int) -> None:
+    def _emit(self, t: float, state, target, dial: float, phase: str, rep_idx: int,
+              force) -> None:
         smp = Sample(t=float(t), pos=_tup3(state.pos), vel=_tup3(state.vel),
-                     force=_tup3(state.force), target=_tup3(target), dial=float(dial),
+                     force=_tup3(force), target=_tup3(target), dial=float(dial),
                      rep_idx=int(rep_idx), simulated=self.simulated, phase=phase,
                      q=tuple(float(v) for v in state.q))
         with self._lock:

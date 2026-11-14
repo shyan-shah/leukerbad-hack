@@ -16,6 +16,17 @@ Physics (per base axis, semi-implicit Euler, substeps of at most 5 ms):
   true (8 N downward plus 5 N s/m drag against motion). Zero when the handle is
   empty, so the engine's hands-off rule can be tested.
 
+Force-sensor errors (all off by default, keyword-only constructor options) make the
+reported force look like a real wrist sensor's: ``force_offset`` (N, constant per axis;
+the real arm read about (4.5, -2.5, 11.9) N un-zeroed with nothing touching it),
+``force_drift_n_per_min`` (N/min per axis, grows from the last zero), ``force_noise_n``
+(N, standard deviation of white noise per axis, seeded by ``seed``) and
+``stiffness_latency_s`` (default ``STIFFNESS_LATENCY_S``; the real arm is 50 to 200 ms).
+Only ``get_state().force`` carries the errors (so the trip check sees them, as on the real
+arm); the physics always uses the true person force. ``zero_force()`` behaves like the
+real ZeroFTSensor: whatever the sensor reads at that moment (sensor error AND any load
+on the handle) becomes the new zero, so zeroing with a hand on the handle is wrong here too.
+
 Safety behaviour is shared with the real arm, not re-implemented: target and
 stiffness clamps and the trip checks are ``robot.arm.clamp_target``,
 ``clamp_stiffness`` and ``check_trip``. The watchdog runs on the sim clock.
@@ -96,8 +107,20 @@ class SimArm:
     start_pos: tuple[float, float, float]
 
     def __init__(self, patient: SimPatient, limits: Limits = Limits(),
-                 start_pos=(0.45, 0.0, 0.30), realtime: bool = True) -> None:
+                 start_pos=(0.45, 0.0, 0.30), realtime: bool = True, *,
+                 force_offset=(0.0, 0.0, 0.0), force_drift_n_per_min=(0.0, 0.0, 0.0),
+                 force_noise_n: float = 0.0, stiffness_latency_s: float = STIFFNESS_LATENCY_S,
+                 seed: int = 0) -> None:
         self.patient = patient
+        self.force_offset = np.array(force_offset, dtype=float).reshape(3)
+        self.force_drift_n_per_min = np.array(force_drift_n_per_min, dtype=float).reshape(3)
+        if not force_noise_n >= 0:
+            raise ValueError("force_noise_n must be >= 0")
+        if not stiffness_latency_s >= 0:
+            raise ValueError("stiffness_latency_s must be >= 0")
+        self.force_noise_n = float(force_noise_n)
+        self.stiffness_latency_s = float(stiffness_latency_s)
+        self._rng = np.random.default_rng(seed)
         self.limits = limits
         self.start_pos = tuple(float(v) for v in start_pos)  # type: ignore[assignment]
         if len(self.start_pos) != 3:
@@ -121,6 +144,8 @@ class SimArm:
         self._k = np.full(3, float(limits.k_hold))
         self._k_pending: tuple[np.ndarray, float] | None = None
         self._last_target_t = self._t
+        self._zero_t = self._t              # drift grows from here
+        self._zero_ref = np.zeros(3)        # sensor reading removed by the last zero_force()
 
         # patient intent: "rest" -> "out" -> "dwell" -> "back" -> "rest"
         self._intent = "rest"
@@ -142,6 +167,7 @@ class SimArm:
             self._t = time.monotonic()
             self._intent_t0 = self._t
             self._last_target_t = self._t
+            self._zero_t = self._t
         if self.realtime and self._thread is None:
             self._running = True
             self._thread = threading.Thread(target=self._realtime_loop, name="simarm-physics",
@@ -153,11 +179,14 @@ class SimArm:
             raise RuntimeError("SimArm is not connected; call connect() first")
 
     def zero_force(self) -> None:
-        """Sim force sensor has no offset; leaves mode "idle"."""
+        """Like ZeroFTSensor: the current reading (noise-free) becomes zero. Leaves mode "idle"."""
         self._require_connected()
         with self._lock:
             self._k_pending = None
             self._mode = "idle"
+            self._zero_t = self._t   # drift restarts from here
+            self._zero_ref = (self._person_force(self._t, self._pos, self._vel)
+                              + self._sensor_error(self._t))
 
     def home(self) -> None:
         """Put the hand at start_pos at rest. Nobody holding. Leaves mode "idle"."""
@@ -195,7 +224,7 @@ class SimArm:
         k = np.array(clamp_stiffness((kx, ky, kz), self.limits), dtype=float)
         with self._lock:
             if self._mode == "compliant":
-                self._k_pending = (k, self._t + STIFFNESS_LATENCY_S)
+                self._k_pending = (k, self._t + self.stiffness_latency_s)
 
     def set_target(self, pos: tuple[float, float, float]) -> None:
         """Clamped to the box, then to max_lead_m from the hand. Feeds the watchdog."""
@@ -214,7 +243,7 @@ class SimArm:
         with self._lock:
             pos = tuple(float(v) for v in self._pos)
             vel = tuple(float(v) for v in self._vel)
-            force = tuple(float(v) for v in self._person_force(self._t, self._pos, self._vel))
+            force = tuple(float(v) for v in self._measured_force())
             if self._mode == "compliant":
                 reason = check_trip(pos, vel, force, self.start_pos, self.limits)
                 if reason is not None:
@@ -346,6 +375,18 @@ class SimArm:
                 nxt = "rest"
         if nxt is not None:
             self._set_intent(nxt)
+
+    def _sensor_error(self, t: float) -> np.ndarray:
+        """Offset plus drift since the last zero (no noise)."""
+        return self.force_offset + self.force_drift_n_per_min * ((t - self._zero_t) / 60.0)
+
+    def _measured_force(self) -> np.ndarray:
+        """What the sensor reports: true force + offset + drift + noise - the last zero."""
+        f = (self._person_force(self._t, self._pos, self._vel) + self._sensor_error(self._t)
+             - self._zero_ref)
+        if self.force_noise_n > 0:
+            f = f + self._rng.normal(0.0, self.force_noise_n, 3)
+        return f
 
     def _person_force(self, t: float, pos: np.ndarray, vel: np.ndarray) -> np.ndarray:
         """Force the person applies to the handle: effort plus passive limb load."""

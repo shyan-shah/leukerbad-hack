@@ -52,8 +52,14 @@ def test_interface_matches_arm():
         assert sim_params == arm_params, name
     assert isinstance(arm.limits, Limits)
     assert arm.start_pos == START
-    assert list(inspect.signature(SimArm).parameters) == ["patient", "limits", "start_pos",
-                                                          "realtime"]
+    params = inspect.signature(SimArm).parameters
+    positional = [n for n, p in params.items() if p.kind is not p.KEYWORD_ONLY]
+    assert positional == ["patient", "limits", "start_pos", "realtime"]   # frozen (4.3)
+    extras = [p for p in params.values() if p.kind is p.KEYWORD_ONLY]
+    # sensor-error options are keyword-only with defaults, so the frozen call still works
+    assert {p.name for p in extras} == {"force_offset", "force_drift_n_per_min",
+                                        "force_noise_n", "stiffness_latency_s", "seed"}
+    assert all(p.default is not p.empty for p in extras)
 
 
 def test_get_state_returns_arm_state():
