@@ -43,3 +43,14 @@ Optional second motion if it works on the arm: shoulder circles (5 s insert afte
 - **Kian: e-stop holder.** Out of frame, hand on the button for every take, does nothing else. Calls "clear" before each take.
 - **Shyan: operator and camera.** Runs the operator console (home, prepare, go, resume), then films. Wide shots from a fixed tripod or propped phone; hand-held only for close-ups, never standing inside the arm's reach.
 - Nobody is spare, so screen recordings (phone app, big screen, physio screen) are captured separately, not during takes.
+
+## Using the build footage (B-roll)
+Available: clips of the team building, the Bambu Lab print timelapse of the handle, robot clips, Leukerbad walking shots. Use them as a 15 s opening and a 10 s close; the middle 95 s stays the working demo.
+
+| Time | Content |
+|---|---|
+| 0:00-0:15 | Fast montage, about 2 s per clip: Leukerbad, the team at the arm, the print timelapse, the first time the arm moved. Caption: "Built in 48 hours at the Leukerbad Robot Carnival." End on the handle going onto the arm. |
+| 0:15-1:50 | The demo shot list above, each shot trimmed by a few seconds. Order unchanged: scan, assisted reach, dial falls, let go, push or row, strength test, physio screen. |
+| 1:50-2:00 | Team shot or the station, logo, "Vita. Research prototype. Next: a pilot." |
+
+Rules: the montage never replaces a demo shot; if time is short, cut the montage first. No copyrighted music (royalty-free only, or none under voice-over). Caption anything simulated. Export 1080p landscape, and keep the file on two devices plus a USB stick.
