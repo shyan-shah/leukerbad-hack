@@ -441,3 +441,7 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Tests (server/tests/test_calibration.py, 3 new): the server forces False for no field, `true` and `false`; the real `software.engine.Engine` with `calibrate=False` on a push on SimArm never calls `set_test_limits(True)` and never reports phase `calibrate`; the flag defaults.
 - For Shiv: nothing to change. Note that anything that builds `Engine(...)` directly for push or pull on the real arm (for example `server/hw/engine_empty_check.py`) does NOT pass through this default and would calibrate; I run the empty-handle checks through the server instead. For Kian: `set_test_limits` is not called on the arm through the server for now, so it stays untested on the arm.
 - For Mat and Gio: on the real arm the app will see `"calibrates": false` and no `calibrate` phase; keep building the calibrate screen against `--mock`.
+
+**2026-11-15 19:00 · Shyan · simplify: 4 resistance levels, position-based reps**
+- Decision (see DECISIONS): for the pitch the robot runs ONE push exercise with 4 fixed resistance levels picked in the app, reps counted from position only. No calibration push, no arming rule, no raised test limits. Shyan's robot session builds it as `software/simple.py` (new file, Shiv's engine.py untouched) and wires server + app.
+- Shiv: please stop work on calibration and arming; your engine stays in the repo as it is. Kian: `set_test_limits` is not used in the demo. Mat/Gio: the app gets a 4-level picker; details will follow in LOG from the robot session.
