@@ -1,18 +1,21 @@
 {
-  "_README": "PLACEHOLDER VALUES. Nothing here has been measured on the arm yet. Replace each value from robot/BRINGUP.md (K0) and robot/SETUP.md (K4), then remove its key from 'placeholders'. robot/arm.py refuses to connect with the placeholder serial and refuses to home() to a placeholder start pose.",
-  "placeholders": ["serial", "force_sign", "start_pose", "reach_axis"],
+  "_README": "Measured on the arm on 15 Nov 2026 with tool Flange (nothing mounted), by Shyan's agent with Kian's OK. When the handle is mounted and set as the tool, the start pose, zeroing, drift check and force sign must all be redone (tcp_pose depends on the tool). Keys still listed in 'placeholders' are not confirmed.",
+  "placeholders": ["force_sign"],
 
-  "serial": "Rizon4-XXXXXX",
+  "serial": "Rizon4-062157",
 
-  "_force_sign": "K0 question 5: +1 if pushing the handle toward +x gives ext_wrench_in_world[0] > 0, else -1. Arm reports force = force_sign * ext_wrench_in_world[:3] so that force is what the PERSON applies.",
+  "_force_sign": "K0 question 5: +1 if pushing the handle toward +x gives ext_wrench_in_world[0] > 0, else -1. Arm reports force = force_sign * ext_wrench_in_world[:3] so that force is what the PERSON applies. NOT push-tested yet (two read-only attempts on 15 Nov saw no push). +1 is inferred: on 14 Nov a 1.338 kg tool that was configured but not mounted read as +12.6 N in z (an upward force on the flange), so the wrench is the force applied TO the flange in the world frame.",
   "force_sign": 1,
 
   "_reach_axis": "Base axis of the forward reach: 0 = x, 1 = y. The workspace box (0.35 m along the reach, 0.10 m across and up) is laid out along it.",
   "reach_axis": 0,
 
-  "_start_pose": "K0 question 7 / K4: tcp_pose is x, y, z (m) then qw, qx, qy, qz in the world frame. q is the 7 joint angles (rad) or null.",
+  "_reach_sign": "Direction of the reach along reach_axis: -1 = towards world -x (away from the patient). Read by server/run.py (--reach-sign overrides it); robot/arm.py ignores it. From the start pose only -x keeps the hand 0.47 to 0.52 m from the base axis with every joint 29 deg or more from its limits over 0.30 m.",
+  "reach_sign": -1,
+
+  "_start_pose": "K0 question 7 / K4: tcp_pose is x, y, z (m) then qw, qx, qy, qz in the world frame. q is the 7 joint angles (rad) or null. Read on 15 Nov with tool Flange: hand 0.516 m from the base axis, flange pointing down. Run ZeroFTSensor here before every set (server: POST /api/arm/prepare).",
   "start_pose": {
-    "tcp_pose": [0.45, 0.0, 0.30, 0.0, 0.0, 1.0, 0.0],
-    "q": null
+    "tcp_pose": [0.212568, 0.470278, 0.374915, -0.001571, -0.637842, 0.770040, -0.013893],
+    "q": [1.379698, -0.180195, -0.021697, 2.088729, -0.013652, 0.701647, -0.007524]
   }
 }
