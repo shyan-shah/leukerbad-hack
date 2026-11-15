@@ -6,7 +6,7 @@
 <title>Vita Pitch Film</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-  :root { --deep: #04231B; --forest: #064D3B; --mint: #34D399; --paper: #F2F7F0; --ink: #10261F; --soft: #5A6B64; --coral: #FF6B5E; --line: rgba(255,255,255,.14);
+  :root { --deep: #06303A; --forest: #0A4552; --mint: #58E6F2; --paper: #EFF2F3; --ink: #1B2426; --soft: #5E686A; --coral: #FF6B5E; --line: rgba(255,255,255,.14);
     --display: Outfit, 'Instrument Sans', system-ui, sans-serif; --text: 'Instrument Sans', system-ui, sans-serif; --mono: 'JetBrains Mono', ui-monospace, monospace; }
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; background: #000; overflow: hidden; }
@@ -20,13 +20,13 @@
   .stage { z-index: 1; } #dim, .sc { z-index: 2; }
   #fx { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
   #fx .w { position: absolute; top: -10%; left: -25%; width: 150%; height: 120%; }
-  #w1 { background: var(--mint); } #w2 { background: #02140F; }
+  #w1 { background: var(--mint); } #w2 { background: #031C22; }
   #flash { position: absolute; inset: 0; background: #fff; opacity: 0; } #alarm { position: absolute; inset: 0; box-shadow: inset 0 0 260px 60px rgba(217,72,63,.85); opacity: 0; }
   #vig { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,.34) 100%); }
   #grain { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .1; mix-blend-mode: overlay; }
   .ring { position: absolute; width: 300px; height: 300px; margin: -150px; border-radius: 50%; border: 6px solid var(--mint); opacity: 0; }
-  .ghost { position: absolute; right: 110px; bottom: 60px; font: 700 420px/.8 var(--display); letter-spacing: -.05em; color: transparent; -webkit-text-stroke: 2px rgba(52,211,153,.28); font-variant-numeric: tabular-nums; text-align: right; }
-  .ghost small { display: block; font: 500 26px/1 var(--mono); letter-spacing: .3em; -webkit-text-stroke: 0; color: rgba(52,211,153,.6); margin-bottom: 26px; }
+  .ghost { position: absolute; right: 110px; bottom: 60px; font: 700 420px/.8 var(--display); letter-spacing: -.05em; color: transparent; -webkit-text-stroke: 2px rgba(88,230,242,.28); font-variant-numeric: tabular-nums; text-align: right; }
+  .ghost small { display: block; font: 500 26px/1 var(--mono); letter-spacing: .3em; -webkit-text-stroke: 0; color: rgba(88,230,242,.6); margin-bottom: 26px; }
   .mono { font: 500 20px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
   .mint { color: var(--mint); } .coral { color: var(--coral); }
   h1, h2, .big { font-family: var(--display); font-weight: 600; letter-spacing: -.035em; line-height: .98; }
@@ -58,7 +58,7 @@
   #s2 .cnt span { font: 500 40px/1.2 var(--display); opacity: .85; }
   #dots { position: absolute; left: 150px; top: 580px; width: 1620px; display: grid; grid-template-columns: repeat(45, 1fr); gap: 12px; }
   #dots i { aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); opacity: 0; }
-  #dots i.on { border-color: var(--mint); background: var(--mint); box-shadow: 0 0 18px rgba(52,211,153,.6); }
+  #dots i.on { border-color: var(--mint); background: var(--mint); box-shadow: 0 0 18px rgba(88,230,242,.6); }
   #s2 .need { position: absolute; right: 150px; top: 400px; text-align: right; font: 600 64px/1 var(--display); letter-spacing: -.03em; }
   #s2 .src { position: absolute; left: 150px; bottom: 70px; opacity: .45; font-size: 16px; }
 
@@ -71,42 +71,42 @@
   #s3 .card .mono { opacity: .5; font-size: 17px; }
 
   /* 3D captions + hud */
-  #s4 { color: var(--ink); } #s4:before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(242,247,240,.97) 0%, rgba(242,247,240,.9) 26%, rgba(242,247,240,0) 52%); }
-  #gauge { position: absolute; right: 30px; top: 96px; width: 150px; height: 150px; transform: rotate(-90deg); } #gauge circle { fill: none; stroke-width: 13; stroke-linecap: round; } #gauge .tr { stroke: #E3EDE6; } #gauge .fl { stroke: var(--mint); stroke-dasharray: 358; stroke-dashoffset: 358; }
+  #s4 { color: var(--ink); } #s4:before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(239,242,243,.98) 0%, rgba(239,242,243,.95) 34%, rgba(239,242,243,.6) 46%, rgba(239,242,243,0) 60%); }
+  #gauge { position: absolute; right: 30px; top: 96px; width: 150px; height: 150px; transform: rotate(-90deg); } #gauge circle { fill: none; stroke-width: 13; stroke-linecap: round; } #gauge .tr { stroke: #E1EBEE; } #gauge .fl { stroke: var(--mint); stroke-dasharray: 358; stroke-dashoffset: 358; }
   #stopped { position: absolute; right: 150px; top: 150px; padding: 22px 34px; border-radius: 22px; background: #D9483F; color: #fff; font: 600 30px/1 var(--mono); letter-spacing: .16em; visibility: hidden; box-shadow: 0 20px 60px rgba(217,72,63,.5); }
   .cap { position: absolute; left: 130px; width: 760px; }
   .cap h2 { font-size: 104px; }
-  .cap p { margin-top: 30px; font: 500 38px/1.25 var(--display); letter-spacing: -.015em; color: #33463F; width: 640px; }
-  .cap .mono { display: block; margin-bottom: 30px; color: #1F8F68; }
-  #hud { position: absolute; left: 130px; bottom: 110px; width: 470px; padding: 34px 38px 32px; border-radius: 34px; background: #fff; border: 1px solid rgba(16,38,31,.08); box-shadow: 0 30px 80px rgba(16,38,31,.14); color: var(--ink); visibility: hidden; z-index: 5; }
+  .cap p { margin-top: 30px; font: 500 38px/1.25 var(--display); letter-spacing: -.015em; color: #3B4A4D; width: 640px; }
+  .cap .mono { display: block; margin-bottom: 30px; color: #0B7F91; }
+  #hud { position: absolute; left: 130px; bottom: 110px; width: 470px; padding: 34px 38px 32px; border-radius: 34px; background: #fff; border: 1px solid rgba(27,36,38,.08); box-shadow: 0 30px 80px rgba(27,36,38,.14); color: var(--ink); visibility: hidden; z-index: 5; }
   #hud .nm { font: 600 34px/1 var(--display); letter-spacing: -.02em; }
-  #hud .md { margin-top: 14px; display: flex; align-items: center; gap: 10px; font: 500 16px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #1F8F68; }
-  #hud .md i { width: 10px; height: 10px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 5px rgba(52,211,153,.25); }
+  #hud .md { margin-top: 14px; display: flex; align-items: center; gap: 10px; font: 500 16px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #0B7F91; }
+  #hud .md i { width: 10px; height: 10px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 5px rgba(88,230,242,.25); }
   #hud .lb { margin-top: 30px; font: 500 16px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
   #hud .bg { margin-top: 8px; font: 600 112px/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
   #hud .bg small { font-size: 40px; margin-left: 10px; color: var(--soft); letter-spacing: 0; }
-  #hud #say { margin-top: 18px; font: 500 22px/1.3 var(--text); color: #33463F; min-height: 58px; transition: opacity .18s; }
-  #dim { position: absolute; inset: 0; background: rgba(4,35,27,.72); visibility: hidden; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  #hud #say { margin-top: 18px; font: 500 22px/1.3 var(--text); color: #3B4A4D; min-height: 58px; transition: opacity .18s; }
+  #dim { position: absolute; inset: 0; background: rgba(6,48,58,.72); visibility: hidden; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 
   /* app */
   #s5 .cap { color: #fff; top: 250px; } #s5 .cap p { color: rgba(255,255,255,.8); } #s5 .cap .mono { color: var(--mint); }
-  #s5 { perspective: 2400px; } #phone { position: absolute; left: 1120px; top: 96px; width: 430px; height: 890px; border-radius: 64px; background: #0B0F0E; padding: 13px; box-shadow: 0 60px 140px rgba(0,0,0,.55), inset 0 0 0 2px #3A403D; }
-  #phone .scr { width: 100%; height: 100%; border-radius: 52px; background: #F6FAF5; color: var(--ink); padding: 62px 26px 0; overflow: hidden; position: relative; }
-  #phone .scr:before { content: ''; position: absolute; left: 50%; top: 14px; width: 118px; height: 32px; margin-left: -59px; border-radius: 20px; background: #0B0F0E; }
+  #s5 { perspective: 2400px; } #phone { position: absolute; left: 1120px; top: 96px; width: 430px; height: 890px; border-radius: 64px; background: #0B0E0F; padding: 13px; box-shadow: 0 60px 140px rgba(0,0,0,.55), inset 0 0 0 2px #3A3F40; }
+  #phone .scr { width: 100%; height: 100%; border-radius: 52px; background: #F4F7F8; color: var(--ink); padding: 62px 26px 0; overflow: hidden; position: relative; }
+  #phone .scr:before { content: ''; position: absolute; left: 50%; top: 14px; width: 118px; height: 32px; margin-left: -59px; border-radius: 20px; background: #0B0E0F; }
   #phone h3 { font: 600 34px/1 var(--display); letter-spacing: -.03em; }
-  #phone .hero { margin-top: 22px; border-radius: 30px; background: #D9F4E5; padding: 24px 24px 14px; }
-  #phone .hero .k { font: 500 13px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: #1F7A5B; }
-  #phone .hero .v { margin-top: 10px; font: 600 68px/1 var(--display); letter-spacing: -.04em; } #phone .hero .v small { font-size: 26px; color: #3E5A50; margin-left: 6px; }
-  #phone .hero .d { margin-top: 8px; font: 600 17px/1 var(--text); color: #12805C; }
+  #phone .hero { margin-top: 22px; border-radius: 30px; background: #DDF5F8; padding: 24px 24px 14px; }
+  #phone .hero .k { font: 500 13px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: #0B6F80; }
+  #phone .hero .v { margin-top: 10px; font: 600 68px/1 var(--display); letter-spacing: -.04em; } #phone .hero .v small { font-size: 26px; color: #4A5A5E; margin-left: 6px; }
+  #phone .hero .d { margin-top: 8px; font: 600 17px/1 var(--text); color: #0B7F91; }
   #phone svg.ch { display: block; width: 100%; height: 170px; margin-top: 10px; }
   #phone .tiles { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-  #phone .tiles div { border-radius: 20px; background: #fff; padding: 16px 12px; box-shadow: 0 1px 0 rgba(16,38,31,.06); }
+  #phone .tiles div { border-radius: 20px; background: #fff; padding: 16px 12px; box-shadow: 0 1px 0 rgba(27,36,38,.06); }
   #phone .tiles b { display: block; font: 600 27px/1 var(--display); letter-spacing: -.03em; } #phone .tiles span { display: block; margin-top: 7px; font: 500 12px/1.2 var(--text); color: var(--soft); }
   #phone .ms { margin-top: 18px; font: 600 14px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--soft); }
   #phone .row { margin-top: 12px; display: flex; align-items: center; gap: 12px; font: 500 17px/1.2 var(--text); } #phone .row i { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--mint); position: relative; }
-  #phone .row i:after { content: ''; position: absolute; left: 8px; top: 5px; width: 6px; height: 11px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(42deg); } #phone .row.todo i { background: #DDE6E0; } #phone .row.todo i:after { display: none; }
+  #phone .row i:after { content: ''; position: absolute; left: 8px; top: 5px; width: 6px; height: 11px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: rotate(42deg); } #phone .row.todo i { background: #DDE4E6; } #phone .row.todo i:after { display: none; }
   #rep { position: absolute; left: 1470px; top: 590px; width: 360px; padding: 26px 28px; border-radius: 28px; background: #fff; color: var(--ink); box-shadow: 0 40px 90px rgba(0,0,0,.45); }
-  #rep .mono { font-size: 13px; color: #1F8F68; } #rep b { display: block; margin-top: 12px; font: 600 27px/1.12 var(--display); letter-spacing: -.02em; } #rep p { margin-top: 12px; font: 500 16px/1.35 var(--text); color: var(--soft); }
+  #rep .mono { font-size: 13px; color: #0B7F91; } #rep b { display: block; margin-top: 12px; font: 600 27px/1.12 var(--display); letter-spacing: -.02em; } #rep p { margin-top: 12px; font: 500 16px/1.35 var(--text); color: var(--soft); }
   #rep .pt { margin-top: 16px; display: flex; align-items: center; gap: 12px; font: 600 16px/1 var(--text); } #rep .pt i { width: 38px; height: 38px; border-radius: 50%; background: var(--forest); color: #fff; font: 600 14px/38px var(--display); text-align: center; font-style: normal; }
   #s5 .ex { position: absolute; left: 1120px; width: 430px; top: 1004px; text-align: center; font-size: 14px; opacity: .5; }
 
@@ -116,7 +116,7 @@
   .wk .lab { font: 600 38px/1.1 var(--display); letter-spacing: -.02em; } .wk .lab span { display: block; margin-top: 8px; font: 500 20px/1.2 var(--text); opacity: .6; letter-spacing: 0; }
   .wk .d { height: 104px; border-radius: 24px; border: 1.5px solid var(--line); display: grid; place-items: center; font: 500 15px/1 var(--mono); letter-spacing: .1em; color: rgba(255,255,255,.35); position: relative; }
   .wk .d u { position: absolute; inset: -1.5px; border-radius: 24px; display: grid; place-items: center; text-decoration: none; font: 600 22px/1 var(--display); letter-spacing: 0; }
-  .wk .d u.pt { background: #fff; color: var(--deep); } .wk .d u.vt { background: var(--mint); color: var(--deep); box-shadow: 0 0 40px rgba(52,211,153,.35); }
+  .wk .d u.pt { background: #fff; color: var(--deep); } .wk .d u.vt { background: var(--mint); color: var(--deep); box-shadow: 0 0 40px rgba(88,230,242,.35); }
   .wk .n { text-align: right; font: 600 84px/1 var(--display); letter-spacing: -.04em; } .wk .n small { display: block; font: 500 16px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; opacity: .55; margin-top: 6px; }
   #wk1 { top: 440px; } #wk2 { top: 590px; }
   #s6 .pts { position: absolute; left: 150px; top: 790px; width: 1620px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; }
@@ -132,7 +132,7 @@
   #s7 .hz span { font: 500 18px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--mint); } #s7 .hz b { font: 600 46px/1.08 var(--display); letter-spacing: -.025em; }
   #s7 .hz .far span { color: #F1C36A; }
   #vch { position: absolute; left: 1010px; top: 190px; width: 790px; height: 720px; }
-  #v3 { filter: drop-shadow(0 0 16px rgba(52,211,153,.8)); } #vch text { font: 500 19px var(--mono); letter-spacing: .08em; fill: rgba(255,255,255,.6); text-transform: uppercase; }
+  #v3 { filter: drop-shadow(0 0 16px rgba(88,230,242,.8)); } #vch text { font: 500 19px var(--mono); letter-spacing: .08em; fill: rgba(255,255,255,.6); text-transform: uppercase; }
 
   /* end */
   #s8 { background: var(--forest); }
@@ -141,10 +141,22 @@
   #s8 p { position: absolute; left: 0; width: 100%; top: 690px; text-align: center; font: 500 34px/1.3 var(--display); opacity: .8; }
   #s8 small { position: absolute; left: 0; width: 100%; bottom: 70px; text-align: center; font: 400 19px/1.4 var(--text); opacity: .55; }
 
-  #ui { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; display: flex; gap: 14px; align-items: center; font: 500 13px var(--mono); color: #9fb; background: rgba(0,0,0,.6); z-index: 99; }
-  #ui button { font: inherit; color: #04231B; background: #34D399; border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  #musc { position: absolute; left: 624px; bottom: 110px; width: 360px; padding: 22px 24px 20px; border-radius: 30px; background: #fff; box-shadow: 0 30px 80px rgba(27,36,38,.16); color: var(--ink); visibility: hidden; z-index: 5; }
+  #musc .k { display: flex; align-items: center; gap: 10px; font: 500 15px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: #B45F00; } #musc .k i { width: 10px; height: 10px; border-radius: 50%; background: #FF8A1F; box-shadow: 0 0 0 5px rgba(255,138,31,.22); }
+  #tName { display: block; margin-top: 10px; font: 600 22px/1.15 var(--display); letter-spacing: -.02em; }
+  #map { display: block; width: 100%; height: 200px; margin: 12px 0 2px; border-radius: 18px; background: #F5FAFA; } #map .bone { stroke: #C6D0D4; stroke-width: 15; stroke-linecap: round; } #map .jt { fill: #B9B19A; }
+  #musHud { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; } .mrow p { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; } .mrow b { font: 600 17px var(--display); } .mrow span { font-size: 13px; color: var(--soft); text-align: right; }
+  .bar { height: 9px; border-radius: 99px; background: rgba(30,40,42,.08); margin-top: 5px; overflow: hidden; } .bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #F1C36A, #FF8A1F); transform-origin: left; transform: scaleX(.03); } .bar.st i { background: linear-gradient(90deg, #9CC3F0, #4084D6); }
+  #hud .rp { position: absolute; left: 38px; top: -18px; padding: 9px 16px; border-radius: 999px; background: var(--forest); color: #fff; font: 500 15px/1 var(--mono); letter-spacing: .12em; } #hud .rp b { font-weight: 500; color: var(--mint); }
+  .lbx { position: absolute; left: 0; width: 100%; height: 92px; background: #000; z-index: 29; transform: scaleY(0); } #lb1 { top: 0; transform-origin: 50% 0; } #lb2 { bottom: 0; transform-origin: 50% 100%; }
+  #leak { position: absolute; top: -20%; left: -40%; width: 180%; height: 140%; background: linear-gradient(100deg, rgba(255,255,255,0) 38%, rgba(255,252,240,.65) 48%, rgba(88,230,242,.35) 54%, rgba(255,255,255,0) 64%); mix-blend-mode: screen; }
+  #scan { position: absolute; left: 0; width: 100%; height: 220px; top: -240px; background: linear-gradient(180deg, rgba(88,230,242,0), rgba(88,230,242,.18) 70%, rgba(88,230,242,.55) 97%, #58E6F2 100%); z-index: 3; visibility: hidden; }
+  .okp { display: inline-flex; align-items: center; gap: 12px; margin-top: 30px; padding: 14px 24px 14px 16px; border-radius: 999px; background: var(--forest); color: #fff; font: 600 24px/1 var(--display); visibility: hidden; } .okp i { width: 30px; height: 30px; border-radius: 50%; background: var(--mint); position: relative; } .okp i:after { content: ''; position: absolute; left: 10px; top: 6px; width: 7px; height: 13px; border: solid #06303A; border-width: 0 3px 3px 0; transform: rotate(42deg); }
+  .sp { position: absolute; left: 50%; top: 390px; width: 12px; height: 12px; margin: -6px; border-radius: 50%; background: var(--mint); opacity: 0; box-shadow: 0 0 16px rgba(88,230,242,.9); }
+  #ui { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px; display: flex; gap: 14px; align-items: center; font: 500 13px var(--mono); color: #99F0FF; background: rgba(0,0,0,.6); z-index: 99; }
+  #ui button { font: inherit; color: #06303A; background: #58E6F2; border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
   .rec #ui, .rec #start { display: none; }
-  #start { position: fixed; inset: 0; z-index: 98; display: grid; place-items: center; background: rgba(4,35,27,.55); cursor: pointer; } #start b { padding: 22px 40px; border-radius: 999px; background: #34D399; color: #04231B; font: 600 26px/1 Outfit, system-ui, sans-serif; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  #start { position: fixed; inset: 0; z-index: 98; display: grid; place-items: center; background: rgba(6,48,58,.55); cursor: pointer; } #start b { padding: 22px 40px; border-radius: 999px; background: #58E6F2; color: #06303A; font: 600 26px/1 Outfit, system-ui, sans-serif; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
 </style>
 </head>
 <body>
@@ -152,19 +164,21 @@
 <div id="film">
   <canvas id="bg" width="1920" height="1080"></canvas>
   <div class="stage"><canvas id="stage"></canvas></div>
-  <main class="hold"><i id="prog"></i><button id="pause"></button><b id="tName"></b><svg id="map"></svg><p id="jts"></p><div id="musHud"></div></main>
+  <main class="hold"><i id="prog"></i><button id="pause"></button><p id="jts"></p></main>
 
   <!-- 3D section overlays -->
   <div class="sc" id="s4">
     <div class="cap" id="c-meet" style="top:300px"><span class="mono t">The solution</span><h2 class="t">Meet Vita.</h2><p class="t">A rehabilitation station built on a robot arm. Placed where people already are.</p></div>
     <div class="cap" id="c-arr1" style="top:330px"><span class="mono t">01 · Walk in</span><h2 class="t">No appointment.</h2><p class="t">Gyms, care homes, pools and community centres.</p></div>
-    <div class="cap" id="c-arr2" style="top:330px"><span class="mono t">02 · Sign in</span><h2 class="t">Scan. Your plan loads.</h2><p class="t">Set together with your therapist.</p></div>
+    <div class="cap" id="c-arr2" style="top:330px"><span class="mono t">02 · Sign in</span><h2 class="t">Scan. Your plan loads.</h2><p class="t">Set together with your therapist.</p><div class="okp"><i></i>Plan loaded · Anna</div></div>
     <div class="cap" id="c-arr3" style="top:330px"><span class="mono t">03 · Sit down</span><h2 class="t">The arm comes to you.</h2></div>
-    <div class="cap" id="c-ex1" style="top:150px"><span class="mono t">Guided</span><h2 class="t">It moves with you.</h2><p class="t">The arm guides each movement and measures every rep.</p></div>
+    <div class="cap" id="c-ex1" style="top:122px"><span class="mono t">Guided</span><h2 class="t">It moves with you.</h2><p class="t" style="width:470px">The arm guides each movement and measures every rep.</p></div>
     <div class="cap" id="c-ex2" style="top:150px"><span class="mono t">Measured</span><h2 class="t">Range. Smoothness. Force.</h2></div>
     <div class="cap" id="c-ex3" style="top:150px"><span class="mono t">One station</span><h2 class="t">Arm, shoulder, leg.</h2></div>
     <div class="cap" id="c-stop" style="top:300px"><span class="mono t" style="color:#D9483F">Safety</span><h2 class="t">One red button.</h2><p class="t">Press it and the arm holds still.</p></div>
-    <div id="hud"><div class="nm" id="mName">Forward reach</div><div class="md"><i></i><span>Robot <span id="mode"></span></span></div><div class="lb" id="mLab">Reach</div><div class="bg"><span id="mVal">0</span><small id="mUnit">cm</small></div><div id="say"></div><svg id="gauge" viewBox="0 0 140 140"><circle class="tr" cx="70" cy="70" r="57"/><circle class="fl" id="gfl" cx="70" cy="70" r="57"/></svg></div>
+    <div id="scan"></div>
+    <div id="musc"><div class="k"><i></i>Muscles at work</div><b id="tName"></b><svg id="map" viewBox="-27 -134 116 86"></svg><div id="musHud"></div></div>
+    <div id="hud"><span class="rp">REP <b id="repN">1</b></span><div class="nm" id="mName">Forward reach</div><div class="md"><i></i><span>Robot <span id="mode"></span></span></div><div class="lb" id="mLab">Reach</div><div class="bg"><span id="mVal">0</span><small id="mUnit">cm</small></div><div id="say"></div><svg id="gauge" viewBox="0 0 140 140"><circle class="tr" cx="70" cy="70" r="57"/><circle class="fl" id="gfl" cx="70" cy="70" r="57"/></svg></div>
     <div id="stopped">■ ARM STOPPED</div>
   </div>
   <div id="dim"></div>
@@ -173,7 +187,7 @@
     <div id="phone"><div class="scr">
       <h3>Your progress</h3>
       <div class="hero"><div class="k">Forward reach</div><div class="v"><span id="pv">29</span><small>cm</small></div><div class="d">+9 cm in four weeks</div>
-        <svg class="ch" viewBox="0 0 330 170"><line x1="0" y1="34" x2="330" y2="34" stroke="#1F7A5B" stroke-width="1.5" stroke-dasharray="5 6" opacity=".5"/><path id="pa" d="M6 140 C50 136 70 120 110 112 S170 92 210 70 S290 50 324 44 L324 170 L6 170Z" fill="#34D399" opacity=".22"/><path id="pl" d="M6 140 C50 136 70 120 110 112 S170 92 210 70 S290 50 324 44" fill="none" stroke="#12805C" stroke-width="5" stroke-linecap="round"/><circle id="pd" cx="324" cy="44" r="8" fill="#12805C" stroke="#D9F4E5" stroke-width="4"/></svg></div>
+        <svg class="ch" viewBox="0 0 330 170"><line x1="0" y1="34" x2="330" y2="34" stroke="#0B6F80" stroke-width="1.5" stroke-dasharray="5 6" opacity=".5"/><path id="pa" d="M6 140 C50 136 70 120 110 112 S170 92 210 70 S290 50 324 44 L324 170 L6 170Z" fill="#58E6F2" opacity=".22"/><path id="pl" d="M6 140 C50 136 70 120 110 112 S170 92 210 70 S290 50 324 44" fill="none" stroke="#0B7F91" stroke-width="5" stroke-linecap="round"/><circle id="pd" cx="324" cy="44" r="8" fill="#0B7F91" stroke="#DDF5F8" stroke-width="4"/></svg></div>
       <div class="tiles"><div><b>14</b><span>sessions</span></div><div><b>1,240</b><span>reps</span></div><div><b>86%</b><span>smoothness</span></div></div>
       <div class="ms">Milestones</div>
       <div class="row"><i></i>Reach the top shelf</div><div class="row"><i></i>Lift a full kettle</div><div class="row todo"><i></i>Comb hair without help</div>
@@ -231,25 +245,26 @@
       <text x="60" y="690">Through one movement</text><text x="60" y="40">Load</text>
       <path id="v1" d="M60 470 C200 380 300 170 420 150 S640 300 760 440" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="3" stroke-dasharray="3 11" stroke-linecap="round"/>
       <path id="v2" d="M60 520 H760" fill="none" stroke="#FF6B5E" stroke-width="5" stroke-linecap="round"/>
-      <path id="v3" d="M60 486 C200 396 300 186 420 166 S640 316 760 456" fill="none" stroke="#34D399" stroke-width="7" stroke-linecap="round"/>
+      <path id="v3" d="M60 486 C200 396 300 186 420 166 S640 316 760 456" fill="none" stroke="#58E6F2" stroke-width="7" stroke-linecap="round"/>
       <g id="vl1"><text x="436" y="120" style="fill:rgba(255,255,255,.8)">What you can handle</text></g>
       <g id="vl2"><text x="520" y="556" style="fill:#FF6B5E">Fixed weight</text></g>
-      <g id="vl3"><circle id="vdot" r="13" fill="#34D399" stroke="#04231B" stroke-width="5"/><text x="300" y="440" style="fill:#34D399">Vita, set every rep</text></g>
+      <g id="vl3"><circle id="vdot" r="13" fill="#58E6F2" stroke="#06303A" stroke-width="5"/><text x="300" y="440" style="fill:#58E6F2">Vita, set every rep</text></g>
     </svg>
   </div>
   <!-- 8 end -->
   <div class="sc" id="s8">
-    <img src="assets/vita-logo.png" alt="vita">
+    <img src="assets/vita-logo.png" alt="vita"><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i><i class="sp"></i>
     <h2 class="t">More practice. Measured.</h2>
     <p class="t">Rehabilitation that fits between visits.</p>
     <small>Vita is in development and is not a certified medical device. Figures are examples to be validated.</small>
   </div>
 
-  <div id="fx"><div id="vig"></div><svg id="grain"><filter id="nz"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#nz)"/></svg><div id="alarm"></div><div id="flash"></div><div class="w" id="w1"></div><div class="w" id="w2"></div></div>
-  <div id="chrome"><div class="wm"><svg viewBox="0 0 76 64"><path d="M9 24c10 0 13 31 26 31s17-33 30-41" fill="none" stroke="#34D399" stroke-width="8" stroke-linecap="round"/><circle cx="65" cy="13" r="8.5" fill="currentColor"/></svg><span>vita</span></div><div class="mono" id="chap"></div><div id="bar"></div></div>
+  <div id="fx"><div id="vig"></div><svg id="grain"><filter id="nz"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#nz)"/></svg><div id="alarm"></div><div id="flash"></div><div id="leak"></div><div class="w" id="w1"></div><div class="w" id="w2"></div></div>
+  <div class="lbx" id="lb1"></div><div class="lbx" id="lb2"></div>
+  <div id="chrome"><div class="wm"><svg viewBox="0 0 76 64"><path d="M9 24c10 0 13 31 26 31s17-33 30-41" fill="none" stroke="#58E6F2" stroke-width="8" stroke-linecap="round"/><circle cx="65" cy="13" r="8.5" fill="currentColor"/></svg><span>vita</span></div><div class="mono" id="chap"></div><div id="bar"></div></div>
 </div>
 <div id="start"><b>▶ Play with sound</b></div>
-<audio id="vo" src="assets/narration.mp3" preload="auto"></audio>
+<audio id="vo" src="assets/soundtrack.mp3" preload="auto"></audio>
 <div id="ui"><button id="pp">Pause</button><button id="rs">Restart</button><span id="tc">0:00</span><span>space = pause · ?start=45 jumps ahead</span></div>
 
 <script src="vendor/gsap.min.js"></script>
@@ -279,63 +294,70 @@
   const chap = (a, s) => cues.push({ t: a, fn: () => { $('#chap').textContent = s; } });
   const cue = (t, fn) => cues.push({ t, fn });
   gsap.set('#fx .w', { xPercent: -130, skewX: -14 });
-  const wipe = (a) => { tl.fromTo('#w1', { xPercent: -130 }, { xPercent: 130, duration: 1, ease: 'power3.inOut' }, a - .5); tl.fromTo('#w2', { xPercent: -130 }, { xPercent: 130, duration: 1, ease: 'power3.inOut' }, a - .42); };
-  const slam = (sel, a) => { tl.set(sel, { visibility: 'visible' }, a); tl.fromTo(sel, { scale: 2.4, opacity: 0, filter: 'blur(40px)' }, { scale: 1, opacity: 1, filter: 'blur(0px)', duration: .75, ease: 'expo.out', transformOrigin: '20% 60%' }, a); };
-  const shake = (sel, a, amp = 18) => { tl.fromTo(sel, { x: -amp, y: amp * .4 }, { x: 0, y: 0, duration: .7, ease: 'elastic.out(1.4, .18)' }, a); };
-  const ring = (sel, a) => { tl.fromTo(sel, { scale: .2, opacity: .9 }, { scale: 7, opacity: 0, duration: 1.4, ease: 'power2.out' }, a); };
-  const flash = (a, o = .5, c = '#fff') => { tl.set('#flash', { backgroundColor: c }, a); tl.fromTo('#flash', { opacity: o }, { opacity: 0, duration: .45, ease: 'power2.out' }, a); };
+  const wipe = (a) => { leak(a + .35, .9); tl.fromTo('#w1', { xPercent: -130 }, { xPercent: 130, duration: 1, ease: 'power3.inOut' }, a - .5); tl.fromTo('#w2', { xPercent: -130 }, { xPercent: 130, duration: 1, ease: 'power3.inOut' }, a - .42); };
+  gsap.set('#leak', { xPercent: -100 });
+  const leak = (a, d = .75) => tl.fromTo('#leak', { xPercent: -100 }, { xPercent: 100, duration: d, ease: 'power2.inOut', immediateRender: false }, a - d / 2);
+  const glitch = (sel, a, k = 16) => tl.fromTo(sel, { textShadow: k + 'px 0 rgba(255,70,90,.85), ' + (-k) + 'px 0 rgba(40,220,255,.85)' }, { textShadow: '0px 0 rgba(255,70,90,0), 0px 0 rgba(40,220,255,0)', duration: .65, ease: 'power2.out', immediateRender: false }, a);
+  const kb = (sel, a, b) => tl.fromTo(sel, { scale: 1 }, { scale: 1.045, duration: b - a, ease: 'none' }, a);
+  const slam = (sel, a) => { glitch(sel, a + .05); tl.set(sel, { visibility: 'visible' }, a); tl.fromTo(sel, { scale: 2.4, opacity: 0, filter: 'blur(40px)' }, { scale: 1, opacity: 1, filter: 'blur(0px)', duration: .75, ease: 'expo.out', transformOrigin: '20% 60%' }, a); };
+  const shake = (sel, a, amp = 18) => { tl.fromTo(sel, { x: -amp, y: amp * .4 }, { x: 0, y: 0, duration: .7, ease: 'elastic.out(1.4, .18)', immediateRender: false }, a); };
+  const ring = (sel, a) => { tl.fromTo(sel, { scale: .2, opacity: .9 }, { scale: 7, opacity: 0, duration: 1.4, ease: 'power2.out', immediateRender: false }, a); };
+  const flash = (a, o = .5, c = '#fff') => { tl.set('#flash', { backgroundColor: c }, a); tl.fromTo('#flash', { opacity: o }, { opacity: 0, duration: .45, ease: 'power2.out', immediateRender: false }, a); };
 
   // ── 0 · bridge (0–8) ──
   show('#s0', 0, 8.2, .01, .5); draw('#ecg', .3, 2.6, 'power1.inOut');
-  txt('#h0a', 1.1, 4.5); txt('#h0b', 4.7, 8.1); tl.to('#ecg', { opacity: .25, duration: 1 }, 4.4); flash(1.42, .55, '#FF6B5E'); shake('#s0', 1.42, 30); tl.to('#ecg', { stroke: '#FF6B5E', duration: .1 }, 1.42); tl.to('#ecg', { stroke: '#34D399', duration: 1.4 }, 2.2);
+  txt('#h0a', 1.1, 4.5); txt('#h0b', 4.7, 8.1); tl.to('#ecg', { opacity: .25, duration: 1 }, 4.4); flash(1.42, .55, '#FF6B5E'); shake('#s0', 1.42, 30); glitch('#h0a', 1.42, 22); kb('#s0', 0, 8.2); tl.to('#ecg', { stroke: '#FF6B5E', duration: .1 }, 1.42); tl.to('#ecg', { stroke: '#58E6F2', duration: 1.4 }, 2.2);
   tl.set('#days', { visibility: 'hidden' }, 0); tl.set('#days', { visibility: 'visible' }, 4.7); tl.from('#days', { opacity: 0, duration: .6 }, 4.7); count('#days span', 1, 180, 4.8, 3.2); wipe(8.2);
   chap(0, '');
 
   // ── 1 · 1.7 billion (8–18) ──
   chap(8.2, '01 · The problem');
   { const pp = $('#s1 .ppl'); for (let i = 0; i < 50; i++) pp.appendChild(document.createElement('i')); }
-  show('#s1', 8.2, 18.2); slam('#s1 .num', 8.6); shake('#s1', 8.75); ring('#r1', 8.7); count('#n17', 0, 1.7, 8.6, 1.6, (v) => v.toFixed(1));
+  show('#s1', 8.2, 18.2); kb('#s1', 8.2, 18.2); slam('#s1 .num', 8.6); shake('#s1', 8.75); ring('#r1', 8.7); count('#n17', 0, 1.7, 8.6, 1.6, (v) => v.toFixed(1));
   txt('#s1 p', 10.2, null); tl.from('#s1 .ppl i', { y: 50, opacity: 0, duration: .6, stagger: { each: .02, grid: [2, 25], from: 'start' }, ease: 'back.out(1.8)' }, 11.6);
-  tl.to('#s1 .ppl i:nth-child(5n+1)', { opacity: 1, backgroundColor: '#34D399', scale: 1.18, duration: .45, stagger: .08, ease: 'back.out(3)' }, 13.2); fade('#s1 .one', 13.8, null); wipe(18.2);
+  tl.to('#s1 .ppl i:nth-child(5n+1)', { opacity: 1, backgroundColor: '#58E6F2', scale: 1.18, duration: .45, stagger: .08, ease: 'back.out(3)' }, 13.2); fade('#s1 .one', 13.8, null); wipe(18.2);
 
   // ── 2 · repetition (18–29.5) ──
   const dots = $('#dots'); for (let i = 0; i < 405; i++) dots.appendChild(document.createElement('i')); const dd = [...dots.children];
-  show('#s2', 18.2, 29.7); txt('#s2 h2', 18.6, null); count('#n32', 0, 32, 20.2, 2.2); fade('#s2 .cnt span', 20.2, null);
+  show('#s2', 18.2, 29.7); kb('#s2', 18.2, 29.7); txt('#s2 h2', 18.6, null); count('#n32', 0, 32, 20.2, 2.2); fade('#s2 .cnt span', 20.2, null);
   dd.slice(0, 32).forEach((d, i) => { tl.set(d, { opacity: 1, className: 'on' }, 20.2 + i * .068); tl.from(d, { scale: 0, duration: .4, ease: 'back.out(3)' }, 20.2 + i * .068); });
   tl.fromTo(dd.slice(32), { opacity: 0, y: -260, scale: 2.2 }, { opacity: 1, y: 0, scale: 1, duration: .7, stagger: { each: .0058, from: 'random' }, ease: 'power3.out' }, 23.4); txt('#s2 .need', 24, null); shake('#s2', 24.1, 12); wipe(29.7);
   tl.to(dd.slice(32), { borderColor: 'rgba(255,107,94,.75)', duration: .8, stagger: { each: .003 } }, 26.2); fade('#s2 .src', 21, null, { y: 0 });
 
   // ── 3 · capacity (29.5–38.5) ──
-  show('#s3', 29.7, 38.6); txt('#s3 h2', 30, null); tl.from('#s3 .card', { y: 160, rotationX: -70, transformOrigin: '50% 100%', opacity: 0, duration: 1.1, stagger: .55, ease: 'expo.out' }, 31); tl.to('#s3 .card', { borderColor: 'rgba(255,107,94,.6)', duration: .4, stagger: .55, yoyo: true, repeat: 1 }, 31.5);
+  show('#s3', 29.7, 38.6); kb('#s3', 29.7, 38.6); glitch('#s3 .card b', 31.15, 12); txt('#s3 h2', 30, null); tl.from('#s3 .card', { y: 160, rotationX: -70, transformOrigin: '50% 100%', opacity: 0, duration: 1.1, stagger: .55, ease: 'expo.out' }, 31); tl.to('#s3 .card', { borderColor: 'rgba(255,107,94,.6)', duration: .4, stagger: .55, yoyo: true, repeat: 1 }, 31.5);
   tl.from('#s3 .card b', { scale: .6, transformOrigin: '0 100%', duration: .9, stagger: .5, ease: 'back.out(1.7)' }, 31.1);
 
   // ── 4 · the station (38.5–85) ──
   chap(38.6, '02 · The solution');
   cue(36, () => { FILM.skip = false; FILM.arrHold = true; f3.set({ arrive: true, fac: 0, snap: true }); });
-  tl.fromTo('.stage', { clipPath: 'circle(0% at 62% 52%)' }, { clipPath: 'circle(130% at 62% 52%)', duration: 1.5, ease: 'power3.inOut' }, 38.1); flash(38.2, .35, '#34D399');
-  tl.to('.stage', { clipPath: 'circle(0% at 50% 50%)', duration: .01 }, 97.3);
+  tl.fromTo('.stage', { clipPath: 'circle(0% at 62% 52%)' }, { clipPath: 'circle(130% at 62% 52%)', duration: 1.5, ease: 'power3.inOut' }, 38.1); flash(38.2, .35, '#58E6F2');
+  tl.to('.stage', { clipPath: 'circle(0% at 50% 50%)', duration: .01 }, 96.6);
   tl.set('#stopped', { visibility: 'visible' }, 81.5); tl.fromTo('#stopped', { scale: 2, opacity: 0 }, { scale: 1, opacity: 1, duration: .4, ease: 'expo.out' }, 81.5); tl.to('#stopped', { opacity: 0, duration: .3 }, 84.4); tl.fromTo('#alarm', { opacity: 0 }, { opacity: 1, duration: .18, yoyo: true, repeat: 5, ease: 'power1.inOut' }, 81.5); tl.to('#alarm', { opacity: 0, duration: .3 }, 82.7);
-  [56.4, 60.2, 64.2, 67.6, 71.2, 74.6, 78.4].forEach((c) => flash(c, .5));
-  tl.to('#chrome', { color: '#10261F', duration: .5 }, 38.9); show('#s4', 38.6, 85.6, .01, .4);
+  [56.4, 60.2, 64.2, 67.6, 72.2, 75.2, 78.4].forEach((c) => { flash(c, .25); leak(c); });
+  tl.fromTo('.lbx', { scaleY: 0 }, { scaleY: 1, duration: 1.1, ease: 'power3.inOut' }, 38.4); tl.to('.lbx', { scaleY: 0, duration: .8, ease: 'power3.inOut' }, 85.1); show('#s4', 38.6, 85.6, .01, .4);
   cap('#c-meet', 39.2, 44.6); cue(42.2, () => f3.set({ fac: 1 }));
   cue(44.8, () => { FILM.arrHold = false; });
-  cap('#c-arr1', 45, 48.4); cap('#c-arr2', 48.6, 52.2); cap('#c-arr3', 52.4, 55.6);
+  cap('#c-arr1', 45, 48.4); cap('#c-arr2', 48.6, 52.2); tl.set('#scan', { visibility: 'visible' }, 47.9); tl.fromTo('#scan', { top: -240 }, { top: 1100, duration: 1.5, ease: 'power1.inOut' }, 47.9); tl.set('#scan', { visibility: 'hidden' }, 49.5);
+  tl.set('#c-arr2 .okp', { visibility: 'visible' }, 49.6); tl.from('#c-arr2 .okp', { scale: .4, opacity: 0, duration: .6, ease: 'back.out(2.2)', transformOrigin: '0 50%' }, 49.6); tl.to('#c-arr2 .okp', { opacity: 0, duration: .4 }, 51.8); cap('#c-arr3', 52.4, 55.6);
   show('#hud', 56.2, 85.2, .6, .4); tl.from('#hud', { y: 60, duration: .9, ease: 'expo.out' }, 56.2);
-  cap('#c-ex1', 56.2, 63.6); cue(64, () => f3.set({ ex: 'circle' })); cap('#c-ex2', 64.2, 70.6);
-  cue(71, () => f3.set({ ex: 'leg' })); cap('#c-ex3', 71.2, 77.4);
-  cue(77.6, () => f3.set({ ex: 'reach' })); cue(78.6, () => f3.set({ stop: true })); cap('#c-stop', 78.4, 85.2); tl.to('#hud', { opacity: 0, duration: .4 }, 78);
+  cap('#c-ex1', 56.2, 63.6); cue(64, () => f3.set({ ex: 'circle' })); cap('#c-ex2', 64.2, 72);
+  cue(72.2, () => f3.set({ ex: 'leg' })); cap('#c-ex3', 72.4, 78.2);
+  show('#musc', 56.7, 78.15, .6, .35); tl.from('#musc', { y: 80, duration: 1, ease: 'expo.out' }, 56.7); tl.from('#musc .mrow', { opacity: 0, x: 30, duration: .5, stagger: .1 }, 57.2);
+  [64.4, 72.4].forEach((c) => { tl.fromTo('#musc', { scale: .96 }, { scale: 1, duration: .6, ease: 'back.out(3)' }, c); tl.from('#musc .mrow', { opacity: 0, x: 30, duration: .45, stagger: .08 }, c + .1); });
+  cue(78.35, () => f3.set({ ex: 'reach' })); cue(78.6, () => f3.set({ stop: true })); cap('#c-stop', 78.4, 85.2); tl.to('#hud', { opacity: 0, duration: .35 }, 77.8);
   cue(85, () => f3.set({ stop: false }));
 
   // ── 5 · the app (85.5–96) ──
-  show('#dim', 85.2, 96.6, .8, .01); tl.to('#chrome', { color: '#fff', duration: .5 }, 85.4); show('#s5', 85.4, 96.4, .01, .5);
+  show('#dim', 85.2, 96.6, .8, .01);  show('#s5', 85.4, 96.6, .01, .01);
   tl.from('#phone', { y: 1100, rotationY: -70, rotationZ: 12, duration: 1.5, ease: 'expo.out' }, 85.6); tl.to('#phone', { rotationY: -9, rotationX: 3, duration: 9, ease: 'sine.inOut' }, 87.1); cap('#s5 .cap', 86, null);
   draw('#pl', 86.8, 1.8); tl.from('#pa', { opacity: 0, duration: 1.2 }, 87.6); tl.from('#pd', { scale: 0, transformOrigin: '50% 50%', duration: .5, ease: 'back.out(3)' }, 88.5); count('#pv', 29, 38, 86.8, 1.9);
   tl.from('#phone .tiles div', { y: 30, opacity: 0, duration: .6, stagger: .12, ease: 'power3.out' }, 87.4); tl.from('#phone .row', { x: -20, opacity: 0, duration: .5, stagger: .14 }, 88.2);
   tl.from('#rep', { x: -330, y: 60, scale: .5, opacity: 0, duration: 1.1, ease: 'expo.out' }, 90.6); fade('#s5 .ex', 87, null, { y: 0 });
 
   // ── 6 · why (96–107) ──
-  chap(96.4, '03 · Why it works');
-  wipe(96.6); show('#s6', 96.2, 107.6, .6, .5); slam('#x3', 102.2); shake('#s6', 102.3, 12); cue(97.4, () => { FILM.skip = true; }); txt('#s6 h2', 96.7, null);
+  chap(96.6, '03 · Why it works');
+  wipe(96.6); show('#s6', 96.6, 107.6, .01, .5); slam('#x3', 102.2); shake('#s6', 102.3, 12); cue(97.4, () => { FILM.skip = true; }); txt('#s6 h2', 96.7, null);
   tl.from('#wk1 > *', { opacity: 0, y: 30, duration: .6, stagger: .05, ease: 'power3.out' }, 98.2); tl.from('#wk1 u', { scale: 0, duration: .5, stagger: .2, ease: 'back.out(2.4)' }, 98.9);
   tl.from('#wk2 > *', { opacity: 0, y: 30, duration: .6, stagger: .05, ease: 'power3.out' }, 100); tl.from('#wk2 u.pt', { scale: 0, duration: .5, stagger: .15, ease: 'back.out(2.4)' }, 100.6);
   tl.from('#wk2 u.vt', { scale: 0, duration: .55, stagger: .22, ease: 'back.out(2.6)' }, 101.2); count('#n6', 2, 6, 101.2, 1.1);
@@ -343,7 +365,7 @@
 
   // ── 7 · vision (107.5–117) ──
   chap(107.6, '04 · The vision'); wipe(107.6);
-  show('#s7', 107.6, 117.2); fade('#s7 .eb', 107.9, null); txt('#s7 h2', 108.1, null, { st: .06 });
+  show('#s7', 107.6, 117.2); kb('#s7', 107.6, 117.2); fade('#s7 .eb', 107.9, null); txt('#s7 h2', 108.1, null, { st: .06 });
   tl.from('#s7 .hz div', { opacity: 0, x: -40, duration: .8, stagger: 1.6, ease: 'power3.out' }, 110);
   tl.from('#vch line, #vch > text', { opacity: 0, duration: .6 }, 108.4); tl.from('#v1', { opacity: 0, duration: .9 }, 109); tl.from('#vl1', { opacity: 0, duration: .5 }, 109.5);
   draw('#v2', 110.4, .9); tl.from('#vl2', { opacity: 0, duration: .5 }, 111); draw('#v3', 112, 2.2); tl.from('#vl3 text', { opacity: 0, duration: .5 }, 113);
@@ -352,8 +374,9 @@
 
   // ── 8 · end (117–122) ──
   chap(117.2, '');
-  wipe(117.1); show('#s8', 117, null, .7); flash(117.6, .3, '#34D399'); tl.to('#chrome .wm', { opacity: 0, duration: .3 }, 117); tl.from('#s8 img', { opacity: 0, scale: .86, duration: 1.3, ease: 'expo.out' }, 117.5);
-  txt('#s8 h2', 118.2, null); fade('#s8 p', 119.1, null); tl.from('#s8 small', { opacity: 0, duration: .8 }, 119.8);
+  wipe(117.1); show('#s8', 117, null, .7); flash(117.6, .3, '#58E6F2'); tl.to('#chrome .wm', { opacity: 0, duration: .3 }, 117); tl.from('#s8 img', { opacity: 0, scale: .86, duration: 1.3, ease: 'expo.out' }, 117.5);
+  txt('#s8 h2', 118.2, null); leak(118.1, 1.1);
+  $$('#s8 .sp').forEach((e, i) => { const an = i / 36 * Math.PI * 2 + (i % 3) * .2, R = 260 + (i * 97 % 7) * 70; tl.fromTo(e, { x: 0, y: 0, opacity: 1, scale: 1.4 }, { x: Math.cos(an) * R * 1.6, y: Math.sin(an) * R, opacity: 0, scale: .3, duration: 1.6 + (i % 4) * .2, ease: 'expo.out' }, 117.6); }); fade('#s8 p', 119.1, null); tl.from('#s8 small', { opacity: 0, duration: .8 }, 119.8);
   tl.fromTo('#bar', { scaleX: 0 }, { scaleX: 1, duration: DUR, ease: 'none' }, 0); tl.set({}, {}, DUR);
 
   // ── camera track: [t, az, el, dist, voff, cut] ──
@@ -361,11 +384,11 @@
     [36, 1.7, .14, 3.6, -.2, 1], [44.6, .86, .22, 5, -.2],              // meet: sweeping orbit of the empty station
     [45.4, .74, .32, 7.6, -.17], [51, .78, .3, 6.2, -.17], [55.6, .66, .24, 5, -.17],      // arrival
     [56.4, .62, .2, 4.4, -.17, 1], [60.2, .5, .18, 4],                   // reach, mid
-    [60.2, 1.32, .3, 3.1, -.2, 1], [64.2, 1.12, .24, 2.8, -.2],          // reach, close on the arm
+    [60.2, .92, .17, 3.1, -.2, 1], [64.2, .8, .15, 2.85, -.2],          // reach, close on the arm
     [64.2, 1.02, .24, 4.2, -.17, 1], [67.6, 1.14, .22, 3.8, -.17],       // circles, mid
-    [67.6, .28, .36, 3.2, -.2, 1], [71.2, .48, .3, 2.9, -.2],            // circles, close
-    [71.2, .36, .13, 4.3, -.17, 1], [74.6, .46, .14, 4, -.17],           // leg, mid
-    [74.6, 1.22, .1, 3.3, -.2, 1], [78.4, 1.02, .13, 3, -.2],            // leg, close
+    [67.6, .28, .36, 3.2, -.2, 1], [72.2, .48, .3, 2.9, -.2],            // circles, close
+    [72.2, .36, .13, 4.3, -.17, 1], [75.2, .46, .14, 4, -.17],           // leg, mid
+    [75.2, .92, .1, 3.3, -.2, 1], [78.4, .84, .13, 3.05, -.2],            // leg, close
     [78.4, .9, .27, 4.5, -.17, 1], [85, 1, .24, 3.9, -.17],              // stop
     [86.4, .74, .24, 5.6, .14], [97.4, .6, .22, 6.2, .14]                // behind the app
   ];
@@ -375,12 +398,13 @@
 
   // ── driver ──
   const bx = $('#bg').getContext('2d'), rnd = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
-  function drawBg(t) { if (t > 39.8 && t < 96) return; bx.fillStyle = '#04231B'; bx.fillRect(0, 0, 1920, 1080);
-    [[1340, 220, 760, '14,110,82', .55], [300, 900, 620, '10,84,66', .5], [1000, 620, 520, '52,211,153', .08]].forEach(([x, y, r, c, a], i) => { const cx = x + Math.sin(t * .23 + i * 2.1) * 160, cy = y + Math.cos(t * .19 + i) * 110, g = bx.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, 'rgba(' + c + ',' + a + ')'); g.addColorStop(1, 'rgba(' + c + ',0)'); bx.fillStyle = g; bx.fillRect(0, 0, 1920, 1080); });
-    bx.lineWidth = 2; for (let i = 0; i < 7; i++) { bx.beginPath(); for (let x = -20; x <= 1940; x += 20) { const y = 800 + i * 30 + Math.sin(x * .0038 + t * .7 + i * .6) * 90 * Math.sin(x * .0013 + t * .21 + i * .9); x < 0 ? bx.moveTo(x, y) : bx.lineTo(x, y); } bx.strokeStyle = 'rgba(52,211,153,' + (.04 + i * .022) + ')'; bx.stroke(); }
-    for (let i = 0; i < 90; i++) { const sp = .012 + rnd(i) * .03, y = 1080 - (((rnd(i + 50) + t * sp) % 1) * 1180), x = rnd(i + 99) * 1920 + Math.sin(t * .5 + i) * 26, r = 1 + rnd(i + 7) * 2.6; bx.globalAlpha = .12 + rnd(i + 3) * .4; bx.fillStyle = i % 6 ? '#34D399' : '#fff'; bx.beginPath(); bx.arc(x, y, r, 0, 6.3); bx.fill(); } bx.globalAlpha = 1; }
+  function drawBg(t) { if (t > 39.8 && t < 96) return; bx.fillStyle = '#06303A'; bx.fillRect(0, 0, 1920, 1080);
+    [[1340, 220, 760, '14,90,106', .55], [300, 900, 620, '10,69,82', .5], [1000, 620, 520, '88,230,242', .08]].forEach(([x, y, r, c, a], i) => { const cx = x + Math.sin(t * .23 + i * 2.1) * 160, cy = y + Math.cos(t * .19 + i) * 110, g = bx.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, 'rgba(' + c + ',' + a + ')'); g.addColorStop(1, 'rgba(' + c + ',0)'); bx.fillStyle = g; bx.fillRect(0, 0, 1920, 1080); });
+    bx.lineWidth = 2; for (let i = 0; i < 7; i++) { bx.beginPath(); for (let x = -20; x <= 1940; x += 20) { const y = 800 + i * 30 + Math.sin(x * .0038 + t * .7 + i * .6) * 90 * Math.sin(x * .0013 + t * .21 + i * .9); x < 0 ? bx.moveTo(x, y) : bx.lineTo(x, y); } bx.strokeStyle = 'rgba(88,230,242,' + (.04 + i * .022) + ')'; bx.stroke(); }
+    for (let i = 0; i < 90; i++) { const sp = .012 + rnd(i) * .03, y = 1080 - (((rnd(i + 50) + t * sp) % 1) * 1180), x = rnd(i + 99) * 1920 + Math.sin(t * .5 + i) * 26, r = 1 + rnd(i + 7) * 2.6; bx.globalAlpha = .12 + rnd(i + 3) * .4; bx.fillStyle = i % 6 ? '#58E6F2' : '#fff'; bx.beginPath(); bx.arc(x, y, r, 0, 6.3); bx.fill(); } bx.globalAlpha = 1; }
   const gfl = $('#gfl'), mVal = $('#mVal'), GMAX = { reach: 41, stretch: 60, circle: 100, follow: 100, push: 60, leg: 90 }; let gk = 0;
-  function gauge() { const k = Math.max(0, Math.min(1, (parseFloat(mVal.textContent) || 0) / (GMAX[f3.state.ex] || 100))); gk += (k - gk) * .25; gfl.style.strokeDashoffset = 358 * (1 - gk); }
+  const PER = { reach: 5.4, circle: 4.6, leg: 6 }, repN = $('#repN');
+  function gauge() { const st = f3.state; repN.textContent = Math.floor(st.exT / (PER[st.ex] || 5)) + 1; const k = Math.max(0, Math.min(1, (parseFloat(mVal.textContent) || 0) / (GMAX[f3.state.ex] || 100))); gk += (k - gk) * .25; gfl.style.strokeDashoffset = 358 * (1 - gk); }
   cues.sort((a, b) => a.t - b.t); let t = 0, ci = 0;
   function advance(dt) { t = Math.min(DUR, t + dt); while (ci < cues.length && cues[ci].t <= t) cues[ci++].fn(); camAt(t); tl.time(t, false); f3.step(dt); drawBg(t); gauge(); }
   window.film = { advance, DUR, get t() { return t; } };

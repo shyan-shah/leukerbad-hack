@@ -20,7 +20,7 @@ rep("FREEZE ? 1 : 1 - Math.exp(-dt * 3)); if (!narrow)", "FREEZE || snap ? 1 : 1
 rep("snap = false; renderer.render(scene, cam);", "snap = false; if (!(window.FILM && window.FILM.skip)) renderer.render(scene, cam);")
 rep("requestAnimationFrame((n) => { last = n; frame(n); });", """if (window.FILM) { window.film3d = { view, VIEWS, step(dt) { frame(last + dt * 1000); },
   set(o) { if (o.ex && o.ex !== ex) choose(o.ex); if ('fac' in o) facT = o.fac; if ('stop' in o) { stopOn = o.stop; stopT = 0; } if ('arrive' in o) { arrOn = o.arrive; arrT = 0; } if (o.snap) snap = true; },
-  get state() { return { ex, exT, arrT, arriving, halted, facP }; } }; dispatchEvent(new Event('film3d')); }
+  get state() { return { ex, exT, arrT, arriving, halted, facP, h: [H.x, H.y, H.z] }; } }; dispatchEvent(new Event('film3d')); }
 else requestAnimationFrame((n) => { last = n; frame(n); });""")
 (root / 'assets/science.film.js').write_text(s)
 print('ok', len(s))

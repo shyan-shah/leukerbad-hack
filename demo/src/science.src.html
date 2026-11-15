@@ -576,4 +576,4 @@ document.getElementById('copy').addEventListener('click', () => {
     if (sl.scrollHeight > sl.clientHeight + 4) { const atEnd = sl.scrollTop + sl.clientHeight >= sl.scrollHeight - 2, atTop = sl.scrollTop <= 0; if (!(e.deltaY > 0 ? atEnd : atTop)) { wheelAt = e.timeStamp; return; } }
     if (e.timeStamp - wheelAt < 900) return; wheelAt = e.timeStamp; go(n + (e.deltaY > 0 ? 1 : -1)); }, { passive: true }); }
 </script>
-<script type="module" src="assets/science.js?v=29"></script>
+<script type="module" src="assets/science.js?v=30"></script>

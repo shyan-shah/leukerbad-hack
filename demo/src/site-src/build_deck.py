@@ -12,6 +12,6 @@ one = src
 for f in ('three.module.min.js', 'RoomEnvironment.js', 'RoundedBoxGeometry.js'): one = one.replace('./vendor/' + f, du('vendor/' + f, 'text/javascript'))
 mod = open('assets/science.js').read(); old = "new URL('./vita-logo.png', import.meta.url).href"; assert mod.count(old) == 1
 mod = mod.replace(old, "'" + du('assets/vita-logo.png', 'image/png') + "'")
-tag = '<script type="module" src="assets/science.js?v=28"></script>'; assert one.count(tag) == 1
+import re; tag = re.search(r'<script type="module" src="assets/science\.js\?v=\d+"></script>', one).group(0)
 one = one.replace(tag, '<script type="module">\n' + mod + '\n</script>')
 open(D + '/vita-pitch-deck.html', 'w').write(SK + one + '</body></html>'); print('deck built', len(one))
