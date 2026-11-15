@@ -16,15 +16,25 @@ class Gripper(SimPatient):
     """While resting at the start: a steady grip force along the reach plus a 1 Hz sideways
     wobble (the force that moves a 600 N/m hold 1 cm peak to peak); the limb's weight is carried."""
 
-    def __init__(self, grip_n, **kw):
+    def __init__(self, grip_n, wobble_phase=0.0, **kw):
         super().__init__(**kw)
+        self.wobble_phase = float(wobble_phase)      # turns; the arm clock starts at an arbitrary time
+        self._t_first = None
         self.grip_n = float(grip_n)
+        self._grip_t0 = None
 
     def effort(self, t, pos, vel, goal):
+        if self._t_first is None:
+            self._t_first = t
+        tw = t - self._t_first + self.wobble_phase
         if np.linalg.norm(np.subtract(goal, START)) < 1e-9 and np.linalg.norm(np.subtract(pos, START)) < 0.06:
             # (SimArm adds up to 4.5 N towards the goal for strong patients, "pushing through friction": cancel it)
             back = 4.5 * float(np.clip((goal[0] - pos[0]) / 0.005, -1.0, 1.0)) * min(1.0, self.strength / 0.3)
-            return np.array([self.grip_n - back, 3.0 * np.sin(2 * np.pi * t), 8.0])
+            if self._grip_t0 is None:
+                self._grip_t0 = t
+            g = self.grip_n * min(1.0, (t - self._grip_t0) / 0.3)      # a hand takes 0.3 s to build its grip
+            return np.array([g - back, 3.0 * np.sin(2 * np.pi * tw), 8.0])
+        self._grip_t0 = None
         return super().effort(t, pos, vel, goal)
 
 
@@ -37,22 +47,22 @@ def make(patient, exercise="reach", **kw):
     return eng, arm, reps
 
 
+@pytest.mark.parametrize("exercise", ["reach", "push"])
+@pytest.mark.parametrize("phase", [0.0, 0.25, 0.5, 0.75])
 @pytest.mark.parametrize("grip", [6.0, 10.0, 18.0])
-def test_grip_arms_within_1s_and_completes_a_reach_set(grip):
-    # KNOWN LIMIT (LOG 15 Nov): after a rep the firm hold ramps up from 300 N/m over 1.5 s; a grip
-    # that keeps pushing 18 N meanwhile slides the handle past 5 cm and gets "return to start".
-    # This simulated gripper never comes back, so the 18 N case checks the first rep only.
-    # NOT VERIFIED: a set of several reps with this gripper (6 and 10 N got stuck in rep 2's
-    # return, not diagnosed). Whole sets are covered with the standard simulated patient only.
-    n = 1
-    eng, arm, reps = make(Gripper(grip, strength=1.0), reps=n)
+def test_grip_arms_and_ten_reps_in_a_row_reach_the_target(grip, phase, exercise):
+    """A hand that grips at 6, 10 or 18 N with a 1 cm wobble: every rep arms, the counter reaches
+    the target, no trip. (Before 15 Nov evening: parked at 3.4 or 5.7 cm in the 300 N/m hold,
+    reps cut 30 ms after arming on the resist side, speed trips at arming and on a let-go.)"""
+    kw = {} if exercise == "reach" else {"calibrate": False}
+    eng, arm, reps = make(Gripper(grip, wobble_phase=phase, strength=1.0), exercise=exercise, reps=10, **kw)
     t = 0.0
     while eng.phase != "out" and t < 3.0:
         eng.run_for(DT)
         t += DT
-    assert eng.phase == "out" and t <= 1.0 + DT      # measured: 0.74 to 1.00 s
-    eng.run_until_reps(n, max_s=90.0)
-    assert len(reps) == n and all(r.completed for r in reps)
+    assert eng.phase == "out" and t <= 0.3 + 1.0 + 2 * DT    # grip built over 0.3 s; measured 0.95 s (10, 18 N), 1.28 to 1.31 s (6 N) from first touch
+    eng.run_until_reps(10, max_s=150.0)
+    assert eng.rep_count == 10 and len(reps) == 10 and all(r.completed for r in reps)
     st = arm.get_state()
     assert st.mode == "compliant" and st.fault is None
 

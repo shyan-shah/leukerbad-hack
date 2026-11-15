@@ -147,6 +147,10 @@ ARM_HOLD_S = 0.6             # s of hand force in the firm hold at the start bef
 ARM_DIST_M = 0.05            # m (3D) from the start: inside this a rep can be armed and the start is held firmly
 ARM_MAX_SPEED = 0.05         # m/s: a faster handle does not arm ("hold still")
 ARM_MAX_N = 25.0             # N: a harder push does not arm ("pushing too hard")
+IDLE_SPRING_N = 8.0          # N: an idle hold pulling harder than this needs a hand on the other side (friction holds 4.5 N)
+ARM_HANDOVER_S = 0.25        # s after arming with the target on the hand (longer than the stiffness latency)
+ARM_GRACE_S = 0.5            # s after arming during which the one-tick let-go test is off
+FIRM_EXIT_M = 0.07           # m: the firm hold is given up only beyond this (arming still needs ARM_DIST_M)
 FIRM_RAMP_S = 1.5            # s, the idle hold at the start goes from k_hold to k_max over this
 FIRM_STEP_S = 0.25           # s between its steps (longer than the arm's stiffness latency, up to 0.2 s)
 GO_COUNTDOWN_S = 3.0         # s between Engine.go() and the rep it arms
@@ -230,6 +234,7 @@ class Engine:
         self.force_baseline = np.zeros(3)   # N, empty-handle sensor reading (set by start())
         self._f_filt: np.ndarray | None = None
         self._vel = np.zeros(3)             # handle velocity of the current tick
+        self._f_now = np.zeros(3)           # baseline-relative force of the current tick (unfiltered)
         self._last_tick_t: float | None = None
         # calibration (contract of 15 Nov). The calibrate phase itself is NOT implemented yet:
         # the status is always "skipped" and the resistance is the preset's.
@@ -525,6 +530,7 @@ class Engine:
         pos = np.asarray(state.pos, dtype=float)
         raw_force = np.asarray(state.force, dtype=float)
         force = raw_force - self.force_baseline
+        self._f_now = force
         dt_tick = DT if self._last_tick_t is None else float(np.clip(t_arm - self._last_tick_t, 0.0, 0.1))
         self._last_tick_t = t_arm
         if self._f_filt is None:
@@ -678,6 +684,14 @@ class Engine:
             d_cmd, rescued_cmd = self._rescue_dial(dial, t_arm)
             target, k = controller.command(d_cmd, self._phase, s, t_arm - self._phase_t0,
                                            pos, self.path, rescued_cmd)
+            if self._phase == "out" and t_arm - self._phase_t0 < ARM_HANDOVER_S:
+                # hand-over from the firm hold: the hand was pressing up to 25 N against k_max and
+                # the new stiffness takes up to 0.2 s to act. Target on the hand meanwhile, so a
+                # hand that relaxes on "go" is not snapped back (0.46 m/s and a trip in the sim).
+                # (along the reach only: the walls keep carrying the limb's weight)
+                tg = np.array(target, dtype=float)
+                tg[self.reach_axis] = pos[self.reach_axis]
+                target = _tup3(tg)
         else:
             if idle_cmd is None:                 # the rep ended on this tick
                 idle_cmd = self._idle_hold(t_arm, pos, occupied, dt_tick, False)[:2]
@@ -707,14 +721,25 @@ class Engine:
         if self._latch is None:
             self._latch = self._beside_hand(pos)
             self._firm = False
-        if self._firm and not near:
+        if self._firm and dist > FIRM_EXIT_M:
             self._firm = False
             self._latch = self._beside_hand(pos)
+        # let go of a loaded idle hold (a hand pressing 18 N against it and then gone threw the
+        # handle back at 0.4 m/s in the sim): the hold pulls with more than IDLE_SPRING_N and
+        # this tick's reading shows under half of that. Target onto the hand at once; the walk
+        # back at 2 cm/s follows as for any empty handle.
+        if self._cmd is not None:
+            spring = float(np.linalg.norm(self._cmd[1] * (self._cmd[0] - pos)))
+            if spring > IDLE_SPRING_N and float(np.linalg.norm(self._f_now)) < 0.5 * spring:
+                self._firm = False
+                self._latch = np.asarray(pos, dtype=float).copy()
+                self._arm_acc = 0.0
         ok = False
         if self._firm:
-            ok = HAND_ON_N < f <= ARM_MAX_N and speed < ARM_MAX_SPEED
+            ok = near and HAND_ON_N < f <= ARM_MAX_N and speed < ARM_MAX_SPEED
             reason = (None if ok else "press gently" if f <= HAND_ON_N
-                      else "pushing too hard" if f > ARM_MAX_N else "hold still")
+                      else "pushing too hard" if f > ARM_MAX_N
+                      else "return to start" if not near else "hold still")
             target = _tup3(start)
             # k_hold -> k_max over FIRM_RAMP_S in FIRM_STEP_S steps (a one-step change snapped a handle
             # that friction had stopped 1.5 cm short at 0.11 m/s)
@@ -723,7 +748,7 @@ class Engine:
             kf = kh + (km - kh) * (int(el / FIRM_STEP_S + 1e-9) * FIRM_STEP_S / FIRM_RAMP_S)
             k = (kf, kf, kf)
         else:
-            if occupied and not near:
+            if occupied and dist > FIRM_EXIT_M:
                 cand = self._beside_hand(pos)
                 if np.linalg.norm(cand - start) < np.linalg.norm(self._latch - start):
                     self._latch = cand
@@ -734,7 +759,9 @@ class Engine:
                 step_m = TEST_RETURN_SPEED * dt_tick
                 if left <= step_m:
                     self._latch = start.copy()
-                    if dist <= NEAR_START_M:
+                    # (within 3 cm until this fix: a 10 N hand sat 3.4 cm out and an 18 N hand 5.7 cm
+                    # out in the 300 N/m hold for good, since it saturates at 15 N; nothing armed)
+                    if dist <= FIRM_EXIT_M:
                         self._firm = True
                         # already on the start (5 mm): firm at once; else ramp (no snap). armtest always ramps:
                         # armed at once, a strong sim patient's first try was cut short as a let-go
@@ -794,6 +821,11 @@ class Engine:
         A person who is still holding on, even one moving with the band, is not "let go"."""
         if not occupied:
             return True
+        if self._phase == "out" and self._last_tick_t is not None and self._last_tick_t - self._phase_t0 < ARM_GRACE_S:
+            # just armed: the hand is changing from pressing to pushing and its force passes
+            # through small values (a rep was ended 30 ms after it was armed). The 0.5 s
+            # occupancy rule above still applies.
+            return False
         spring = float(self._spring_force(pos)[self.reach_axis])
         return abs(spring) > RELEASE_SPRING_N and not self._hand_on(force, self._vel, along_reach_only=True)
 
