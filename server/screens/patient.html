@@ -194,7 +194,7 @@ function draw() {
   if (targetS !== null) { tgt.style.left = pct(targetS); tgt.style.borderColor = `var(--${mode})`; }
 
   const f = Math.hypot(...(m.force || [0, 0, 0]));
-  $("force").textContent = "";            // the bar only: no newton number in front of the patient
+  $("force").textContent = fmt.N(f);     // the number stays beside the bar; only the level buttons are words
   $("forcebar").style.width = `${Math.min(100, (f / FORCE_MAX_N) * 100)}%`;
   $("calforce").textContent = fmt.N(f);
   $("calbar").style.width = `${Math.min(100, (f / FORCE_MAX_N) * 100)}%`;
