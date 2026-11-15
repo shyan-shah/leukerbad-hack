@@ -111,6 +111,7 @@ import numpy as np
 from server.contract import RepResult, Sample, SessionSummary
 from software import controller
 from software import exercises
+from software import strength_model
 from software.adapt import AUTO_FLOOR, mode_of, next_dial
 from software.metrics import contribution, force_stats, path_error, rep_metrics, rom, sparc
 from software.paths import LinePath
@@ -142,6 +143,14 @@ RESIST_RAMP_S = 1.0          # s, resist-side rescue ramps the resistance to 0 o
 RESIST_RAMP_STEP_S = 0.1     # s between ramp steps (10 steps over RESIST_RAMP_S)
 TEST_RETURN_SPEED = 0.02     # m/s, the target walks back to the start at this speed (armtest rest, release)
 RELEASE_SPRING_N = 1.0       # N, a commanded spring pull above this needs a hand to hold it
+ARM_HOLD_S = 0.6             # s of hand force in the firm hold at the start before a rep is armed (15 Nov, replaces ARM_DWELL_S for line reps and tries)
+ARM_DIST_M = 0.05            # m (3D) from the start: inside this a rep can be armed and the start is held firmly
+ARM_MAX_SPEED = 0.05         # m/s: a faster handle does not arm ("hold still")
+ARM_MAX_N = 25.0             # N: a harder push does not arm ("pushing too hard")
+FIRM_RAMP_S = 1.5            # s, the idle hold at the start goes from k_hold to k_max over this
+FIRM_STEP_S = 0.25           # s between its steps (longer than the arm's stiffness latency, up to 0.2 s)
+GO_COUNTDOWN_S = 3.0         # s between Engine.go() and the rep it arms
+GO_MIN_N = 2.0               # N of hand force needed for go() to arm the rep
 SETUP_DWELL_S = 1.0          # s at the far end before a "far" exercise (pull) leaves the setup phase
 EXERCISE = "reach_line"      # SessionSummary.exercise for the default "reach" preset (unchanged)
 
@@ -161,7 +170,8 @@ class Engine:
                  reach_axis: int = 0, reach_sign: int = 1, reach_m: float | None = None,
                  dial: float | None = None, auto: bool | None = None,
                  on_sample=None, on_rep=None,
-                 exercise: str = "reach", reps: int | None = None) -> None:
+                 exercise: str = "reach", reps: int | None = None,
+                 calibrate: bool | None = None, calibration_state: dict | None = None) -> None:
         """``exercise`` is a preset id from software/exercises.py (default "reach": unchanged
         behaviour). ``reach_m`` given overrides the preset's length. ``dial`` and ``auto`` are
         the caller's for "reach"; for the other presets ``auto`` is the preset's and ``dial`` is
@@ -221,6 +231,15 @@ class Engine:
         self._f_filt: np.ndarray | None = None
         self._vel = np.zeros(3)             # handle velocity of the current tick
         self._last_tick_t: float | None = None
+        # calibration (contract of 15 Nov). The calibrate phase itself is NOT implemented yet:
+        # the status is always "skipped" and the resistance is the preset's.
+        self.calibrate = (p.kind == "resist") if calibrate is None else bool(calibrate)
+        self.calibration_state = dict(calibration_state) if calibration_state else strength_model.new_state()
+        self.calibration_state_after = dict(self.calibration_state)
+        self._arming = {"progress": 0.0, "reason": None}
+        self._go_at: float | None = None
+        self._go_req = False
+        self._resume_req = False
         self._reset_rep_state()
 
     # ------------------------------------------------------------------ interface (4.4)
@@ -261,7 +280,9 @@ class Engine:
         if hasattr(self.arm, "patient") and hasattr(self.arm, "cue"):
             # Simulated patient: where its reach starts, and whether the engine cues it itself
             # (pull and armtest) or it follows the stiffness change as before (reach, push).
-            self._explicit_cues = self.preset.start_at == "far" or self.preset.kind == "test"
+            # (15 Nov: the idle hold at the start is now at k_max, so the stiffness change no
+            # longer means "go"; every preset but the circle cues the patient explicitly)
+            self._explicit_cues = self.preset.kind != "guided"
             self.arm.reach_origin = _tup3(start)
             if self._phase == "setup":
                 self.arm.auto_cue = False           # the setup stiffness change is not a "go"
@@ -303,6 +324,12 @@ class Engine:
                 th.join(timeout=2.0)
         finally:
             self.arm.hold()
+        with self._lock:
+            if self._started and self._phase in ("out", "back") and self._rep_idx >= 0:
+                self._abort_rep(self._dial)          # a rep in progress at stop() is recorded as not completed
+                self._phase = "idle"
+            if self.reps and self.preset.kind == "resist":
+                self.calibration_state_after = strength_model.update(self.calibration_state, self.reps)
         return SessionSummary(
             session_id=self.session_id, patient_id=self.patient_id,
             started_at=self.started_at or _now_iso(), ended_at=_now_iso(),
@@ -325,7 +352,52 @@ class Engine:
             return d | {"rep_count": self.rep_count, "auto": self._auto,
                         "arm_mode": self._arm_mode, "exercise": self.exercise,
                         "kind": self.preset.kind, "reps_target": self.reps_target,
-                        "done": self.done}
+                        "done": self.done, "arming": dict(self._arming),
+                        "calibration": self._calibration_snapshot()}
+
+    def _calibration_snapshot(self) -> dict:
+        """Contract shape. The calibrate phase is not implemented yet: always "skipped"."""
+        resist = self.preset.kind == "resist"
+        return {"status": "skipped", "progress": 0.0, "comfort_force_n": None,
+                "resistance_n": (abs(self._dial) * controller.K_RESIST * controller.MAX_LEAD) if resist else None,
+                "fraction": float(self.calibration_state.get("fraction", 0.5)) if resist else None,
+                "reason": ("calibration push not implemented yet, preset resistance used"
+                           if resist and self.calibrate else None)}
+
+    def go(self) -> None:
+        """Operator "go": after GO_COUNTDOWN_S the next rep is armed if the handle is within
+        ARM_DIST_M of the start and the hand force is above GO_MIN_N. Otherwise nothing happens."""
+        with self._lock:
+            self._go_req = True
+
+    def resume(self) -> None:
+        """After a trip, once the arm has been homed and prepared: restart compliance and carry
+        on with the same session (rep count and reps are kept)."""
+        with self._lock:
+            self._resume_req = True
+        if not getattr(self.arm, "realtime", True) or self._thread is None:
+            self._do_resume()
+
+    def _do_resume(self) -> None:
+        with self._lock:
+            if not self._resume_req:
+                return
+            self._resume_req = False
+            if not self._started:
+                raise RuntimeError("resume() before start()")
+            if self.arm.get_state().mode != "compliant":
+                self.arm.start_compliance()
+            count, reps = self.rep_count, self.reps
+            self._reset_rep_state()
+            self.rep_count, self.reps = count, reps
+            self._last_force_t = None
+            self._f_filt = None
+            if abs(self._progress(self.arm.get_state().pos)) * self.reach_m > NEAR_START_M:
+                self._phase = "setup"
+                if self._explicit_cues:
+                    self.arm.cue("back")
+            else:
+                self._sim_cue("rest")
 
     @property
     def done(self) -> bool:
@@ -411,6 +483,9 @@ class Engine:
         self._rel_k = np.zeros(3)            # release: stiffness when the handle was let go
         self._rel_t0 = 0.0
         self._rel_walk = False
+        self._firm = False                   # idle: holding the start at k_max
+        self._arm_acc = 0.0                  # s of arming force collected
+        self._firm_t0 = 0.0
         self._clear_rep()
 
     def _clear_rep(self) -> None:
@@ -440,6 +515,8 @@ class Engine:
         return np.asarray(self.path.start, dtype=float) + self._progress(pos) * self.reach_m * self.path.axis()
 
     def _tick(self) -> None:
+        if self._resume_req:
+            self._do_resume()
         state = self.arm.get_state()
         t_arm = float(state.t)
         if self._t0 is None:
@@ -467,6 +544,10 @@ class Engine:
             self._latch = None
             self._k_sent = None  # re-send stiffness if compliance is restarted
             self._cmd = None
+            self._firm = False
+            self._arm_acc = 0.0
+            self._go_at = None
+            self._arming = {"progress": 0.0, "reason": None}
             self._emit(t, state, _tup3(pos), dial, "idle", -1, force)
             return
 
@@ -541,15 +622,15 @@ class Engine:
             self._phase = "idle"
             self._near_since = None
 
-        # idle -> out
+        # idle -> out (firm hold at the start, hand force for ARM_HOLD_S; see _idle_hold)
+        idle_cmd = None
         if self._phase == "idle":
-            if near_start and occupied and not self._limit_reached():
-                if self._near_since is None:
-                    self._near_since = t_arm
-                if t_arm - self._near_since >= ARM_DWELL_S:
-                    self._begin_rep(t_arm, t, dial)
-            else:
-                self._near_since = None
+            tgt_i, k_i, armed = self._idle_hold(t_arm, pos, occupied, dt_tick, not self._limit_reached())
+            idle_cmd = (tgt_i, k_i)
+            if armed:
+                self._begin_rep(t_arm, t, dial)
+                self._last_force_t = t_arm       # the arming force is a hand: occupied from here
+                occupied = True
 
         # record the out slice (strictly increasing time only)
         if self._phase == "out" and (not self._out_t or t > self._out_t[-1]):
@@ -598,20 +679,98 @@ class Engine:
             target, k = controller.command(d_cmd, self._phase, s, t_arm - self._phase_t0,
                                            pos, self.path, rescued_cmd)
         else:
-            kh = float(self.arm.limits.k_hold)
-            k = (kh, kh, kh)
-            if occupied:
-                self._latch = None
-                # at the start: hold the start point; elsewhere: follow the hand along the line
-                target = _tup3(self.path.point_at(0.0) if at_hold_start else self._on_line(pos))
-            else:
-                if self._latch is None:
-                    self._latch = self._on_line(pos)
-                target = _tup3(self._latch)
+            if idle_cmd is None:                 # the rep ended on this tick
+                idle_cmd = self._idle_hold(t_arm, pos, occupied, dt_tick, False)[:2]
+            target, k = idle_cmd
 
         self._send(target, k)
         self._emit(t, state, target, dial, label_phase,
                    label_idx if label_phase != "idle" else -1, force)
+
+    def _idle_hold(self, t_arm, pos, occupied, dt_tick, can_arm):
+        """Idle command and arming for line reps and tries (15 Nov). Returns (target, k, armed).
+
+        ``_latch`` is the idle target. Within ARM_DIST_M of the start (3D), or with the handle
+        empty, it walks to the start at TEST_RETURN_SPEED in the soft hold; once it is there and
+        the handle is within NEAR_START_M the hold goes firm (k_max on all axes, target fixed at
+        the start). A hand on the handle further away is held softly where it is; the target
+        follows the hand only towards the start (no free sliding away along the line).
+        In the firm hold, a baseline-relative force (smoothed, any direction) above HAND_ON_N
+        and at most ARM_MAX_N with the handle slower than ARM_MAX_SPEED arms the rep after
+        ARM_HOLD_S. An empty handle stands still there and reads its pose error only.
+        ``go()``: GO_COUNTDOWN_S later the rep is armed if the force is above GO_MIN_N."""
+        start = np.asarray(self.path.start, dtype=float)
+        dist = float(np.linalg.norm(pos - start))
+        f = float(np.linalg.norm(self._f_filt))
+        speed = float(np.linalg.norm(self._vel))
+        near = dist <= ARM_DIST_M
+        if self._latch is None:
+            self._latch = self._beside_hand(pos)
+            self._firm = False
+        if self._firm and not near:
+            self._firm = False
+            self._latch = self._beside_hand(pos)
+        ok = False
+        if self._firm:
+            ok = HAND_ON_N < f <= ARM_MAX_N and speed < ARM_MAX_SPEED
+            reason = (None if ok else "press gently" if f <= HAND_ON_N
+                      else "pushing too hard" if f > ARM_MAX_N else "hold still")
+            target = _tup3(start)
+            # k_hold -> k_max over FIRM_RAMP_S in FIRM_STEP_S steps (a one-step change snapped a handle
+            # that friction had stopped 1.5 cm short at 0.11 m/s)
+            kh, km = float(self.arm.limits.k_hold), float(self.arm.limits.k_max)
+            el = min(FIRM_RAMP_S, t_arm - self._firm_t0)
+            kf = kh + (km - kh) * (int(el / FIRM_STEP_S + 1e-9) * FIRM_STEP_S / FIRM_RAMP_S)
+            k = (kf, kf, kf)
+        else:
+            if occupied and not near:
+                cand = self._beside_hand(pos)
+                if np.linalg.norm(cand - start) < np.linalg.norm(self._latch - start):
+                    self._latch = cand
+                reason = "return to start"
+            else:
+                d = start - self._latch
+                left = float(np.linalg.norm(d))
+                step_m = TEST_RETURN_SPEED * dt_tick
+                if left <= step_m:
+                    self._latch = start.copy()
+                    if dist <= NEAR_START_M:
+                        self._firm = True
+                        # already on the start (5 mm): firm at once; else ramp (no snap)
+                        self._firm_t0 = t_arm - (FIRM_RAMP_S if dist <= 0.005 else 0.0)
+                else:
+                    self._latch = self._latch + d / left * step_m
+                reason = ("too far from start" if not near else
+                          "return to start" if dist > NEAR_START_M else "hold still")
+            target = _tup3(self._latch)
+            kh = float(self.arm.limits.k_hold)
+            k = (kh, kh, kh)
+        armed = False
+        with self._lock:
+            go_req, self._go_req = self._go_req, False
+        if go_req and can_arm:
+            self._go_at = t_arm + GO_COUNTDOWN_S
+        if not can_arm:
+            self._arm_acc, self._go_at = 0.0, None
+            self._arming = {"progress": 0.0, "reason": None}
+            return target, k, False
+        self._arm_acc = min(ARM_HOLD_S, self._arm_acc + dt_tick) if ok else max(0.0, self._arm_acc - dt_tick)
+        progress = self._arm_acc / ARM_HOLD_S
+        if self._arm_acc >= ARM_HOLD_S - 1e-9:
+            armed = True
+        elif self._go_at is not None:
+            progress = max(progress, 1.0 - (self._go_at - t_arm) / GO_COUNTDOWN_S)
+            if t_arm >= self._go_at:
+                self._go_at = None
+                if near and GO_MIN_N < f <= ARM_MAX_N:
+                    armed = True
+                else:
+                    reason = "press gently" if near and f <= GO_MIN_N else (reason or "return to start")
+        if armed:
+            self._arm_acc, self._go_at, self._firm = 0.0, None, False
+            progress, reason = 1.0, None
+        self._arming = {"progress": float(np.clip(progress, 0.0, 1.0)), "reason": reason}
+        return target, k, armed
 
     def _send(self, target, k) -> None:
         """Target every tick (feeds the watchdog); stiffness only when it changes."""
@@ -746,15 +905,15 @@ class Engine:
         TEST_RETURN_SPEED, so the stretched spring does not snap the handle back when the
         person relaxes (in the sim that reached 0.46 m/s and tripped the speed limit)."""
         p = self.preset
-        if self._phase == "idle" and not self._limit_reached():
-            # the first try waits for a hand on the handle at the start, like any rep
-            if near_start and occupied:
-                if self._near_since is None:
-                    self._near_since = t_arm
-                if t_arm - self._near_since >= ARM_DWELL_S:
-                    self._begin_try(t_arm, t, dial)
-            else:
-                self._near_since = None
+        idle_cmd = None
+        if self._phase == "idle":
+            # the first try waits for a hand pressing on the handle at the start, like any rep
+            tgt_i, k_i, armed = self._idle_hold(t_arm, pos, occupied, dt_tick, not self._limit_reached())
+            idle_cmd = (tgt_i, k_i)
+            if armed:
+                self._begin_try(t_arm, t, dial)
+                self._last_force_t = t_arm
+                occupied = True
 
         label_phase, label_idx = self._phase, self._rep_idx
         if self._phase == "out":
@@ -786,8 +945,9 @@ class Engine:
             k[self.reach_axis] = float(self.arm.limits.k_max)
             k = (k[0], k[1], k[2])
         else:
-            kh = float(self.arm.limits.k_hold)
-            k = (kh, kh, kh)
+            if idle_cmd is None:
+                idle_cmd = self._idle_hold(t_arm, pos, occupied, dt_tick, False)[:2]
+            k = idle_cmd[1]
         if label_phase == "out":                # a push tick (the last one included): start pose
             if self._phase == "out":
                 self._test_offset = 0.0
@@ -798,13 +958,10 @@ class Engine:
             self._test_offset -= float(np.clip(self._test_offset, -step, step))
             self._latch = None
             start = _tup3(np.asarray(self.path.start) + self._test_offset * self.path.axis())
-        elif occupied:                          # idle, same rule as the line: never pull the hand
-            self._latch = None
-            start = _tup3(self.path.point_at(0.0) if abs(s) * self.reach_m <= HOLD_START_M else self._beside_hand(pos))
-        else:                                   # idle and empty: the target stays where it is
-            if self._latch is None:
-                self._latch = self._beside_hand(pos)
-            start = _tup3(self._latch)
+        else:                                   # idle: the shared idle hold (_idle_hold)
+            if idle_cmd is None:
+                idle_cmd = self._idle_hold(t_arm, pos, occupied, dt_tick, False)[:2]
+            start = idle_cmd[0]
         self._send(start, k)
         self._emit(t, state, start, dial, label_phase,
                    label_idx if label_phase == "out" else -1, force)

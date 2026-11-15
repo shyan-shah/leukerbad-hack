@@ -337,9 +337,10 @@ def test_assist_side_let_go_stops_within_8cm(name, strength, frac):
     assert travel < 0.08                                              # measured: 7.6 cm at most (limp, 30%, no friction)
     assert idle_after <= engine_mod.OCCUPIED_WINDOW_S + 3 * DT        # detection is no slower than before
     assert eng.phase == "idle" and arm.get_state().fault is None
-    assert np.linalg.norm(after[-1].vel) < 0.005
+    assert np.linalg.norm(after[-1].vel) < 0.025      # 15 Nov: the empty handle is walked back to the start at 2 cm/s
     late = after[int(1.0 / DT):]
-    assert max(np.linalg.norm(np.subtract(s.target, late[0].target)) for s in late) < 1e-9     # target latched
+    # 15 Nov: the target is no longer latched for good; it only walks back towards the start at 2 cm/s
+    assert all(b.target[0] <= a.target[0] + 1e-9 and a.target[0] - b.target[0] <= 0.02 * DT + 1e-6 for a, b in zip(late, late[1:]))
 
 
 def test_assist_side_let_go_with_a_reading_along_the_motion_of_the_other_sign():
@@ -477,15 +478,14 @@ def test_back_phase_ends_inside_the_friction_dead_band_not_by_timeout():
     assert eng2.phase == "back" and abs(arm2.get_state().vel[0]) > engine_mod.STALL_SPEED
 
 
-def test_idle_hold_pulls_a_held_handle_onto_the_start_only_inside_2cm():
+def test_idle_near_the_start_walks_the_target_there_and_then_holds_it_firmly():
+    """15 Nov: near the start the idle target walks to the start (2 cm/s), then the hold ramps to k_max."""
     eng, arm, samples, reps = make("reach", strength=0.0, arm_kw={}, reps=1)
     eng.run_until_reps(1, max_s=60.0)
-    arm._pos[0] = START[0] + 0.027; arm._vel[:] = 0.0                 # held 2.7 cm out: follow the hand
-    eng.run_for(DT)
-    assert samples[-1].target[0] == pytest.approx(START[0] + 0.027, abs=1e-3)
-    arm._pos[0] = START[0] + 0.015; arm._vel[:] = 0.0                 # 1.5 cm out: hold the start point
-    eng.run_for(DT)
-    assert samples[-1].target[0] == pytest.approx(START[0])
+    eng.run_for(4.0)
+    assert samples[-1].target == pytest.approx(START)
+    assert tuple(eng._cmd[1]) == pytest.approx((arm.limits.k_max,) * 3)
+    assert arm.get_state().fault is None and max(np.linalg.norm(s.vel) for s in samples[-400:]) < 0.15
 
 
 # --------------------------------------------------------------------------- setup: a session that starts away from the path start
@@ -563,11 +563,11 @@ def test_setup_does_not_pull_a_handle_left_beyond_the_path_end():
 
 def test_setup_is_not_entered_at_the_start_and_is_not_a_patient_cue():
     eng, arm, samples, reps = make("reach", arm_kw=REAL)
-    assert eng.phase == "idle" and arm.auto_cue is True
+    assert eng.phase == "idle" and arm.auto_cue is False             # 15 Nov: the engine cues every line rep itself
     eng, arm, samples, reps = pull_then("reach", {})
     assert eng.phase == "setup" and arm.auto_cue is False            # the stiffness change is not a "go"
     run_until_phase(eng, "idle")
-    assert arm.auto_cue is True                                       # reach and push cue by stiffness again
+    assert arm.auto_cue is False
 
 
 # --------------------------------------------------------------------------- armtest: the spring is walked back after the last try too

@@ -243,7 +243,7 @@ def test_hands_off_reach_stops_advancing():
     after = settle(eng, samples, 3.0)
     assert eng.phase == "idle"
     assert max(x(s.pos) for s in after) - x0 < 0.08
-    assert np.linalg.norm(after[-1].vel) < 0.005
+    assert np.linalg.norm(after[-1].vel) < 0.025      # 15 Nov: walked back to the start at 2 cm/s
 
 
 def let_go_at(exercise, frac, strength=1.0):
