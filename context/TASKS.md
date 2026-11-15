@@ -34,9 +34,10 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | L1 Patient screen | Shyan | server/ | Done (small fix: hand dot overlaps track-end labels) |
 | L2 Physio screen | Shyan | server/ | Todo |
 | L3 Operator console | Shyan | server/ | Todo |
-| Y6 `POST /api/arm/prepare` (home + zero_force before first real session) | Shyan | server/ | Todo |
+| Y6 `POST /api/arm/prepare` (fault check + zero_force before the first real session; no home) | Shyan | server/ | Done |
 | L4 QR / LAN phone access | Shyan | server/ | Todo (after L2) |
-| Help Kian get the arm connected (K0): organisers/technician for Remote mode + licence | Shyan | n/a | Blocked on technician |
+| Help Kian get the arm connected (K0): organisers/technician for Remote mode + licence | Shyan | n/a | Done (connected 14 Nov, licence RDK-Professional) |
+| Arm motion test stages 3-5 (soft hold, free axis, engine dry run) | Shyan | server/hw/ | Todo (needs the robot) |
 | B0 Therapist interviews in Leukerbad (3 by Sat evening, 5 by Sun midday) | Mat, Gio | business/ | Todo |
 | B1 Claims table with checked sources | Mat, Gio | business/ | Todo |
 | B2 Verify the claims list (MASTER_PLAN section 7) | Mat, Gio | business/ | Todo |
