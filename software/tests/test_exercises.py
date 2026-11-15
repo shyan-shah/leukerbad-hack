@@ -286,3 +286,58 @@ def test_hands_off_circle_stops_the_target():
     assert max(np.linalg.norm(np.subtract(s.target, late[0].target)) for s in late) < 1e-9
     assert np.linalg.norm(after[-1].vel) < 0.005
     assert reps and reps[-1].completed is False
+
+
+# --------------------------------------------------------------------------- sessions in a row, reach along y
+
+def session(arm, exercise, **kw):
+    samples, reps = [], []
+    eng = Engine(arm, "sess-y", "pat-y", True, on_sample=samples.append, on_rep=reps.append,
+                 exercise=exercise, **kw)
+    eng.start()
+    return eng, samples, reps
+
+
+@pytest.mark.parametrize("nxt", ["armtest", "reach", "push", "circle"])
+def test_next_session_never_drives_an_empty_handle_left_at_the_far_end(nxt):
+    """pull ends 28 cm out. The next exercise must not pull an empty handle back to the start."""
+    arm = SimArm(SimPatient(strength=1.0), start_pos=START, realtime=False)
+    arm.connect()
+    eng, _, reps = session(arm, "pull", reps=1)
+    eng.run_until_reps(1, max_s=60.0)
+    eng.run_for(1.0)
+    eng.stop()
+    assert len(reps) == 1 and x(arm.get_state().pos) > 0.20          # left near the far end
+    arm.patient.present = False
+    for _ in range(300):               # the limb's weight comes off the held handle: let it settle
+        arm.step(DT)
+    left = arm.get_state().pos
+    eng, samples, reps = session(arm, nxt)
+    eng.run_for(8.0)
+    assert not reps and arm.get_state().fault is None
+    assert max(abs(s.pos[0] - left[0]) for s in samples) < 0.005      # never moved along the reach
+    # the soft hold may lift the sagged handle back onto the path line (under 3 cm, vertical only)
+    assert max(np.linalg.norm(np.subtract(s.pos, left)) for s in samples) < 0.03
+    assert np.linalg.norm(samples[-1].vel) < 0.005
+
+
+@pytest.mark.parametrize("exercise", ["push", "pull", "armtest"])
+def test_reach_along_y_layout_b(exercise):
+    """Layout B: reach along world y. Same programmes, box laid out along y."""
+    from robot.arm import Limits, limits_for_reach_axis
+    start = (0.50, -0.15, 0.30)
+    arm = SimArm(SimPatient(strength=0.8), limits_for_reach_axis(Limits(), 1), start_pos=start,
+                 realtime=False)
+    arm.connect()
+    samples, reps = [], []
+    eng = Engine(arm, "s", "p", True, reach_axis=1, reach_sign=1, exercise=exercise,
+                 on_sample=samples.append, on_rep=reps.append)
+    eng.start()
+    eng.run_until_reps(2, max_s=90.0)
+    assert len(reps) == 2 and all(r.completed for r in reps) and arm.get_state().fault is None
+    assert max(abs(s.pos[0] - start[0]) for s in samples) < 0.01     # x is a wall axis
+    if exercise == "armtest":
+        assert reps[0].peak_force_n == pytest.approx(20.0, rel=0.15)
+        assert max(abs(s.pos[1] - start[1]) for s in samples) < 0.05
+    else:
+        assert max(s.pos[1] - start[1] for s in samples) > 0.25

@@ -3,7 +3,7 @@
 Presets live in `software/exercises.py` (`EXERCISES`, `LIVE`); the engine applies one with
 `Engine(..., exercise="<id>", reps=None)`. The app ids are those of `context/EXERCISE_MAP.md`.
 All numbers are team-chosen starting values, not clinical prescriptions. Everything below was
-tested on `SimArm` only (`software/tests/test_exercises.py`); nothing here has run on the real arm yet.
+tested on `SimArm` only (`software/tests/test_exercises.py`, 23 tests, reach along x and along y as in Layout B); nothing here has run on the real arm yet.
 
 `LIVE = ("reach", "push", "pull", "armtest")`. `circle` is implemented but not live.
 
@@ -72,6 +72,7 @@ Robot-led: after the usual 1 s with a hand on the handle at the start, the targe
 | test (`armtest`) | never driven anywhere (stays within 5 cm). Letting go while pushing hard releases the spring: in the sim 0.46 m/s, speed trip, hold | yes |
 | guided (`circle`) | the circle ends as not completed, phase `idle`, the target stops | yes |
 | `pull` setup | nothing moves | yes |
+| any, handle left away from the start (e.g. `armtest` after `pull`) | an empty handle is not moved along the reach; the soft hold only lifts it back onto the path line (under 3 cm, vertical). The person brings it to the start; a try, rep or circle starts only there | yes, each of `armtest`, `reach`, `push`, `circle` started after `pull` |
 
 The two speed trips are the arm's safety net working, but they end the session. Not changed here because they are section 4.2 behaviour: a gentler option for Shiv is to apply the hands-off rule on the resist side too (end the rep and latch the target where the handle was released).
 

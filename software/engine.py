@@ -398,6 +398,11 @@ class Engine:
         """Hand projected onto the path line, clamped to the segment."""
         return self.path.point_at(self._progress(pos))
 
+    def _beside_hand(self, pos) -> np.ndarray:
+        """Hand projected onto the path line, NOT clamped to the segment: a target here pulls
+        the handle back onto the line but never along the reach (armtest and circle idle)."""
+        return np.asarray(self.path.start, dtype=float) + self._progress(pos) * self.reach_m * self.path.axis()
+
     def _tick(self) -> None:
         state = self.arm.get_state()
         t_arm = float(state.t)
@@ -626,11 +631,20 @@ class Engine:
         if label_phase == "out":                # a push tick (the last one included): start pose
             if self._phase == "out":
                 self._test_offset = 0.0
+            self._latch = None
             start = _tup3(self.path.point_at(0.0))
-        else:                                   # walk the target back to the start pose
+        elif self._phase == "back":             # rest: walk the target back to the start pose
             step = TEST_RETURN_SPEED * dt_tick
             self._test_offset -= float(np.clip(self._test_offset, -step, step))
+            self._latch = None
             start = _tup3(np.asarray(self.path.start) + self._test_offset * self.path.axis())
+        elif occupied:                          # idle, same rule as the line: never pull the hand
+            self._latch = None
+            start = _tup3(self.path.point_at(0.0) if near_start else self._beside_hand(pos))
+        else:                                   # idle and empty: the target stays where it is
+            if self._latch is None:
+                self._latch = self._beside_hand(pos)
+            start = _tup3(self._latch)
         self._send(start, k)
         self._emit(t, state, start, dial, label_phase,
                    label_idx if label_phase == "out" else -1, force)
@@ -701,10 +715,10 @@ class Engine:
             kh = float(self.arm.limits.k_hold)
             if occupied:
                 self._latch = None
-                target = _tup3(self.path.point_at(0.0) if near_start else self._on_line(pos))
+                target = _tup3(self.path.point_at(0.0) if near_start else self._beside_hand(pos))
             else:
                 if self._latch is None:
-                    self._latch = self._on_line(pos)
+                    self._latch = self._beside_hand(pos)
                 target = _tup3(self._latch)
             self._send(target, (kh, kh, kh))
             self._emit(t, state, target, dial, "idle", -1, force)
