@@ -55,6 +55,45 @@ Peak forces to copy from the run (for the pitch; nobody says a force limit on st
 | Pushing against the band (check 11) | not run |
 | Push that tripped the arm (check 7) | not run |
 
+## Test-limits profile (`set_test_limits`): staged test on the real arm
+
+**Status: NOT RUN on the arm.** The calibrate phase and the strength test must not use the profile on the
+arm (`server.run --robot --calibrate`) until all four rows have an on-arm PASS, in order.
+
+The profile (`robot/arm.py`, only while `set_test_limits(True)` is on): stiffness cap 1500 N/m, robot contact
+limit 65 N, force trip 75 N. Everything else as in "Limits in force" below.
+
+How to run, from the laptop wired to the arm (venv `C:\venvs\flexiv17`), server stopped so the robot is in
+IDLE, e-stop holder in place, one stage per run:
+
+    python -u -m robot.test_limits_stage --stage a --go
+
+- Before stage c: load the printed press-fit handle by hand beyond 60 N off the arm (`tool_handle.md`).
+- The script refuses unless the robot is fault-free, operational, in IDLE, e-stop released. It never enables,
+  clears a fault or homes. It zeroes the force sensor first (nobody touching), starts compliance where the
+  arm is, and has no Enter prompts: it counts down and prints PUSH NOW / EASE OFF.
+- It calls Stop() at once on a robot fault, handle speed over 0.25 m/s, handle more than 5 cm from where the
+  stage started, or a reading over the stage ceiling (a 10 N, b 25 N, c 50 N, d 65 N).
+- On every exit (end, FAIL, Ctrl+C, error) it sends the default limits and K_x_nom again and stops the robot.
+  After a robot fault it cannot, and prints that.
+- A FAIL: do not go on to the next stage. Paste "Measured" from the printed summary; commit the JSON it
+  saved in `robot/results/`.
+
+| Stage | What the person does | Pass criterion | Result | Measured (peak force along the reach, displacement, trip/fault, highest joint torque %) |
+|---|---|---|---|---|
+| a | nobody touches; the profile goes on (1500 N/m) and off 3 times, 3 s each | handle moves under 2 mm at each of the 6 switches; no trip, no fault; limits restored | not run | |
+| b | gentle push along the reach, about 10 N, held 5 s | reading 5 to 25 N; handle gives under 2 cm; no trip, no fault; limits restored | not run | |
+| c | push of 30 to 40 N | reading passes 30 N; handle gives under 3 cm for readings up to 40 N; no trip, no fault; limits restored | not run | |
+| d | push towards 60 N | reading passes 50 N; under 3 cm for readings up to 40 N and never 5 cm; the script did not have to stop at 65 N; no trip, no fault; limits restored | not run | |
+
+Stage d cannot keep "under 3 cm" at 60 N: 60 N / 1500 N/m is 4 cm by arithmetic. So the 3 cm criterion is
+judged on readings up to 40 N in c and d, and the 5 cm stop covers the rest. The 65 N stop is a guard, not
+something to try on purpose.
+
+Dry run on the simulated arm (15 Nov, `--sim`, not evidence about the robot): a 0.0 mm; b 10.0 N, 6.8 mm;
+c 36.0 N, 24.2 mm; d 58.0 N, 38.9 mm (26.6 mm up to 40 N); all PASS. A simulated 70 N push in d and a 30 N
+push in b are stopped by the script at the ceiling.
+
 ## Dry run on the simulated arm (15 Nov, not evidence about the robot)
 
 `python robot/safety_check.py --sim`, result file `robot/results/safety_check_2026-11-15_1145_sim.json`.

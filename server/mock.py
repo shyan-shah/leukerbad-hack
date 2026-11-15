@@ -45,9 +45,13 @@ class MockArm:
 
     def connect(self) -> None: ...
     def start_compliance(self) -> None: self.mode = "compliant"
-    def hold(self) -> None: self.mode = "hold"
+    def hold(self) -> None: self.mode, self.test_limits_on = "hold", False   # as the real arm: back to normal limits
     def stop(self) -> None: self.mode = "idle"
     def close(self) -> None: self.mode = "idle"
+
+    test_limits_on = False      # pretend test profile, so screens can show the 60 N force cap
+
+    def set_test_limits(self, on: bool) -> None: self.test_limits_on = bool(on)
 
 
 def _min_jerk(x: float) -> float:
@@ -157,6 +161,9 @@ class MockEngine:
         dt = 0.01
         s0 = 1.0 if self.flip else 0.0            # _tick flips it back: the handle stays at the start
         comfort = 10.0 + 20.0 * self.strength     # N, the pretend patient's comfortable push
+        limits = getattr(self.arm, "set_test_limits", None)
+        if limits:
+            limits(True)        # as the real engine does for the push: readings may go to 60 N
         for _ in range(int(CAL_WAIT_S / dt)):
             if self._stop.is_set():
                 return None
@@ -184,6 +191,8 @@ class MockEngine:
             fraction, sessions = CAL_FRACTION, 1
         comfort_n = round(float(np.mean(fs)), 1)
         resistance = round(fraction * comfort_n, 1)
+        if limits:
+            limits(False)
         with self._lock:
             self.resistance_n = resistance
             self._cal = self._cal_dict("done", 1.0, comfort_n, resistance, round(fraction, 2))

@@ -90,7 +90,9 @@ class DialBody(BaseModel):
 
 
 LOCAL_CLIENTS = ("127.0.0.1", "::1", "localhost", "testclient")   # "testclient": FastAPI's TestClient
-PREPARE_SAMPLES = 30        # get_state() readings averaged for the empty-handle force
+FORCE_CAP_N = 30.0          # readings stop at about this with the arm's normal limits
+FORCE_CAP_TEST_N = 60.0     # ... and at about this while the arm's test profile is on
+PREPARE_SAMPLES = 30       # get_state() readings averaged for the empty-handle force
 PREPARE_SAMPLE_DT = 0.01    # s between readings
 START_TOLERANCE_M = 0.02    # prepare (zeroing) is only done this close to the configured start pose
 
@@ -200,7 +202,13 @@ class Hub:
             snap["arm_fault"] = self.arm_fault(snap.get("arm_mode"))
             snap.setdefault("calibration", None)      # engines from before the calibration contract: null
             snap.setdefault("arming", None)
+            snap.setdefault("force_cap_n", self.force_cap_n())
         return snap
+
+    def force_cap_n(self) -> float:
+        """Force readings stop at about this: 30 N with the arm's normal limits, 60 N while its test
+        profile is on (the engine switches that on only for the comfortable push and the strength test)."""
+        return FORCE_CAP_TEST_N if getattr(self.arm, "test_limits_on", False) else FORCE_CAP_N
 
     def arm_fault(self, arm_mode) -> str | None:
         """Why the arm stopped (the trip text, e.g. "speed 0.44 m/s above 0.40 m/s"), while it is in
@@ -285,7 +293,8 @@ class Hub:
                         "rep_count": snap.get("rep_count"), "auto": snap.get("auto"),
                         "arm_mode": snap.get("arm_mode"),
                         "arm_fault": snap.get("arm_fault"), "calibration": snap.get("calibration"),
-                        "arming": snap.get("arming")} | self.progress(snap))
+                        "arming": snap.get("arming"),
+                        "force_cap_n": snap.get("force_cap_n")} | self.progress(snap))
                 if not msgs or not self.clients:
                     continue
                 for ws in list(self.clients):
@@ -566,7 +575,11 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
         if request_exit is None:
             raise HTTPException(501, "this server was not started by server.run; stop it with Ctrl+C")
         s = hub.stop_session()
-        request_exit()      # uvicorn leaves its loop; the lifespan then runs hub.shutdown()
+        # Hold and close the arm HERE, before asking uvicorn to exit: on 15 Nov uvicorn never left its
+        # shutdown wait (Python 3.12 Server.wait_closed() after a client reset its connection), so the
+        # lifespan never ran and the arm stayed connected. hub.shutdown() is idempotent.
+        hub.shutdown()
+        request_exit()      # uvicorn leaves its loop; the lifespan runs hub.shutdown() again (a no-op now)
         return {"ok": True, "stopped_session": None if s is None else s.session_id}
 
     @app.post("/api/go")

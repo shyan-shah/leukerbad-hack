@@ -58,6 +58,7 @@ Connect with a WebSocket; you do not need to send anything. Two kinds of message
 | `auto` | true when the dial adjusts itself after each rep |
 | `arm_mode` | `compliant` (normal), `hold` (stopped softly), `idle`, `fault` |
 | `arm_fault` | Why the arm stopped, while `arm_mode` is `hold` or `fault`: the trip text, for example `"speed 0.44 m/s above 0.40 m/s"` or `"hand 3.4 cm outside workspace box on axis y"`; otherwise `null` (a hold with `null` is an ordinary stop). After a trip no rep can start in that session: show the text, tell the person to let go, then stop the session, home, prepare and start again. In `/api/state` and every `sample` message |
+| `force_cap_n` | Force readings stop at about this many newtons: `30` with the arm's normal limits, `60` while its test profile is on (the engine switches that on only during the comfortable push, on a server started with `--calibrate`). Show a reading at the cap as "30 N+" or "60 N+". In `/api/state` and every `sample` message |
 | `q` | 7 joint angles in radians, for a future 3D arm view |
 | `simulated` | true unless the data comes from the real robot |
 
@@ -431,3 +432,15 @@ next session of the same exercise, which is what "adjusts to you" means. In the 
 
 Both buttons are on the operator console (`/screens/operator.html`); the patient screen
 (`/screens/patient.html`) shows the prompt, a live force bar and the result.
+
+**On the real arm** calibration is off unless the server was started with `--calibrate`
+(`python -m server.run --robot ... --calibrate`; the start-up banner says which). Off: every session is
+sent `calibrate=false`, `/api/exercises` says `"calibrates": false`, `calibration.status` is `"skipped"`
+and `force_cap_n` stays 30. On: push and row begin with the comfortable push, during which the engine
+raises the arm's limits and `force_cap_n` reads 60; it is 30 again as soon as the push is over. With
+`--mock`, from a push session (15 Nov, `q` and most fields left out):
+
+```json
+{"type": "sample", "phase": "calibrate", "force_cap_n": 60.0, "calibration": {"status": "pushing", "progress": 0.563, "comfort_force_n": null, "resistance_n": null, "fraction": null, "reason": null}}
+{"type": "sample", "phase": "idle", "force_cap_n": 30.0, "calibration": {"status": "done", "progress": 1.0, "comfort_force_n": 22.0, "resistance_n": 13.2, "fraction": 0.6, "reason": null}}
+```
