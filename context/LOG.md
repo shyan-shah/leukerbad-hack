@@ -302,3 +302,8 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 
 **2026-11-15 · Mat · gym sign**
 - In the deck and film gym scene, the desk sign now reads "Reception" instead of "Physiotherapist": a regular gym employee supervises the station.
+
+**2026-11-15 · Shyan · patient app served by the station; phone → app → server chain checked**
+- server/: Mat and Gio's app (`demo/app`) is now mounted at `/app/` on the station server (Gio's request 1), and with `--lan` the start-up banner prints the phone link with the operator token, `http://<laptop>:8000/app/?op=<token>` (request 3). Without `--lan` it prints `http://127.0.0.1:8000/app/`.
+- Checked in a phone-sized browser against `server.run --mock`: the app lists reach, push, row and the strength test as "on the arm" and the rest as "demo animation"; starting Forward reach starts a server session (`exercise: reach`, target 12), the app's rep counter and force bar follow the live feed, the session stops by itself at 12 reps, and the break screen shows "forward reach 30 cm, measured by the arm (SIMULATED)". No console errors. 368 tests pass.
+- Not checked: the same on the real arm, the camera QR scan (I skipped the scan in the test), push/row/armtest from the app, and a real phone over the hotspot.

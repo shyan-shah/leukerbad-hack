@@ -119,3 +119,11 @@ def test_patient_screen_knows_the_exercises():
         assert text in html
     js = (SCREENS / "common.js").read_text(encoding="utf-8")
     assert "export function modeClass" in js
+
+
+def test_patient_app_served_at_app(no_site):
+    """Mat and Gio's app (demo/app) is served at /app/ so it shares an origin with the API."""
+    r = no_site.get("/app/")
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
+    assert no_site.get("/api/health").status_code == 200          # API not shadowed
+    assert no_site.get("/screens/index.html").status_code == 200  # screens not shadowed

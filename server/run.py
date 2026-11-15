@@ -139,6 +139,10 @@ def main(argv=None) -> None:
     print(f"  Live feed  ws://127.0.0.1:{a.port}/ws/live    (terminal view: python -m server.watch)")
     if a.lan:
         print(f"  On the LAN http://{_lan_ip()}:{a.port}   operator token for control routes: {token}")
+        print(f"  Patient app (phone on the same network; this link carries the operator token, do not share it):")
+        print(f"             http://{_lan_ip()}:{a.port}/app/?op={token}")
+    else:
+        print(f"  Patient app http://127.0.0.1:{a.port}/app/")
     print(f"  Stop       Ctrl+C here, or: curl -X POST http://127.0.0.1:{a.port}/api/shutdown")
     print("  Both hold then close the arm. Never kill this process or close the window.\n", flush=True)
     try:

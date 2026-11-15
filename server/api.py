@@ -480,6 +480,9 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             hub.clients.discard(ws)
 
     app.mount("/screens", StaticFiles(directory=str(SCREENS), html=True), name="screens")  # before "/" so it is not shadowed
+    patient_app = REPO / "demo" / "app"          # Mat and Gio's patient app; same origin as the API, so a phone can drive the arm
+    if (patient_app / "index.html").is_file():
+        app.mount("/app", StaticFiles(directory=str(patient_app), html=True), name="patient_app")  # before "/" so it is not shadowed
     site = Path(site_dir) if site_dir else REPO / "demo" / "site"
     if site.is_dir() and any(site.iterdir()):
         app.mount("/", StaticFiles(directory=str(site), html=True), name="site")
