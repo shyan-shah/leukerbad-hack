@@ -242,3 +242,6 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 **2026-11-15 · Shyan · exercise map**
 - Read Mat's app (demo/app/index.html: `EX` library, `MOV` 3D motions). New `context/EXERCISE_MAP.md` maps each app exercise to the robot: MUST live on the arm = reach (assist), push (resist), pull (reversed resist), armtest (isometric strength test). SHOULD (robot-led, isotropic stiffness, scaled down) = circle, trace, rot. Not this weekend = lift, knee, kneebend, legtest.
 - Shiv: engine presets for the four MUST exercises. Shyan: `exercise` field on /api/session/start. Mat/Gio: a demo plan in the app with only robot-live exercises, and the exercise screen calling the laptop server. Kian: far-end pose for pull, isometric hold in the safety checks.
+
+**2026-11-15 · Shyan · task swap**
+- Shyan does E1 (engine presets for reach/push/pull/armtest) in software/; Shiv does E2 (exercise field on /api/session/start, state, reps, DB, API.md) in server/. Interface between them: Engine(..., exercise=<id>) keyword; ids exactly as in context/EXERCISE_MAP.md. See DECISIONS.
