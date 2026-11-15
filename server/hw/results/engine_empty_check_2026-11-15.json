@@ -1,0 +1,67 @@
+{
+  "results": [
+    {
+      "exercise": "pull",
+      "seconds": 20.0,
+      "samples": 1930,
+      "rate_hz": 96,
+      "zero_force_n": 0.15,
+      "baseline_n": 0.06,
+      "reps": 0,
+      "phases": [
+        "setup"
+      ],
+      "engine_phase": "setup",
+      "moved_along_mm": 0.02,
+      "moved_total_mm": 0.07,
+      "end_mm": 0.01,
+      "max_speed": 0.0019,
+      "max_force_n": 0.84,
+      "force_over_4p5_s": 0.0,
+      "t_max_force_s": 16.0,
+      "force_at_max": [
+        0.19,
+        0.75,
+        -0.33
+      ],
+      "force_p99_n": 0.62,
+      "arm_mode": "hold",
+      "fault": null,
+      "guard": null,
+      "engine_error": null,
+      "pass": true
+    },
+    {
+      "exercise": "armtest",
+      "seconds": 20.0,
+      "samples": 1933,
+      "rate_hz": 96,
+      "zero_force_n": 0.43,
+      "baseline_n": 0.05,
+      "reps": 0,
+      "phases": [
+        "idle"
+      ],
+      "engine_phase": "idle",
+      "moved_along_mm": 0.01,
+      "moved_total_mm": 0.05,
+      "end_mm": 0.02,
+      "max_speed": 0.0012,
+      "max_force_n": 0.71,
+      "force_over_4p5_s": 0.0,
+      "t_max_force_s": 0.53,
+      "force_at_max": [
+        0.14,
+        0.64,
+        -0.28
+      ],
+      "force_p99_n": 0.45,
+      "arm_mode": "hold",
+      "fault": null,
+      "guard": null,
+      "engine_error": null,
+      "pass": true
+    }
+  ],
+  "stopped": null
+}

@@ -70,6 +70,10 @@ def run_one(arm, exercise: str, seconds: float, reach_sign: int) -> dict:
              end_mm=round(float(np.linalg.norm(np.array(st.pos) - p0)) * 1000, 2),
              max_speed=round(float(np.linalg.norm(V, axis=1).max()), 4),
              max_force_n=round(float(np.linalg.norm(F, axis=1).max()), 2),
+             force_over_4p5_s=round(float((np.linalg.norm(F, axis=1) > 4.5).sum()) * 0.01, 2),
+             t_max_force_s=round(float(samples[int(np.linalg.norm(F, axis=1).argmax())].t), 2) if samples else None,
+             force_at_max=[round(float(v), 2) for v in F[int(np.linalg.norm(F, axis=1).argmax())]],
+             force_p99_n=round(float(np.percentile(np.linalg.norm(F, axis=1), 99)), 2),
              arm_mode=st.mode, fault=st.fault, guard=guard,
              engine_error=repr(eng.error) if eng.error else None)
     r["pass"] = (r["reps"] == 0 and not ({"out", "back"} & set(phases)) and r["moved_along_mm"] < 10.0
@@ -77,7 +81,8 @@ def run_one(arm, exercise: str, seconds: float, reach_sign: int) -> dict:
                  and r["engine_error"] is None)
     print(f"  {exercise:>8}: {'PASS' if r['pass'] else 'FAIL'}  reps {r['reps']}  phases {phases}  moved along "
           f"{r['moved_along_mm']} mm, total {r['moved_total_mm']} mm  max speed {r['max_speed']} m/s  max |F| "
-          f"{r['max_force_n']} N  {r['rate_hz']} Hz  mode {st.mode} fault {st.fault} guard {guard} error {r['engine_error']}")
+          f"{r['max_force_n']} N at t={r['t_max_force_s']} s {r['force_at_max']} (p99 {r['force_p99_n']} N, over 4.5 N for "
+          f"{r['force_over_4p5_s']} s)  {r['rate_hz']} Hz  mode {st.mode} fault {st.fault} guard {guard} error {r['engine_error']}")
     return r
 
 

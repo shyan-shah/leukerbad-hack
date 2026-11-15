@@ -4,7 +4,7 @@
     python -u -m server.hw.drift_check --axis x --sign -1 --serial Rizon4-062157 --go     # execute
 
 Nobody touches the arm. Sequence: ZeroFTSensor at the start (skip with --no-zero), then the flange
-moves --length m (default 0.30) along the world axis at --speed (default 0.05 m/s) with the
+moves --length m (default 0.30) along the world axis at --speed (default 0.05, at most 0.10 m/s) with the
 orientation held, pausing every --step m (default 0.05) to read the empty force, then back the same
 way, then reads again at the start and 30 s later.
 
@@ -42,7 +42,7 @@ def run_line(robot, send, start_pose, u, length, step, speed, log=print, sleep=t
     """Out and back along unit vector u from start_pose. Returns the list of readings."""
     p0 = np.array(start_pose[:3], float)
     quat = list(start_pose[3:7])
-    readings, moving_peak = [], [0.0]
+    readings, moving_peak, moving_vec = [], [0.0], [[0.0, 0.0, 0.0]]
 
     def check(target):
         st = robot.states()
@@ -73,11 +73,11 @@ def run_line(robot, send, start_pose, u, length, step, speed, log=print, sleep=t
         r = dict(label=label, d_m=round(d, 3), force=[round(float(x), 2) for x in w],
                  f_n=round(float(np.linalg.norm(w)), 2), pos=[round(float(x), 4) for x in pos],
                  off_line_mm=round(float(np.linalg.norm((pos - p0) - np.dot(pos - p0, u) * u)) * 1000, 1),
-                 moving_peak_n=round(moving_peak[0], 2), t=round(clock(), 1))
+                 moving_peak_n=round(moving_peak[0], 2), moving_peak_force=moving_vec[0], t=round(clock(), 1))
         readings.append(r)
         log(f"  {label:>10} d {d * 100:5.1f} cm  F {r['force']} |F| {r['f_n']:.2f} N  "
-            f"(peak while moving there {r['moving_peak_n']:.2f} N)  off line {r['off_line_mm']} mm")
-        moving_peak[0] = 0.0
+            f"(peak while moving there {r['moving_peak_n']:.2f} N {r['moving_peak_force']})  off line {r['off_line_mm']} mm")
+        moving_peak[0], moving_vec[0] = 0.0, [0.0, 0.0, 0.0]
 
     def move(d_from, d_to):
         n = max(1, int(math.ceil(abs(d_to - d_from) / (speed * DT))))
@@ -85,8 +85,9 @@ def run_line(robot, send, start_pose, u, length, step, speed, log=print, sleep=t
             d = d_from + (d_to - d_from) * i / n
             target = p0 + u * d
             send(list(target) + quat)
-            _, fmag = check(target)
-            moving_peak[0] = max(moving_peak[0], fmag)
+            st, fmag = check(target)
+            if fmag > moving_peak[0]:
+                moving_peak[0], moving_vec[0] = fmag, [round(float(v), 2) for v in st.ext_wrench_in_world[:3]]
             sleep(DT)
 
     stops = [round(k * step, 6) for k in range(int(round(length / step)) + 1)]
@@ -107,8 +108,8 @@ def main() -> int:
     axis = "xyz".index(option("--axis", "x"))
     sign = -1.0 if float(option("--sign", "1")) < 0 else 1.0
     length, step, speed = float(option("--length", "0.30")), float(option("--step", "0.05")), float(option("--speed", "0.05"))
-    if not (0 < length <= 0.35 and 0 < step <= length and 0 < speed <= 0.05):
-        sys.exit("limits: length <= 0.35 m, step <= length, speed <= 0.05 m/s")
+    if not (0 < length <= 0.35 and 0 < step <= length and 0 < speed <= 0.10):
+        sys.exit("limits: length <= 0.35 m, step <= length, speed <= 0.10 m/s")
     u = np.zeros(3)
     u[axis] = sign
 
@@ -155,7 +156,7 @@ def main() -> int:
         start = [float(v) for v in robot.states().tcp_pose]      # hold exactly where it is now
 
         def send(pose):
-            robot.SendCartesianMotionForce(pose, [0.0] * 6, 0.08, 0.5, 0.3, 2.0)
+            robot.SendCartesianMotionForce(pose, [0.0] * 6, 0.15, 0.5, 0.3, 2.0)
 
         result["readings"] = run_line(robot, send, start, u, length, step, speed)
         print("back at the start; waiting 30 s, hands off")
