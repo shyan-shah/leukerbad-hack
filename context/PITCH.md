@@ -54,3 +54,35 @@ Available: clips of the team building, the Bambu Lab print timelapse of the hand
 | 1:50-2:00 | Team shot or the station, logo, "Vita. Research prototype. Next: a pilot." |
 
 Rules: the montage never replaces a demo shot; if time is short, cut the montage first. No copyrighted music (royalty-free only, or none under voice-over). Caption anything simulated. Export 1080p landscape, and keep the file on two devices plus a USB stick.
+
+## Script v1 (15 Nov). Square brackets = fill in from a checked source or cut.
+
+### Part 1: spoken, 2 minutes (about 270 words)
+
+After a stroke, most people are left with a weak arm. [CHECKED NUMBER + SOURCE, e.g. "about three in four".] Getting it back takes thousands of repetitions. Then they leave hospital with a sheet of exercises and a few physio sessions. That is where recovery stalls.
+
+Rehab robots were meant to fix this. They exist, and they have been tested properly. The largest trial, RATULS, followed 770 patients and found robot training was no better than usual care. Each of those robots is an expensive machine that does one job and still needs its own therapist. They match a therapist on results and cost more.
+
+So we built the robot as software. This is Vita.
+
+Vita turns a standard robot arm, the kind factories already buy, into a rehab station. It has one dial. At one end the arm helps a weak arm through the movement. At the other end it pushes back and builds strength. It measures every repetition: how far you reached, how hard you pushed, how much of the work was yours.
+
+For the patient it is an app. Your specialist sets your plan. You sit down at a Vita station, scan it with your phone, and the arm runs your exercises. Every week your physio gets a report built from real measurements.
+
+The business is the software. The arm is standard hardware, so a station costs a fraction of a dedicated rehab robot [CHECKED PRICE COMPARISON OR CUT]. We lease stations to clinics and to places people already go, like gyms and care homes. One therapist can supervise several stations. That is what we want to prove next, in a pilot.
+
+We built this in 48 hours. Here it is working.
+
+### Part 2: film voice-over, 2 minutes (about 190 words)
+
+| Time | Picture | Voice-over |
+|---|---|---|
+| 0:00-0:15 | Montage, caption "Built in 48 hours at the Leukerbad Robot Carnival" | (music only, or:) "Friday we had an idea and a robot arm. This is Monday." |
+| 0:15-0:25 | Patient sits, scans the station, plan loads | "This is a Vita station. She scans it and her plan loads." |
+| 0:25-0:50 | Assisted reach, 2 reps, dial at Help | "First exercise, a forward reach. Her arm is relaxed. The arm feels that and carries her through it." |
+| 0:50-1:10 | She tries harder, dial falls | "Now she starts to try. Each repetition she does more, so the arm does less. Nobody is touching a control." |
+| 1:10-1:20 | She lets go, arm stops | "If she lets go, it stops." |
+| 1:20-1:38 | Push (or row), dial at Challenge | "Same arm, same software. Now it pushes back, and this is strength training." |
+| 1:38-1:48 | Strength test, number on the phone | "It measures how hard she can push. On this prototype we cap that at 30 newtons for safety." |
+| 1:48-1:56 | Physio screen | "Her physio sees every repetition. Today's session is real. The history behind it is simulated." |
+| 1:56-2:00 | Logo | "Vita. A research prototype, ready for its first pilot." |
