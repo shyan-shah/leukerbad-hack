@@ -147,7 +147,7 @@ ARM_HOLD_S = 0.6             # s of hand force in the firm hold at the start bef
 ARM_DIST_M = 0.05            # m (3D) from the start: inside this a rep can be armed and the start is held firmly
 ARM_MAX_SPEED = 0.05         # m/s: a faster handle does not arm ("hold still")
 ARM_MAX_N = 25.0             # N: a harder push does not arm ("pushing too hard")
-IDLE_SPRING_N = 8.0          # N: an idle hold pulling harder than this needs a hand on the other side (friction holds 4.5 N)
+IDLE_SPRING_N = 8.0          # N: an idle hold pulling harder than this needs a hand pushing back with at least half of it
 ARM_HANDOVER_S = 0.25        # s after arming with the target on the hand (longer than the stiffness latency)
 ARM_GRACE_S = 0.5            # s after arming during which the one-tick let-go test is off
 FIRM_EXIT_M = 0.07           # m: the firm hold is given up only beyond this (arming still needs ARM_DIST_M)
@@ -729,8 +729,18 @@ class Engine:
         # this tick's reading shows under half of that. Target onto the hand at once; the walk
         # back at 2 cm/s follows as for any empty handle.
         if self._cmd is not None:
-            spring = float(np.linalg.norm(self._cmd[1] * (self._cmd[0] - pos)))
-            if spring > IDLE_SPRING_N and float(np.linalg.norm(self._f_now)) < 0.5 * spring:
+            pull = self._cmd[1] * (self._cmd[0] - pos)
+            spring = float(np.linalg.norm(pull))
+            seen = 0.0
+            if spring > IDLE_SPRING_N:
+                # the part of the reading that opposes the hold's pull. A moving handle's own
+                # reading can cancel up to EMPTY_MOVING_N of it along the motion (a limp arm
+                # sagging on the hold was taken for a let-go on every tick and never armed).
+                u = pull / spring
+                seen = -float(self._f_now @ u)
+                if speed >= V_MOVING:
+                    seen += EMPTY_MOVING_N * abs(float(self._vel @ u)) / speed
+            if spring > IDLE_SPRING_N and seen < 0.5 * spring:
                 self._firm = False
                 self._latch = np.asarray(pos, dtype=float).copy()
                 self._arm_acc = 0.0

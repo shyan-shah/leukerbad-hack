@@ -27,12 +27,14 @@ class Gripper(SimPatient):
         if self._t_first is None:
             self._t_first = t
         tw = t - self._t_first + self.wobble_phase
-        if np.linalg.norm(np.subtract(goal, START)) < 1e-9 and np.linalg.norm(np.subtract(pos, START)) < 0.06:
+        d = float(np.linalg.norm(np.subtract(pos, START)))
+        if np.linalg.norm(np.subtract(goal, START)) < 1e-9 and d < 0.10:
             # (SimArm adds up to 4.5 N towards the goal for strong patients, "pushing through friction": cancel it)
             back = 4.5 * float(np.clip((goal[0] - pos[0]) / 0.005, -1.0, 1.0)) * min(1.0, self.strength / 0.3)
             if self._grip_t0 is None:
                 self._grip_t0 = t
             g = self.grip_n * min(1.0, (t - self._grip_t0) / 0.3)      # a hand takes 0.3 s to build its grip
+            g *= float(np.clip((0.10 - d) / 0.04, 0.0, 1.0))           # and eases off between 6 and 10 cm out (no force cliff)
             return np.array([g - back, 3.0 * np.sin(2 * np.pi * tw), 8.0])
         self._grip_t0 = None
         return super().effort(t, pos, vel, goal)
