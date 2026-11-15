@@ -67,6 +67,10 @@ class StartBody(BaseModel):
     reps: int | None = Field(None, ge=0, le=exercises.REPS_MAX)   # omitted: the exercise default; 0: no limit
 
 
+class IdsBody(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=16)
+
+
 class DialBody(BaseModel):
     dial: float = Field(ge=-1.0, le=1.0)
     auto: bool | None = None
@@ -75,6 +79,17 @@ class DialBody(BaseModel):
 LOCAL_CLIENTS = ("127.0.0.1", "::1", "localhost", "testclient")   # "testclient": FastAPI's TestClient
 PREPARE_SAMPLES = 30        # get_state() readings averaged for the empty-handle force
 PREPARE_SAMPLE_DT = 0.01    # s between readings
+START_TOLERANCE_M = 0.02    # prepare (zeroing) is only done this close to the configured start pose
+
+
+def _start_distance(arm: Any) -> float | None:
+    """Distance (m) of the hand from the start pose in robot/config.json, or None when the arm has no
+    measured start pose (placeholder config, simulated arms)."""
+    cfg = getattr(arm, "config", None)
+    if cfg is None or not hasattr(cfg, "start_tcp_pose") or cfg.is_placeholder("start_pose"):
+        return None
+    pos = arm.get_state().pos
+    return sum((float(a) - float(b)) ** 2 for a, b in zip(pos, cfg.start_tcp_pose[:3])) ** 0.5
 
 
 def _arm_fault(arm: Any) -> str | None:
@@ -123,6 +138,7 @@ class Hub:
         self.pending_lock = threading.Lock()
         self.clients: set[WebSocket] = set()
         self.closed = False                     # shutdown() has held and closed the arm
+        self.enabled: set[str] | None = None    # exercise ids offered now; None = every live one
 
     # -- engine callbacks (engine thread): must be fast
     def on_sample(self, s: Sample) -> None:
@@ -239,19 +255,25 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
                engine_factory: Callable[..., Any] | None = None, exports_dir: str | Path | None = None,
                engine_kwargs: dict | None = None, control_token: str | None = None,
                site_dir: str | Path | None = None, is_real: Callable[[Any], bool] = is_real_arm,
-               live_exercises: list[str] | None = None) -> FastAPI:
+               live_exercises: list[str] | None = None,
+               enabled_exercises: list[str] | None = None) -> FastAPI:
     """
     arm_factory()      -> arm object (connected on first session start)
     engine_factory(**) -> engine with the MASTER_PLAN 4.4 interface (default software.engine.Engine)
     exports_dir        -> if set, exports are rewritten after every session stop
-    control_token      -> if set, POST start/stop/dial/go, arm/prepare and shutdown need header `x-operator-token`.
+    control_token      -> if set, POST start/stop/dial/go, arm/prepare, arm/home, exercises/enable|disable
+                          and shutdown need header `x-operator-token`.
                           /api/hold never does.
     live_exercises     -> ids this engine can run. Default: software.exercises.LIVE, read on every request
                           (only "reach" until that file exists). server.run --mock passes the mock's own list.
+    enabled_exercises  -> the subset of those offered at start-up (server.run --exercises reach). Default: all.
+                          POST /api/exercises/enable and /disable change it while the server runs.
     """
     conn = db.connect(db_path)
     hub = Hub(arm_factory, conn, engine_factory or default_engine_factory, exports_dir,
               engine_kwargs or {}, is_real)
+    if enabled_exercises is not None:
+        hub.enabled = {str(i) for i in enabled_exercises}
 
     @asynccontextmanager
     async def lifespan(app):
@@ -267,8 +289,24 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     app.state.hub = hub
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-    def live_ids() -> list[str]:
+    def runnable_ids() -> list[str]:
+        """Everything this engine can run (software.exercises.LIVE)."""
         return list(live_exercises) if live_exercises is not None else exercises.live_ids()
+
+    def live_ids() -> list[str]:
+        """What is offered now: the runnable ids the operator has enabled."""
+        ids = runnable_ids()
+        return ids if hub.enabled is None else [i for i in ids if i in hub.enabled]
+
+    def set_enabled(ids: list[str], on: bool) -> dict:
+        runnable = runnable_ids()
+        unknown = [i for i in ids if i not in runnable]
+        if unknown:
+            raise HTTPException(422, {"message": f"not an exercise this robot can run: {', '.join(unknown)}. "
+                                                 f"Can run: {', '.join(runnable)}", "can_run": runnable})
+        current = set(runnable) if hub.enabled is None else set(hub.enabled)
+        hub.enabled = (current | set(ids)) if on else (current - set(ids))
+        return {"ok": True, "enabled": live_ids(), "can_run": runnable}
 
     def guard(token: str | None) -> None:
         if control_token and token != control_token:
@@ -300,6 +338,10 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             fault = _arm_fault(arm)
             if fault:
                 raise HTTPException(409, f"arm reports a fault: {fault}")
+            from_start = _start_distance(arm)
+            if from_start is not None and from_start > START_TOLERANCE_M:
+                raise HTTPException(409, f"the handle is {from_start * 100:.1f} cm from the start pose; return it "
+                                         "first: POST /api/arm/home, nobody touching. Not zeroed.")
             zeroed, zero_error = False, None
             try:
                 arm.zero_force()
@@ -314,7 +356,38 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             mag = sum(v * v for v in force) ** 0.5
             hub.prepared = True
             return {"ok": True, "simulated": False, "zeroed": zeroed, "zero_error": zero_error,
-                    "baseline_force": [round(v, 3) for v in force], "baseline_n": round(mag, 3)}
+                    "baseline_force": [round(v, 3) for v in force], "baseline_n": round(mag, 3),
+                    "from_start_m": None if from_start is None else round(from_start, 4)}
+
+    @app.post("/api/arm/home")
+    def home(x_operator_token: str | None = Header(default=None)):
+        """Real arm only, NOBODY touching: slow straight move (0.05 m/s) to the start pose of
+        robot/config.json. Blocks until the arm is there. Prepare (zero) is needed again afterwards.
+        /api/hold cannot interrupt this move; the e-stop can."""
+        guard(x_operator_token)
+        with hub.ctl_lock:
+            if hub.session is not None:
+                raise HTTPException(409, "a session is running; stop it before homing the arm")
+            try:
+                arm = hub.get_arm()
+            except Exception as e:
+                raise HTTPException(503, f"arm not connected: {e}")
+            if hub.simulated:
+                return {"ok": True, "simulated": True, "skipped": True,
+                        "detail": "simulated arm: nothing to home"}
+            hub.prepared = False
+            fault = _arm_fault(arm)
+            if fault:
+                raise HTTPException(409, f"arm reports a fault: {fault}")
+            before = _start_distance(arm)
+            try:
+                arm.home()
+            except RuntimeError as e:        # placeholder start pose, too far away, fault, ended off target
+                raise HTTPException(409, f"home refused or failed: {e}")
+            after = _start_distance(arm)
+            return {"ok": True, "simulated": False,
+                    "moved_m": None if before is None else round(before, 4),
+                    "from_start_m": None if after is None else round(after, 4)}
 
     @app.get("/api/state")
     def state():
@@ -328,6 +401,18 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     def list_exercises():
         """The programmes the robot can run now: id, name, kind and default reps."""
         return [exercises.info(i) for i in live_ids()]
+
+    @app.post("/api/exercises/enable")
+    def enable_exercises(body: IdsBody, x_operator_token: str | None = Header(default=None)):
+        """Operator: offer these programmes (they must be ones the robot can run)."""
+        guard(x_operator_token)
+        return set_enabled(body.ids, True)
+
+    @app.post("/api/exercises/disable")
+    def disable_exercises(body: IdsBody, x_operator_token: str | None = Header(default=None)):
+        """Operator: stop offering these programmes. A running session is not affected."""
+        guard(x_operator_token)
+        return set_enabled(body.ids, False)
 
     @app.post("/api/session/start")
     def start(body: StartBody, x_operator_token: str | None = Header(default=None)):

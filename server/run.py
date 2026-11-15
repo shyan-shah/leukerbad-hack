@@ -7,7 +7,8 @@
 Options: --strength 0.2 (simulated patient), --port 8000, --lan (reachable from other devices,
 control routes then need the printed operator token), --db, --no-export,
 --reach-m 0.30 and --reach-sign 1|-1 (the reach line; the sign defaults to "reach_sign" in
-robot/config.json, else +1), --tool Flange (--robot: the tool that must be selected on the robot).
+robot/config.json, else +1), --tool Flange (--robot: the tool that must be selected on the robot),
+--exercises reach (comma list offered at start-up; POST /api/exercises/enable adds more later).
 
 --robot never clears faults or enables the robot (server/hw/checked_arm.py): it refuses to
 connect unless the arm is fault-free, operational, in IDLE and has the expected tool selected.
@@ -116,7 +117,23 @@ def main(argv=None) -> None:
                          "robot/config.json, else +1)")
     ap.add_argument("--tool", default="Flange",
                     help="--robot: tool that must be selected on the robot (default Flange = nothing mounted)")
+    ap.add_argument("--exercises", default=None, metavar="IDS",
+                    help="comma list of exercise ids offered at start-up (default: all the robot can run); "
+                         "enable more later with POST /api/exercises/enable")
     a = ap.parse_args(argv)
+    enabled = None
+    if a.exercises is not None:
+        enabled = [x.strip() for x in a.exercises.split(",") if x.strip()]
+        if a.mock:
+            from .mock import PRESETS
+            known = list(PRESETS)
+        else:
+            from . import exercises as _ex
+            known = _ex.live_ids()
+        bad = [x for x in enabled if x not in known]
+        if bad or not enabled:
+            ap.error(f"--exercises: unknown or not runnable: {', '.join(bad) or '(empty)'}. "
+                     f"Can run: {', '.join(known)}")
     if a.reach_m is not None and not 0.02 <= a.reach_m <= 0.35:
         ap.error("--reach-m must be between 0.02 and 0.35 m (the workspace box is 0.35 m along the reach)")
 
@@ -125,7 +142,8 @@ def main(argv=None) -> None:
     engine_kwargs = reach_kwargs(a)
     app = create_app(arm_factory, a.db, engine_factory=engine_factory,
                      exports_dir=None if a.no_export else DEFAULT_OUT, control_token=token,
-                     engine_kwargs=engine_kwargs, live_exercises=mock_exercises(a))
+                     engine_kwargs=engine_kwargs, live_exercises=mock_exercises(a),
+                     enabled_exercises=enabled)
     host = "0.0.0.0" if a.lan else "127.0.0.1"
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=a.port, log_level="warning"))
     app.state.request_exit = lambda: setattr(server, "should_exit", True)   # used by POST /api/shutdown
@@ -135,6 +153,8 @@ def main(argv=None) -> None:
         print(f"  Reach      axis {'xyz'[axis]}, sign {engine_kwargs['reach_sign']:+d}, "
               f"length {engine_kwargs.get('reach_m', 0.30):.2f} m"
               + (f"   (tool must be {a.tool})" if a.robot is not None else ""))
+    if enabled is not None:
+        print(f"  Exercises  enabled now: {', '.join(enabled)}   (more: POST /api/exercises/enable)")
     print(f"  API        http://127.0.0.1:{a.port}/api/health")
     print(f"  Live feed  ws://127.0.0.1:{a.port}/ws/live    (terminal view: python -m server.watch)")
     if a.lan:

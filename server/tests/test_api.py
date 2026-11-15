@@ -319,3 +319,209 @@ def test_prepare_needs_operator_token_in_lan_mode(tmp_path):
     with TestClient(_real_app(tmp_path, control_token="secret")) as c:
         assert c.post("/api/arm/prepare").status_code == 403
         assert c.post("/api/arm/prepare", headers={"x-operator-token": "secret"}).status_code == 200
+
+
+# ---------------------------------------------------------------- start pose: prepare refuses away from it, /api/arm/home
+
+class _Cfg:
+    start_tcp_pose = (0.2126, 0.4703, 0.3749, 0.0, -0.64, 0.77, 0.0)
+
+    def __init__(self, placeholder=False):
+        self.placeholder = placeholder
+
+    def is_placeholder(self, key):
+        return self.placeholder and key == "start_pose"
+
+
+class PosedArm(FakeRealArm):
+    """A fake real arm with a measured start pose in its config and a hand position."""
+    offset = 0.0            # m along x from the start pose when created
+    home_error = None
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.config = _Cfg()
+        self.pos = (0.2126 + type(self).offset, 0.4703, 0.3749)
+        self.home_calls = 0
+
+    def get_state(self):
+        st = super().get_state()
+        st.pos = self.pos
+        return st
+
+    def home(self) -> None:
+        self.home_calls += 1
+        if self.home_error:
+            raise RuntimeError(self.home_error)
+        self.pos = self.config.start_tcp_pose[:3]
+
+
+def _posed(offset=0.0, **attrs):
+    return type("PosedArmX", (PosedArm,), {"offset": offset, **attrs})
+
+
+def test_prepare_at_the_start_pose_reports_distance(tmp_path):
+    with TestClient(_real_app(tmp_path, _posed(0.012))) as c:
+        out = c.post("/api/arm/prepare").json()
+        assert out["ok"] is True and out["zeroed"] is True
+        assert out["from_start_m"] == pytest.approx(0.012, abs=1e-4)
+
+
+def test_prepare_refuses_more_than_2cm_from_the_start_pose_and_does_not_zero(tmp_path):
+    FakeRealArm.instances.clear()
+    with TestClient(_real_app(tmp_path, _posed(0.28))) as c:
+        r = c.post("/api/arm/prepare")
+        assert r.status_code == 409
+        assert "28.0 cm from the start pose" in r.json()["detail"] and "/api/arm/home" in r.json()["detail"]
+        arm = FakeRealArm.instances[-1]
+        assert arm.zero_calls == 0
+        assert c.get("/api/health").json()["arm_prepared"] is False
+        assert c.post("/api/session/start", json={"patient_id": "p-real"}).status_code == 409
+
+        h = c.post("/api/arm/home")
+        assert h.status_code == 200
+        assert h.json() == {"ok": True, "simulated": False, "moved_m": pytest.approx(0.28, abs=1e-4),
+                            "from_start_m": pytest.approx(0.0, abs=1e-6)}
+        assert arm.home_calls == 1
+        assert c.get("/api/health").json()["arm_prepared"] is False      # home never counts as prepare
+        assert c.post("/api/arm/prepare").status_code == 200 and arm.zero_calls == 1
+        assert c.post("/api/session/start", json={"patient_id": "p-real"}).status_code == 200
+        r = c.post("/api/arm/home")                                       # refused during a session
+        assert r.status_code == 409 and "session is running" in r.json()["detail"]
+        assert arm.home_calls == 1
+        c.post("/api/session/stop")
+
+
+def test_home_resets_prepared_so_zero_is_needed_again(tmp_path):
+    with TestClient(_real_app(tmp_path, _posed(0.0))) as c:
+        assert c.post("/api/arm/prepare").status_code == 200
+        assert c.get("/api/health").json()["arm_prepared"] is True
+        assert c.post("/api/arm/home").status_code == 200
+        assert c.get("/api/health").json()["arm_prepared"] is False
+        r = c.post("/api/session/start", json={"patient_id": "p-real"})
+        assert r.status_code == 409 and "prepare the arm first" in r.json()["detail"]
+
+
+def test_placeholder_start_pose_skips_the_distance_check(tmp_path):
+    class Placeholder(PosedArm):
+        offset = 0.30
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.config = _Cfg(placeholder=True)
+    with TestClient(_real_app(tmp_path, Placeholder)) as c:
+        out = c.post("/api/arm/prepare").json()
+        assert out["ok"] is True and out["from_start_m"] is None
+
+
+def test_home_errors_token_and_simulated(tmp_path, client):
+    r = client.post("/api/arm/home")                                      # mock arm: nothing to do
+    assert r.status_code == 200 and r.json()["skipped"] is True and r.json()["simulated"] is True
+
+    far = _posed(0.7, home_error="start pose is 0.70 m away; jog closer before home()")
+    with TestClient(_real_app(tmp_path, far)) as c:
+        r = c.post("/api/arm/home")
+        assert r.status_code == 409 and "0.70 m away" in r.json()["detail"]
+
+    def faulted():
+        arm = PosedArm()
+        arm.fault = "robot reported a fault"
+        return arm
+    (tmp_path / "f").mkdir()
+    with TestClient(_real_app(tmp_path / "f", faulted)) as c:
+        r = c.post("/api/arm/home")
+        assert r.status_code == 409 and "fault" in r.json()["detail"]
+
+    class NoArm(PosedArm):
+        def connect(self) -> None:
+            raise RuntimeError("arm not ready: the robot is not operational")
+    (tmp_path / "n").mkdir()
+    with TestClient(_real_app(tmp_path / "n", NoArm)) as c:
+        r = c.post("/api/arm/home")
+        assert r.status_code == 503 and "not operational" in r.json()["detail"]
+
+    (tmp_path / "t").mkdir()
+    with TestClient(_real_app(tmp_path / "t", _posed(0.1), control_token="secret")) as c:
+        assert c.post("/api/arm/home").status_code == 403
+        assert c.post("/api/arm/home", headers={"x-operator-token": "secret"}).status_code == 200
+
+
+def test_hold_is_answered_while_home_is_moving(tmp_path):
+    import threading
+    started, release = threading.Event(), threading.Event()
+
+    class SlowHome(PosedArm):
+        offset = 0.2
+
+        def home(self) -> None:
+            started.set()
+            assert release.wait(5)
+            super().home()
+    with TestClient(_real_app(tmp_path, SlowHome)) as c:
+        out = {}
+        th = threading.Thread(target=lambda: out.update(r=c.post("/api/arm/home")))
+        th.start()
+        assert started.wait(5)
+        assert c.post("/api/hold").status_code == 200                     # not blocked by the home in progress
+        assert c.get("/api/health").status_code == 200
+        release.set()
+        th.join(5)
+        assert out["r"].status_code == 200
+
+
+# ---------------------------------------------------------------- enabling exercises one by one
+
+ALL4 = ["reach", "push", "pull", "armtest"]
+
+
+def test_enabled_exercises_start_with_reach_then_enable_more(tmp_path):
+    with TestClient(_app(tmp_path, live_exercises=ALL4, enabled_exercises=["reach"])) as c:
+        assert [e["id"] for e in c.get("/api/exercises").json()] == ["reach"]
+        r = c.post("/api/session/start", json={"patient_id": "sim-1", "exercise": "push"})
+        assert r.status_code == 422 and r.json()["detail"]["live"] == ["reach"]
+
+        r = c.post("/api/exercises/enable", json={"ids": ["push"]})
+        assert r.status_code == 200 and r.json() == {"ok": True, "enabled": ["reach", "push"], "can_run": ALL4}
+        assert [e["id"] for e in c.get("/api/exercises").json()] == ["reach", "push"]
+        assert c.post("/api/session/start", json={"patient_id": "sim-1", "exercise": "push"}).status_code == 200
+        c.post("/api/session/stop")
+
+        r = c.post("/api/exercises/enable", json={"ids": ["pull", "armtest"]})
+        assert r.json()["enabled"] == ALL4
+        r = c.post("/api/exercises/disable", json={"ids": ["pull"]})
+        assert r.json()["enabled"] == ["reach", "push", "armtest"]
+        assert c.post("/api/session/start", json={"patient_id": "sim-1", "exercise": "pull"}).status_code == 422
+
+        r = c.post("/api/exercises/enable", json={"ids": ["circle"]})      # not something this robot can run
+        assert r.status_code == 422 and r.json()["detail"]["can_run"] == ALL4
+        assert c.post("/api/exercises/enable", json={"ids": []}).status_code == 422
+
+
+def test_enable_defaults_to_everything_and_needs_the_token(tmp_path):
+    with TestClient(_app(tmp_path, live_exercises=ALL4)) as c:               # no --exercises: all offered
+        assert [e["id"] for e in c.get("/api/exercises").json()] == ALL4
+        assert c.post("/api/exercises/disable", json={"ids": ["armtest"]}).json()["enabled"] == ALL4[:3]
+    (tmp_path / "t").mkdir()
+    with TestClient(_app(tmp_path / "t", live_exercises=ALL4, enabled_exercises=["reach"],
+                         control_token="secret")) as c:
+        assert c.post("/api/exercises/enable", json={"ids": ["push"]}).status_code == 403
+        assert c.post("/api/exercises/enable", json={"ids": ["push"]},
+                      headers={"x-operator-token": "secret"}).status_code == 200
+
+
+def test_run_exercises_option(monkeypatch, capsys, tmp_path):
+    from server import run
+    seen = {}
+
+    class FakeServer:
+        def __init__(self, config):
+            seen["app"] = config.app
+
+        def run(self):
+            pass
+    monkeypatch.setattr(run.uvicorn, "Server", FakeServer)
+    run.main(["--mock", "--no-export", "--db", str(tmp_path / "r.db"), "--exercises", "reach"])
+    assert seen["app"].state.hub.enabled == {"reach"}
+    assert "enabled now: reach" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        run.main(["--mock", "--no-export", "--db", str(tmp_path / "r2.db"), "--exercises", "reach,lift"])

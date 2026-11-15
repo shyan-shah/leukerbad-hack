@@ -118,7 +118,10 @@ Field meanings are the same as in `server/exports/README.md` (range of motion, p
 | `/api/hold` | none | soft stop of the arm, any time |
 | `/api/go` | none | only used if the arm cannot tell when the handle is held; may return 501 |
 | `/api/shutdown` | none | **from the arm laptop only.** Stops any session, then the server exits cleanly: the arm is put in hold and closed (its normal stiffness restored). Returns `{"ok": true, "stopped_session": "..." or null}`. 403 from any other device. Use this (or Ctrl+C) instead of closing the server window |
-| `/api/arm/prepare` | none | **real arm only, nobody touching the handle.** Checks the arm is connected and has no fault, zeroes the force reading, and returns the empty-handle force. Needed once after the server starts, before the first real session; safe to repeat between sessions |
+| `/api/arm/home` | none | **real arm only, nobody touching: this moves the arm.** Slow straight move (0.05 m/s) to the start pose in `robot/config.json`. The call answers when the arm is there. Prepare is needed again afterwards |
+| `/api/arm/prepare` | none | **real arm only, nobody touching the handle.** Checks the arm is connected, has no fault and is within 2 cm of the start pose, zeroes the force reading (`ZeroFTSensor`), and returns the empty-handle force. Needed once after the server starts, before the first real session, and after every home; safe to repeat between sessions |
+| `/api/exercises/enable` | `{"ids": ["push"]}` | operator: start offering these exercises (they must be ones the robot can run). Returns `{"ok": true, "enabled": [...], "can_run": [...]}` |
+| `/api/exercises/disable` | `{"ids": ["pull"]}` | operator: stop offering these exercises. A running session is not affected |
 
 Errors are JSON with a `detail` field: 409 `{"detail": "no session running"}` or "a session is already running", 404 for unknown ids, 422 for a bad body (for example dial above 1, or an exercise that is not live: section 6).
 
@@ -135,16 +138,40 @@ Real arm:
 
 ```json
 {"ok": true, "simulated": false, "zeroed": true, "zero_error": null,
- "baseline_force": [0.0, 0.0, 0.1], "baseline_n": 0.1}
+ "baseline_force": [0.0, 0.0, 0.1], "baseline_n": 0.1, "from_start_m": 0.0012}
 ```
 
 - `baseline_force` is the mean force per axis in newtons with nobody touching, `baseline_n` its size. The engine refuses to start above 3 N.
 - `zeroed: false` with a `zero_error` text means the robot's own zeroing step failed. That is not fatal (our Rizon 4 may not support it): the engine takes its own baseline at session start.
 - Simulated and mock arms answer `{"ok": true, "simulated": true, "skipped": true, ...}` and never need prepare.
+- `from_start_m` is how far the handle is from the start pose (null while `robot/config.json` still has a placeholder start pose).
+- 409 `"the handle is 28.0 cm from the start pose; return it first: POST /api/arm/home, nobody touching. Not zeroed."` if the handle is more than 2 cm from the start pose. Zeroing anywhere else would be wrong at the start: the empty reading changes by up to 3 N along the reach.
 - 409 if a session is running or the arm reports a fault; 503 if the arm cannot be reached.
-- It does not move the arm. Moving to the start pose (`home`) is not part of this route.
+- It does not move the arm. Returning to the start pose is a separate, explicit operator action (`/api/arm/home`).
 
-**On the venue network** the server is started with `--lan`. It then prints its address (for example `http://192.168.1.23:8000`, which a phone on the same Wi-Fi can open) and an operator token. Start, stop, dial, go, arm/prepare and shutdown then need the header `x-operator-token: <token>`, so nobody else on the Wi-Fi can drive the arm. Reading routes, the live feed and `/api/hold` stay open.
+**`/api/arm/home` responses.** Real arm: `{"ok": true, "simulated": false, "moved_m": 0.28, "from_start_m": 0.0004}` (distance before and after). 409 `"home refused or failed: ..."` when the arm refuses (placeholder start pose, more than 0.60 m away, a robot fault, or it ended more than 2 cm off), 409 during a session or with a fault, 503 if the arm cannot be reached. Simulated and mock arms answer `skipped`. **`/api/hold` does not interrupt a home in progress; the e-stop does.** There is no operator screen yet, so both are called by hand, in this order, with nobody touching the arm:
+
+```
+curl -X POST http://127.0.0.1:8000/api/arm/home
+curl -X POST http://127.0.0.1:8000/api/arm/prepare
+```
+
+With `--lan` add the operator token to each:
+
+```
+curl -X POST -H "x-operator-token: TOKEN" http://127.0.0.1:8000/api/arm/home
+curl -X POST -H "x-operator-token: TOKEN" http://127.0.0.1:8000/api/arm/prepare
+```
+
+**Enabling exercises one at a time.** `python -m server.run --robot --exercises reach` offers only `reach` at start-up (`/api/exercises` lists only that, anything else is refused with 422). Add more while the server runs:
+
+```
+curl -X POST -H "Content-Type: application/json" -H "x-operator-token: TOKEN" -d "{\"ids\": [\"push\"]}" http://127.0.0.1:8000/api/exercises/enable
+```
+
+(leave the token header out without `--lan`; `/api/exercises/disable` takes the same body). Ids that the robot cannot run are refused with 422 and the list it can run. Without `--exercises`, everything the robot can run is offered, as before.
+
+**On the venue network** the server is started with `--lan`. It then prints its address (for example `http://192.168.1.23:8000`, which a phone on the same Wi-Fi can open) and an operator token. Start, stop, dial, go, arm/home, arm/prepare, exercises/enable, exercises/disable and shutdown then need the header `x-operator-token: <token>`, so nobody else on the Wi-Fi can drive the arm. Reading routes, the live feed and `/api/hold` stay open.
 
 **Real-arm options of `python -m server.run --robot [SERIAL]`** (operator only):
 
@@ -153,6 +180,7 @@ Real arm:
 | `--reach-m 0.10` | length of the reach line in metres (default 0.30, allowed 0.02 to 0.35) |
 | `--reach-sign -1` | direction of the reach along the reach axis. Default: `"reach_sign"` in `robot/config.json` if present, else +1. The axis itself is `reach_axis` in that file |
 | `--tool Flange` | tool that must be selected on the robot (default `Flange`, meaning nothing mounted); the server refuses to connect otherwise |
+| `--exercises reach` | comma list of exercises offered at start-up (default: all the robot can run). More are added with `POST /api/exercises/enable` |
 
 `--reach-m` and `--reach-sign` also work with `--sim` and `--mock`. Stop the server with Ctrl+C in its window or `curl -X POST http://127.0.0.1:8000/api/shutdown`; never by closing the window, which would leave the arm soft.
 
@@ -167,7 +195,7 @@ Real arm:
 
 One exercise = one session. The whole flow is five calls. Every example below is a **real message** from a running server with the mock engine (`--mock`, so everything is simulated), numbers shortened.
 
-**Which exercises work today.** `reach`, `push`, `pull` and `armtest`, on `--mock`, `--sim` and `--robot`. With `--sim` and `--robot` the list comes from the robot side (`software/exercises.py`), so if one is switched off or `circle` is switched on, `/api/exercises` changes with no change on your side (`--mock` always offers these four). Build the screen from `/api/exercises`, not from a fixed list. (On the real arm only `reach` has been run so far; the other three are tested on the simulated arm.)
+**Which exercises work today.** `reach`, `push`, `pull` and `armtest`, on `--mock`, `--sim` and `--robot`. With `--sim` and `--robot` the list comes from the robot side (`software/exercises.py`), so if one is switched off (the operator can also switch them on and off while the server runs) or `circle` is switched on, `/api/exercises` changes with no change on your side (`--mock` always offers these four). Build the screen from `/api/exercises`, not from a fixed list. (On the real arm only `reach` has been run so far; the other three are tested on the simulated arm.)
 
 ### Step 1. Ask what the robot can do
 
