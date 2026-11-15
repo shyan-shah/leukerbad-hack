@@ -566,3 +566,19 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - `rep_count, phase, level, message, countdown_s` present in 8355 state polls and 1429 feed samples.
 - **Fails (small): `phase` is missing from `/api/state` straight after `POST /api/session/start`**, 40 of 40, with pos, force and target: `snapshot()` has no sample until the engine's first tick. With the engine thread running this is a window of about 10 ms, not a lasting gap; the feed is not affected. That one test is `xfail(strict=True)` so main stays green; it turns red when the behaviour changes, then the marker comes off.
 - Not covered (sim time is stepped): the engine thread, a `home()` that takes time (so the 10 N guard during the move was not exercised), state during stop, a stop where the hand stays on past the 10 s wait, any hand lighter than SimArm's 8 N limb weight (under 6 N the arm would set off under it).
+
+**2026-11-15 23:45 · Shyan · Push levels 2, 3, 4 by hand on the real arm (server on af84054). Level 4 tripped once at 40.1 N. The reading rises with hand speed: the arm's own damping adds to the band**
+- Sets (10 reps each, counted 10 of 10, force along the push while moving out between 6 and 27 cm):
+
+| Level | Band | Mean | sd | Max | Highest total reading | Trip |
+|---|---|---|---|---|---|---|
+| 2 | 15 N | 19.1 N | 1.7 | 23.4 N | 23.6 N | none |
+| 3 | 20 N | 25.0 N | 2.3 | 30.5 N | 31.4 N | none |
+| 4, first try | 28 N | (7 samples) 38.0 N | | 39.3 N | 40.5 N | force 40.1 N above 40.0 N on the first push, 0 reps, arm held, no fault |
+| 4, second try | 28 N | 31.2 N | 3.4 | 38.7 N | 39.6 N | none (0.4 N under the trip) |
+
+- Cause, fitted per set as force = stiffness x stretch + d x hand speed: d = 90 N per m/s at level 2, 114 at level 3, 143 at level 4 (offset under 2.5 N). By speed at level 4: 28.2 N under 0.03 m/s (the band alone), 32.9 N at 0.03 to 0.06, 36.2 N at 0.06 to 0.10. The spring is right (stretch 5.1 cm, stiffness near the start 405 N/m at level 3); the extra is the robot's Cartesian damping. Level 4 only stays under the 40 N trip when pushed slower than about 0.08 m/s. The trip was not touched.
+- Not done yet, waiting for Shyan's choice: (a) take the speed part off in `software/simple.py` by shortening the stretch with hand speed, so each level reads its own number at any pace, or (b) lower level 4 to about 22 N.
+- My feed watcher's "by hand speed" split put everything under 0.10 m/s in one bin, so it hid this until the fit.
+- For Kian: after the trip, in hold, the handle was pushed on from 8 cm to 26 cm against 30 to 37 N (the feed shows the target following the hand). Hold resists but a hand can push through it. Is that intended?
+- Full suite on af84054: 773 passed, 1 failed (`server/tests/test_band.py::test_band_engine_through_the_api_on_simarm`); it passes alone (8 of 8). Cause not found; the run overlapped real-arm checks on the same laptop.
