@@ -82,7 +82,7 @@
   .ringc .trk { fill: none; stroke: var(--line); stroke-width: 6; } .ringc .arc { fill: none; stroke: var(--mint); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset .45s cubic-bezier(.2,.8,.2,1); }
   .ringc span { position: absolute; inset: 0; display: grid; place-items: center; font: 700 clamp(26px, 4.2vh, 32px)/1 var(--display); color: var(--brand); font-variant-numeric: tabular-nums; }
   .mtxt { min-width: 0; } .mtxt b { display: block; font: 600 12px var(--text); letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
-  .rtag { display: inline-block; margin-top: 6px; font: 700 12px/1 var(--text); letter-spacing: .06em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--ink); } .rtag.sim { background: #FFE08A; box-shadow: none; color: #4A3700; } .rtag.on { background: var(--brand); box-shadow: none; color: var(--on-brand); }
+  .rtag { display: inline-block; margin-top: 6px; font: 700 12px/1 var(--text); letter-spacing: .06em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--ink); } .rtag.sim { background: #FFE08A; box-shadow: none; color: #4A3700; } .rtag.on { background: var(--brand); box-shadow: none; color: var(--on-brand); } .rtag.off { background: #B3261E; box-shadow: none; color: #fff; } .stagebox.stale > * { opacity: .45; filter: grayscale(1); }
   .robot { display: grid; gap: 6px; padding: 10px 14px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--line); font-size: 15px; } .robot .fl { display: flex; justify-content: space-between; font-weight: 600; } .fbar { height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; } .fbar i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .1s linear; }
   .mtxt .coach { margin-top: 3px; text-align: left; font: 600 18px/1.3 var(--display); color: var(--ink); min-height: 2.6em; }
   @media (max-height: 640px) and (max-width: 479px) { .mtxt .coach { font-size: 16px; } .meter { padding: 8px 12px 8px 8px; } }
@@ -343,12 +343,12 @@ const MOV = {
 };
 const LEGBASE = V(.8, 0, -.42), H = V(), S = V(), Eh = V(), look = V(), cT = new THREE.Color(), RING = { ok: '#58E6F2', load: '#FF7A5E' };
 cuff.visible = false;
-function pose(fig, t) { const d = MOV[fig] || MOV.reach, s = d.at(t), isLeg = !!d.leg;
+function pose(fig, t, lv) { const d = MOV[fig] || MOV.reach, s = lv ? liveAt(fig, lv) : d.at(t), isLeg = !!d.leg;      // lv: the arm's real position (see "live" below) instead of a moment t of the loop
   base.position.copy(isLeg ? LEGBASE : BASE0); SHO.set(base.position.x, .9, base.position.z);
   torso.rotation.z = -s.lean; head.rotation.z = s.look || 0; torso.updateMatrixWorld(true);
   const th = isLeg ? s.th : .07; ANK.set(KNEE_R.x + SHIN * Math.sin(th), KNEE_R.y - SHIN * Math.cos(th), .1); CUFFP.set(KNEE_R.x + CUFF_AT * Math.sin(th), KNEE_R.y - CUFF_AT * Math.cos(th), .1);
   between(shinR, KNEE_R, ANK); footR.position.copy(ANK); footR.rotation.z = th; cuff.visible = isLeg; cuff.position.copy(CUFFP); cuff.quaternion.copy(shinR.quaternion);
-  if (!isLeg) H.set(s.x, s.y, s.z); const handAt = isLeg ? REST_R : H;
+  if (!isLeg) H.set(s.x, s.y, s.z); const handAt = isLeg ? REST_R : H; shown.copy(isLeg ? CUFFP : H);
   S.copy(SH_R); torso.localToWorld(S); elbow(Eh, S, handAt, UP, FORE, d.pole || POLE_R); tC.copy(handAt).sub(Eh).normalize(); armR.hand.position.copy(Eh).addScaledVector(tC, FORE - (isLeg ? .01 : .05)); armR.hand.scale.setScalar(isLeg ? 1 : .86); armR.sh.position.copy(S);
   between(armR.up, S, Eh); between(armR.fore, Eh, armR.hand.position); armR.el.position.copy(Eh); armR.cf.position.copy(armR.hand.position).addScaledVector(tC, -.042); armR.cf.quaternion.copy(armR.fore.quaternion);
   const ex = Eh.x, ez = Eh.z;
@@ -361,9 +361,9 @@ function pose(fig, t) { const d = MOV[fig] || MOV.reach, s = d.at(t), isLeg = !!
   between(rob.l3, W, tA.copy(P).addScaledVector(U, .04 + gap)); rob.flange.position.copy(P).addScaledVector(U, .034 + gap); rob.flange.quaternion.setFromUnitVectors(YA, U); rob.ring.position.copy(P).addScaledVector(U, .048 + gap); rob.ring.quaternion.copy(rob.flange.quaternion);
   rob.grip.visible = rob.top.visible = gripHand.visible = !isLeg; rob.grip.position.copy(P); rob.top.position.set(P.x, P.y + .078, P.z); if (!isLeg) { gripHand.position.copy(P); gripHand.rotation.y = Math.atan2(ez - P.z, P.x - ex); }
   rob.ring.material.color.set(RING.ok).lerp(cT.set(RING.load), clamp(s.load || 0)); led.material.color.copy(rob.ring.material.color);
-  guides(fig, d, t, s);
+  if (lv) liveGuides(fig, d, s, lv); else guides(fig, d, t, s);
   // the camera: each exercise has its own angle, with a slow sway so the scene feels alive
-  const v = d.view, az = v[0] + Math.sin(performance.now() / 4500) * .05, el = v[1], dist = v[2] * zoom * (cam.aspect < 1 ? 1.12 : 1); look.set(.44, .68, -.06);
+  const v = d.view, az = v[0] + Math.sin(swayAt(lv) / 4500) * .05, el = v[1], dist = v[2] * zoom * (cam.aspect < 1 ? 1.12 : 1); look.set(.44, .68, -.06);
   cam.position.set(look.x + Math.sin(az) * Math.cos(el) * dist, look.y + Math.sin(el) * dist, look.z + Math.cos(az) * Math.cos(el) * dist); cam.lookAt(look); }
 
 // ---------- motion lines: dark dots show the whole movement, a green tail shows where the hand (or foot) has just been, an arrow shows where it goes next ----------
@@ -384,12 +384,37 @@ function guides(fig, d, t, s) { const a = pathOf(fig, d);
   pt(d, t + .02, pA); pt(d, t + .07, pC); const dir = pC.sub(pA), len = dir.length(); arrow.visible = len > .006; arrowMat.color.set('#0E657A'); arrow.scale.setScalar(1);
   if (arrow.visible) { dir.multiplyScalar(1 / len); arrow.position.copy(pA).addScaledVector(dir, .03); arrow.quaternion.setFromUnitVectors(YA, dir); } }
 
+// ---------- live: during a session on the arm the picture sits where the handle really is. The app passes metres from the start of the path (along it, sideways, up); nothing here runs on a clock ----------
+// for each figure: where the path starts in the scene, which way it runs (+1 away from her, -1 towards her), how far she leans at its start and its end
+const LIVE = { reach: { x: X0, y: .95, dir: 1, lean: [0, .38] }, push: { x: .4, y: .97, dir: 1, lean: [.06, .3] }, pull: { x: .4, y: .97, dir: -1, lean: [.3, .04] }, pushhold: { x: .56, y: .97, dir: 1, lean: [.16, .25], test: true } };
+const shown = V(), lvTrail = Array.from({ length: TD }, () => V()), lvS = {}, lvT = { key: null, at: 0 };
+function liveAt(fig, lv) { const c = LIVE[fig] || LIVE.reach, len = clamp(lv.len || .3, .02, .45), a = clamp(lv.a || 0, -.08, len + .05), load = clamp(lv.load || 0);      // clamped, so a bad sample cannot fling her arm
+  const x0 = c.dir > 0 ? c.x : c.x + clamp(lv.far || len, .02, .45);      // a pull starts at the far end and comes towards her
+  lvS.x = clamp(x0 + c.dir * a, .24, .86); lvS.y = c.y + clamp(lv.up || 0, -.12, .12); lvS.z = Z0 + clamp(lv.side || 0, -.12, .12);      // true scale: the scene is in metres
+  lvS.lean = lerp(c.lean[0], c.lean[1], c.test ? load : clamp(a / len)); lvS.load = c.test ? load : 0; lvS.x0 = x0; lvS.len = len; lvS.dir = c.dir; return lvS; }
+function liveGuides(fig, d, s, lv) { const c = LIVE[fig] || LIVE.reach, y = c.y + OFFH.y, z = Z0 + OFFH.z, test = !!c.test;
+  // dark dots: the straight line the arm allows, from the start of the path to its end (a strength test: the short line that shows which way to push)
+  for (let i = 0; i < GD; i++) { mtx.makeScale(.0088, .0088, .0088).setPosition(test ? c.x + i / (GD - 1) * .15 : s.x0 + s.dir * s.len * i / (GD - 1), y, z); gDots.setMatrixAt(i, mtx); } gDots.instanceMatrix.needsUpdate = true;
+  if (test) { tDots.count = 0; arrow.visible = true; arrow.position.set(c.x + .18, y, z); arrow.quaternion.setFromUnitVectors(YA, d.push); arrow.scale.setScalar(1 + s.load * .35); arrowMat.color.set('#1E282A').lerp(cT.set('#E8472B'), s.load); return; }      // the arrow turns red with the real force
+  // green tail: where the hand really was over the last half second. It stays as it is while the picture is stopped
+  const now = performance.now(); pB.set(s.x, s.y, s.z).add(OFFH);
+  if (lvT.key !== lv.key) { lvT.key = lv.key; lvT.at = now; lvTrail.forEach((p) => p.copy(pB)); }
+  else if (!lv.frozen && now - lvT.at >= 28) { lvT.at = now; for (let i = TD - 1; i > 0; i--) lvTrail[i].copy(lvTrail[i - 1]); lvTrail[0].copy(pB); }
+  tDots.count = TD; for (let i = 0; i < TD; i++) { const r = .014 * (1 - i / TD) + .004; mtx.makeScale(r, r, r).setPosition(i ? lvTrail[i - 1] : pB); tDots.setMatrixAt(i, mtx); } tDots.instanceMatrix.needsUpdate = true;
+  // arrow: which way the movement goes next along the line (lv.go: +1 to the end of the path, -1 back to its start); none while the arm rests or is stopped
+  arrow.visible = !!lv.go && !lv.frozen; if (!arrow.visible) return; pA.set(s.dir * lv.go, 0, 0); arrowMat.color.set('#0E657A'); arrow.scale.setScalar(1); arrow.position.copy(pB).addScaledVector(pA, .05); arrow.quaternion.setFromUnitVectors(YA, pA); }
+// the slow camera sway stops with the picture, and carries on from the same angle afterwards
+let swayOff = 0, swayHeld = null;
+function swayAt(lv) { const n = performance.now(); if (lv && lv.frozen) { if (swayHeld === null) swayHeld = n - swayOff; return swayHeld; } if (swayHeld !== null) { swayOff = n - swayHeld; swayHeld = null; } return n - swayOff; }
+
 let W0 = 0, H0 = 0, zoom = .84;
 function fit(w, h) { if (w === W0 && h === H0) return; W0 = w; H0 = h; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
 const thumbs = {};
 window.vita3d = {
   // draw the exercise into a box of the app: the canvas moves to whichever screen is showing
-  show(el, fig, t) { if (canvas.parentNode !== el) { el.appendChild(canvas); el.classList.add('has3d'); } const w = Math.max(1, el.clientWidth), h = Math.max(1, el.clientHeight); fit(w, h); pose(fig, t); renderer.render(scene, cam); },
+  // with lv the figure is placed from the arm's real position: { key, a, side, up (metres from the path start), len, far, load (0 to 1), go, frozen }
+  show(el, fig, t, lv) { if (canvas.parentNode !== el) { el.appendChild(canvas); el.classList.add('has3d'); } const w = Math.max(1, el.clientWidth), h = Math.max(1, el.clientHeight); fit(w, h); pose(fig, t, lv); renderer.render(scene, cam); },
+  shown,      // where the hand (or the cuff) was last drawn, in scene metres: read by the checks
   // a still picture for the lists, made once per exercise
   thumb(fig) { if (thumbs[fig]) return thumbs[fig]; const w0 = W0, h0 = H0; fit(232, 170); zoom = .62; pose(fig, .45); zoom = .84; renderer.render(scene, cam); thumbs[fig] = canvas.toDataURL('image/jpeg', .86); if (w0) fit(w0, h0); return thumbs[fig]; },
 };
@@ -442,19 +467,81 @@ async function robotStart(r, e) { let res = null, d = {};
   if (S.run !== r) { if (res && res.ok) robotStop(); return; }   // left the screen while the arm was starting
   if (!res) { r.robot = null; r.t = 0; r.at = performance.now(); render(); return; }   // server gone: the timer takes over
   if (!res.ok) { r.robot = null; r.err = typeof d.detail === 'string' ? d.detail : 'The arm did not start.'; render(); return; }   // refused: say why, never fake reps
-  r.robot = { sid: d.session_id, sim: !!d.simulated, best: 0, peak: 0, f: 0 };
-  const ws = ROBOT.ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/live');
+  r.robot = { sid: d.session_id, sim: !!d.simulated, best: 0, peak: 0, f: 0, live: liveNew(r.id) };
+  robotSocket(r); render(); }
+// the live feed. If it drops the picture stops at once (see liveDraw), and the app keeps trying to get it back
+function robotSocket(r) { const R = r.robot, ws = ROBOT.ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/live');
+  ws.onopen = () => { if (R.lost) robotBack(r); };
   ws.onmessage = (m) => { if (S.run !== r) return; try { robotMsg(r, JSON.parse(m.data)); } catch (x) {} };
-  render(); }
+  ws.onclose = () => { if (S.run !== r || ROBOT.ws !== ws) return; ROBOT.ws = null; R.lost = true; R.retry = setTimeout(() => { if (S.run === r && !ROBOT.ws) robotSocket(r); }, 1000); }; }
+// back after a drop: is it still our session, and which reps did we miss?
+async function robotBack(r) { const R = r.robot; try { const st = await (await fetch('/api/state')).json(); if (S.run !== r) return; if (!st.session || st.session.session_id !== R.sid) { R.gone = true; return; }
+    const reps = await (await fetch('/api/sessions/' + encodeURIComponent(R.sid) + '/reps')).json(); if (S.run === r && Array.isArray(reps)) reps.forEach((x) => { R.best = Math.max(R.best, x.rom_m || 0); R.peak = Math.max(R.peak, x.peak_force_n || 0); liveRep(R.live, x); }); } catch (x) {} }
+// ---------- the live picture: during a session on the arm the figure sits where the handle really is ----------
+// Every sample of /ws/live has the handle position (metres, robot frame). The picture needs metres from the start of the path: along it, sideways and up.
+// The server does not send the path, so it is found from the samples:
+//   start     the first position outside the "setup" phase (the engine only leaves setup within 3 cm of the path start). It is then made exact from
+//             the idle target, which is the path start itself whenever it stays fixed while the hand moves a little;
+//   axis      the horizontal axis (x or y) that moved more; direction: the sign of the first 3 cm of an "out" phase (out runs from the path start
+//             to its end), or of a pull's setup (which runs to the far end, where a pull starts);
+//   length    only for the dotted line and how far she leans: the usual lengths until a completed rep reports its range.
+// A sample that carries `progress` (0 to 1 along the path), or `path_start` and `path_end` (x, y, z), is used as it is instead.
+const NOM = { reach: .3, push: .28, pull: .28, armtest: .3 }, LK = ['a', 'side', 'up', 'load'];
+let GEO = null;      // found once per page: { ax, away, home }: the reach axis, which way along it is away from the patient, where the handle rests at the start
+function liveNew(id) { const z = () => ({ a: 0, side: 0, up: 0, load: 0 }); return { id, born: performance.now(), at: 0, gap: 33, t0: 0, dur: 33, cur: z(), from: z(), to: z(), len: NOM[id] || .3, far: 0, go: 0, P0: null, first: null, ax: null, sg: 0, exact: false, tq: null, seen: false, held: false, view: {} }; }
+function liveGeo(L, x) { const p = x.pos, q = x.target, pull = L.id === 'pull', setup = x.phase === 'setup', v3 = (a) => Array.isArray(a) && a.length >= 3 && a.slice(0, 3).every(Number.isFinite), gapOf = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]), big = (d) => Math.abs(d[0]) >= Math.abs(d[1]) ? 0 : 1;
+  if (!v3(p)) return null;
+  if (!L.first) { L.first = p.slice(0, 3); L.setup0 = setup; L.near = GEO && GEO.home ? GEO.home : setup && pull ? L.first : null; }      // near: where the handle rests at the patient's end, if that is known
+  if (v3(x.path_start) && v3(x.path_end)) {      // the server says where the path is: nothing to find out
+    const e = [0, 1, 2].map((i) => x.path_end[i] - x.path_start[i]), ax = big(e); if (Math.abs(e[ax]) >= .02) { L.P0 = x.path_start; L.ax = ax; L.sg = Math.sign(e[ax]); L.len = L.far = Math.abs(e[ax]); L.exact = true; } }
+  if (!L.exact) {
+    if (!L.P0 && !setup) L.P0 = !pull && GEO && GEO.home && gapOf(p, GEO.home) < .035 ? GEO.home.slice() : p.slice(0, 3);      // the start found in an earlier session is the same point: use it at once
+    if (L.P0 && L.id !== 'armtest' && x.phase === 'idle' && x.arm_mode === 'compliant' && v3(q)) {      // a fixed target under a moving hand is the path start
+      if (L.tq && gapOf(q, L.tq) < 1e-9) { L.tn++; if (gapOf(p, L.tp) > 1e-7) L.tm = true; if (L.tn >= 8 && L.tm && gapOf(q, L.P0) < .035) L.P0 = L.tq; }
+      else { L.tq = q.slice(0, 3); L.tp = p.slice(0, 3); L.tn = 0; L.tm = false; } } else L.tq = null; }
+  if (L.ax === null && GEO) { L.ax = GEO.ax; L.sg = pull ? -GEO.away : GEO.away; }
+  const ref = L.P0 || L.near; if (!ref) return { a: 0, side: 0, up: 0 };      // started away from the path start with nothing known yet: rest at the start until the engine leaves setup
+  const d = [p[0] - ref[0], p[1] - ref[1], p[2] - ref[2]];
+  if (!L.sg) { const ax = big(d), m = Math.abs(d[ax]); let sg = 0;
+    if (!L.P0) { if (pull && m >= .03) sg = -Math.sign(d[ax]); }      // a pull's setup carries the handle away from the patient, to where the path starts
+    else if (x.phase === 'out' && x.rep_idx >= 0) { if (m >= .03) sg = Math.sign(d[ax]);
+      else if (x.dial > .05 && v3(q)) { const dq = [q[0] - ref[0], q[1] - ref[1]], aq = big(dq); if (Math.abs(dq[aq]) >= .03) { sg = Math.sign(dq[aq]); L.ax = aq; } } }      // an assisting target runs ahead of the hand, towards the end
+    if (sg) { if (L.ax === null) L.ax = ax; L.sg = sg; if (!GEO) GEO = { ax: L.ax, away: pull ? -sg : sg, home: null }; }
+    else return pull && !L.P0 ? (L.far = Math.max(L.len, m), { a: L.far - m, side: 0, up: d[2] }) : { a: x.phase === 'out' ? Math.hypot(d[0], d[1]) : 0, side: 0, up: d[2] }; }      // direction not known yet: the first centimetres of a movement go forward
+  const away = pull ? -L.sg : L.sg, along = L.sg * d[L.ax], g = { a: along, side: away * (L.ax === 0 ? -d[1] : d[0]), up: d[2] };      // sideways = away x up, so left and right are not swapped when the reach is reversed
+  if (pull && !L.P0) { L.far = Math.max(L.len, -along); g.a = L.far + along; }      // a pull's setup: measured from the near end until the far end is reached
+  else if (pull && !L.anch) { L.anch = true; const f = L.near ? -L.sg * (L.P0[L.ax] - L.near[L.ax]) : 0; L.far = f >= .02 && f <= .45 ? f : L.len; if (Math.abs(L.far - L.len) > .15 * L.len) L.len = L.far; }      // how far out the pull starts, fixed for the session
+  if (GEO && L.P0 && !pull) GEO.home = L.P0; else if (GEO && !GEO.home && pull && L.setup0) GEO.home = L.first;
+  if (L.prev === 'out' && x.phase === 'back' && !L.exact && along < -.5 * L.len) { L.sg = -L.sg; GEO.away = -GEO.away; g.a = -along; g.side = -g.side; }      // a rep that "ended" far behind its start: the direction was read the wrong way round
+  L.prev = x.phase; if (Number.isFinite(x.progress)) g.a = x.progress * L.len;
+  return g; }
+function liveNow(L, now) { const u = Math.min(1, Math.max(0, (now - L.t0) / L.dur)); for (const k of LK) L.cur[k] = L.from[k] + (L.to[k] - L.from[k]) * u; }      // straight from one sample to the next: never past the newest one
+function liveSample(r, x) { const L = r.robot.live, now = performance.now(), stopped = x.arm_mode === 'hold' || x.arm_mode === 'fault', gap = now - L.at;
+  if (r.robot.gone) return;      // another session is running on the arm now: not ours to show
+  if (L.at && gap < 200) L.gap += (Math.min(60, Math.max(16, gap)) - L.gap) * .2; L.at = now; r.robot.lost = false;
+  if (stopped && L.held) return;      // the arm is stopped: the picture stays where it stopped
+  const g = liveGeo(L, x); if (!g) return; g.load = L.id === 'armtest' ? Math.min(1, Math.hypot(...(x.force || [0])) / CAP_N) : 0;
+  liveNow(L, now); const snap = stopped || !L.seen; for (const k of LK) { L.from[k] = snap ? g[k] : L.cur[k]; L.to[k] = g[k]; if (snap) L.cur[k] = g[k]; }
+  L.t0 = now; L.dur = L.gap; L.seen = true; L.held = stopped;
+  L.go = x.phase === 'out' ? 1 : x.phase === 'back' ? -1 : x.phase === 'setup' ? (g.a > 0 ? -1 : 1) : x.done ? 0 : g.a < .03 ? 1 : 0; }
+function liveRep(L, x) { const m = x.rom_m; if (x.completed && x.mode !== 'isometric' && m >= .02 && m <= .45 && !L.exact && Math.abs(m - L.len) > .15 * L.len) L.len = m; }      // a completed rep went the whole path: its range is the path length
+const rtagText = (R) => R.off ? 'Not live · picture paused' : R.sim ? 'Simulated' : 'Live on the arm';
+function liveDraw(fig, r, now) { const R = r.robot, L = R.live, off = !!(R.lost || R.gone || now - (L.at || L.born) > 1000), stop = off || L.held;
+  if (off !== !!R.off) { R.off = off; const tg = $('#rtag'); if (tg) { tg.className = 'rtag ' + (off ? 'off' : R.sim ? 'sim' : 'on'); tg.textContent = rtagText(R); } fig.classList.toggle('stale', off); }      // no sample for a second, or the connection is gone: say so
+  if (still.matches) { draw(fig, r.id, .45); return; }
+  if (!stop) liveNow(L, now);
+  if (!use3d()) { paint(fig, r.id, 0, r.id === 'armtest' ? L.cur.load : Math.min(1, Math.max(0, L.cur.a / L.len))); return; }
+  const v = L.view; v.key = R.sid; v.a = L.cur.a; v.side = L.cur.side; v.up = L.cur.up; v.load = L.cur.load; v.len = L.len; v.far = L.far; v.go = L.go; v.frozen = stop;
+  window.vita3d.show(fig, EX[r.id].fig, 0, v); }
 function robotMsg(r, x) { const e = EX[r.id], R = r.robot; if (x.simulated && !R.sim) { R.sim = true; render(); }
-  if (x.type === 'rep') { if (x.session_id && x.session_id !== R.sid) return; R.best = Math.max(R.best, x.rom_m || 0); R.peak = Math.max(R.peak, x.peak_force_n || 0); return; }
-  if (x.type !== 'sample') return; r.phase = x.phase; r.mode = x.arm_mode;
+  if (x.type === 'rep') { if (x.session_id && x.session_id !== R.sid) return; R.best = Math.max(R.best, x.rom_m || 0); R.peak = Math.max(R.peak, x.peak_force_n || 0); liveRep(R.live, x); return; }
+  if (x.type !== 'sample') return; r.phase = x.phase; r.mode = x.arm_mode; liveSample(r, x);
   const f = Math.hypot(...(x.force || [0])), bar = $('#fbar'), fl = $('#fn'); if (bar) bar.style.width = Math.min(1, f / CAP_N) * 100 + '%'; if (fl) fl.textContent = newton(f);
   if (x.rep_count > r.n) { r.n = x.rep_count; const n = $('#n'), rg = $('#ring'); if (n) { n.textContent = r.n; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); } if (rg) rg.setAttribute('stroke-dashoffset', 100 - Math.min(1, r.n / e.reps) * 100); if (r.n >= e.reps) finish(); } }
-const robotTip = (r, e) => r.robot === 'starting' ? 'Starting the arm…' : r.mode === 'fault' ? 'The arm has stopped. Please tell staff.' : r.mode === 'hold' ? 'The arm is holding still.' : r.n === e.reps - 1 && r.phase !== 'idle' ? 'Last one. Almost there.' : r.phase === 'back' ? e.tips[2] : r.phase === 'out' || !r.n ? e.tips[0] : 'Rest a moment, then the next one.';
-const robotTag = (r) => armOn(r) ? `<span class="rtag ${r.robot.sim ? 'sim' : 'on'}">${r.robot.sim ? 'Simulated' : 'Live on the arm'}</span>` : ROBOT.ids && !onRobot(r.id) ? '<span class="rtag">Demo animation</span>' : '';
+const robotTip = (r, e) => r.robot === 'starting' ? 'Starting the arm…' : r.robot.off ? 'No signal from the arm. The picture is paused.' : r.mode === 'fault' ? 'The arm has stopped. Please tell staff.' : r.mode === 'hold' ? 'The arm is holding still.' : r.n === e.reps - 1 && r.phase !== 'idle' ? 'Last one. Almost there.' : r.phase === 'back' ? e.tips[2] : r.phase === 'out' || !r.n ? e.tips[0] : 'Rest a moment, then the next one.';
+const robotTag = (r) => armOn(r) ? `<span id="rtag" class="rtag ${r.robot.off ? 'off' : r.robot.sim ? 'sim' : 'on'}">${rtagText(r.robot)}</span>` : ROBOT.ids && !onRobot(r.id) ? '<span class="rtag">Demo animation</span>' : '';
 const robotPanel = (r) => r.err ? `<div class="robot" role="alert"><b>The arm did not start.</b><span>${esc(r.err)}</span></div>` : armOn(r) ? `<div class="robot"><div class="fl"><span>Your force</span><span id="fn">0 N</span></div><div class="fbar"><i id="fbar"></i></div></div>` : '';
-function robotStop() { if (ROBOT.ws) { ROBOT.ws.onmessage = null; ROBOT.ws.close(); ROBOT.ws = null; } robotFetch('/api/session/stop', {}).catch(() => {}); }
+function robotStop() { if (S.run && S.run.robot) clearTimeout(S.run.robot.retry); if (ROBOT.ws) { ROBOT.ws.onmessage = null; ROBOT.ws.close(); ROBOT.ws = null; } robotFetch('/api/session/stop', {}).catch(() => {}); }
 function robotResult(r) { const R = r.robot, sim = R && R.sim ? ' (SIMULATED)' : ''; if (!armOn(r)) return undefined;   // undefined: not a robot run, null: the arm measured nothing
   if (r.id === 'reach') return R.best ? ['Forward reach', Math.round(R.best * 100) + ' cm', 'measured by the arm' + sim] : null;
   return R.peak ? [r.id === 'armtest' ? 'Push strength' : 'Peak force', newton(R.peak), (r.id === 'armtest' ? 'best of ' + r.n + ' tries, ' : '') + 'measured by the arm' + sim] : null; }
@@ -534,7 +621,8 @@ const nextEx = () => PLAN.find((e) => !S.done[e.id]), allDone = () => !nextEx();
 const HIP = [47, 61], KNEE = [71, 62], RS = [118, 47], SH0 = [49, 34];
 function ik(a, b, l1, l2, down) { let dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1; const d = Math.min(L, l1 + l2 - .01), ux = dx / L, uy = dy / L, x = (l1 * l1 - l2 * l2 + d * d) / (2 * d), y = Math.sqrt(Math.max(0, l1 * l1 - x * x));
   const c1 = [a[0] + ux * x - uy * y, a[1] + uy * x + ux * y], c2 = [a[0] + ux * x + uy * y, a[1] + uy * x - ux * y]; return down ? (c1[1] > c2[1] ? c1 : c2) : (c1[1] < c2[1] ? c1 : c2); }
-function poseOf(id, t) { const f = EX[id].fig, u = (1 - Math.cos(2 * Math.PI * t)) / 2, w = 2 * Math.PI * t; let S2 = SH0, H, A = [71, 84], G, E, ka = null;
+function poseOf(id, t, u0) { const f = EX[id].fig, u = u0 === undefined ? (1 - Math.cos(2 * Math.PI * t)) / 2 : u0,      // u0: a real position along the movement (0 to 1) instead of the moment t
+   w = 2 * Math.PI * t; let S2 = SH0, H, A = [71, 84], G, E, ka = null;
   if (f === 'reach') { S2 = [49 + 3.5 * u, 34 + .6 * u]; H = [63 + 15 * u, 48 - 9 * u]; }
   else if (f === 'circle') H = [70 + 6.5 * Math.cos(w), 43 + 6.5 * Math.sin(w)];
   else if (f === 'trace') H = [67.5 + 6 * Math.sin(w), 42.5 + 3.6 * Math.sin(2 * w)];
@@ -547,7 +635,7 @@ function poseOf(id, t) { const f = EX[id].fig, u = (1 - Math.cos(2 * Math.PI * t
   if (ka !== null) { A = [KNEE[0] + 22 * Math.sin(ka), KNEE[1] + 22 * Math.cos(ka)]; G = [KNEE[0] + 17 * Math.sin(ka) + 3.5 * Math.cos(ka), KNEE[1] + 17 * Math.cos(ka) - 3.5 * Math.sin(ka)]; } else G = [H[0] + 3, H[1] - .5];
   return { S: S2, H, A, G, E }; }
 const P = (...p) => 'M' + p.map((q) => q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' L');
-function parts(id, t) { const { S: s, H, A, G, E: E0 } = poseOf(id, t), E = E0 || ik(s, H, 14.5, 13.5, true), RE = ik(RS, G, 31, 31, false), an = Math.atan2(A[0] - KNEE[0], A[1] - KNEE[1]);
+function parts(id, t, u0) { const { S: s, H, A, G, E: E0 } = poseOf(id, t, u0), E = E0 || ik(s, H, 14.5, 13.5, true), RE = ik(RS, G, 31, 31, false), an = Math.atan2(A[0] - KNEE[0], A[1] - KNEE[1]);
   return { shin: P(KNEE, A), foot: P(A, [A[0] + 7 * Math.cos(an), A[1] - 7 * Math.sin(an)]), rob: P(RS, RE, G), torso: P(HIP, s), arm: P(s, E, H), head: [s[0] + 1.5, s[1] - 12], hair: [s[0] - 4, s[1] - 17.5], hand: H, grip: G }; }
 function figure(id, t) { const q = parts(id, t), c = (k, p, r, fill) => `<circle data-k="${k}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${r}" fill="${fill}"/>`;
   const f = EX[id].fig, dash = 'fill="none" stroke="var(--mint)" stroke-width="1.4" stroke-dasharray="2.5 2.5"', ring = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" ${dash}/>`;
@@ -565,7 +653,7 @@ function figure(id, t) { const q = parts(id, t), c = (k, p, r, fill) => `<circle
     ${c('head', q.head, 7, 'var(--skin)')}${c('hair', q.hair, 4, 'var(--hair)')}
     <path data-k="arm" d="${q.arm}" stroke="var(--sleeve)" stroke-width="5.5"/>${c('hand', q.hand, 3.2, 'var(--skin)')}
     ${c('grip', q.grip, 2.6, 'var(--warn)')}<circle cx="118" cy="47" r="4.2" fill="var(--screen)" stroke="var(--mint)" stroke-width="1.4"/></svg>`; }
-function paint(root, id, t) { if (!root._k) { root._k = {}; root.querySelectorAll('[data-k]').forEach((n) => { root._k[n.dataset.k] = n; }); } const q = parts(id, t), k = root._k;
+function paint(root, id, t, u0) { if (!root._k) { root._k = {}; root.querySelectorAll('[data-k]').forEach((n) => { root._k[n.dataset.k] = n; }); } const q = parts(id, t, u0), k = root._k;
   for (const n in q) { const el = k[n], v = q[n]; if (!el) continue; if (typeof v === 'string') el.setAttribute('d', v); else { el.setAttribute('cx', v[0].toFixed(1)); el.setAttribute('cy', v[1].toFixed(1)); } } }
 
 // ---------- screens ----------
@@ -718,8 +806,9 @@ function tick(now) { if (AC.signal.aborted) return; requestAnimationFrame(tick);
   if (S.camOn && now - lastScan > 160) { lastScan = now; scanFrame(); }
   if (S.pre && !S.run) { S.pt = (S.pt + dt / 3) % 1; const fg = $('#fig'); if (fg && (!still.matches || !fg.classList.contains('has3d'))) draw(fg, S.pre, still.matches ? .45 : S.pt); return; }
   const r = S.run; if (!r || r.paused || r.err) return;
-  const e = PLAN.find((x) => x.id === r.id); r.t += dt / 3; if (r.robot && r.t >= 1) r.t -= 1; if (r.t >= 1) { r.t -= 1; r.n++; const n = $('#n'), bar = $('#bar'); if (n) { n.textContent = r.n; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); } if (bar) bar.style.width = r.n / e.reps * 100 + '%'; const rg = $('#ring'); if (rg) rg.setAttribute('stroke-dashoffset', 100 - r.n / e.reps * 100); if (r.n >= e.reps) { finish(); return; } }
-  const fig = $('#fig'); if (fig) draw(fig, r.id, still.matches ? .45 : r.t);
+  const e = PLAN.find((x) => x.id === r.id); if (!r.robot) r.t += dt / 3;      // on the arm the figure follows the real handle (liveDraw), not this clock
+  if (r.t >= 1) { r.t -= 1; r.n++; const n = $('#n'), bar = $('#bar'); if (n) { n.textContent = r.n; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); } if (bar) bar.style.width = r.n / e.reps * 100 + '%'; const rg = $('#ring'); if (rg) rg.setAttribute('stroke-dashoffset', 100 - r.n / e.reps * 100); if (r.n >= e.reps) { finish(); return; } }
+  const fig = $('#fig'); if (fig) { if (armOn(r)) liveDraw(fig, r, now); else draw(fig, r.id, still.matches ? .45 : r.t); }
   const tip = r.robot ? robotTip(r, e) : r.n === e.reps - 1 ? 'Last one. Almost there.' : e.tips[Math.min(2, Math.floor(r.t * 3))], c = $('#coach'); if (c && c.textContent !== tip) c.textContent = tip; }
 render(); requestAnimationFrame(tick); if (live()) loadMe(); else pullHist();
 { const q = new URLSearchParams(location.search), st = +q.get('station');
