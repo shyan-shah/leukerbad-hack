@@ -32,8 +32,8 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | Y5 `server/API.md` handover for Mat and Gio | Shyan | server/ | Done |
 | L0 `/screens/` mount, common.js, style.css | Shyan | server/ | Done |
 | L1 Patient screen | Shyan | server/ | Done (small fix: hand dot overlaps track-end labels) |
-| L2 Physio screen | Shyan | server/ | Todo |
-| L3 Operator console | Shyan | server/ | Todo |
+| L2 Physio screen (swap: Kian builds it, only server/screens/physio.*) | Kian | server/ | Todo |
+| L3 Operator console (swap: Kian builds it, only server/screens/operator.*) | Kian | server/ | Todo |
 | Y6 `POST /api/arm/prepare` (fault check + zero_force before the first real session; no home) | Shyan | server/ | Done |
 | L4 QR / LAN phone access | Shyan | server/ | Todo (after L2) |
 | Help Kian get the arm connected (K0): organisers/technician for Remote mode + licence | Shyan | n/a | Done (connected 14 Nov, licence RDK-Professional) |

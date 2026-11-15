@@ -313,3 +313,6 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Patient screen opened in headless Chrome against `--mock` for armtest, pull, push and reach: exercise name, "Move the handle to the far end", "Push and hold" / "Rest", best try and the rep line all show, no JavaScript errors. Not seen by a person on a real display yet. track.js still has no node run on my laptop.
 - Found, for Shyan (E1) and Kian: a session started right after a `pull` session begins with the handle at the far end (0.70 m in the sim). An armtest started there sat in arm_mode `hold` from the first sample and recorded no tries in 120 s. Armtest twice in a row, and each exercise on a fresh arm, are fine. Not fixed (engine/robot question: who brings the handle back). Until then put `pull` last in a plan; API.md tells Mat and Gio the same.
 - server + software + robot tests: 366 passed, 1 skipped (node).
+
+**2026-11-15 · Shyan · screens handed to Kian**
+- Kian builds L2 (physio screen) and L3 (operator console) in `server/screens/` as new files only (physio.*, operator.*), against `server.run --mock`. Shyan's robot session is adding `POST /api/arm/home` and a prepare rule (refuses unless within 2 cm of the start pose); the operator console should call home then prepare and show the server's `detail` on a refusal.
