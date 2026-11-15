@@ -534,3 +534,46 @@ second stop or a start while the first is pending. The session is stored at the 
 **How it feels, so the wording matches.** Pushing out or holding still, the pull is the level's newtons
 (plus about 4.5 N of friction in the arm). Coming back, the pull eases off the faster the handle returns,
 so a handle that is let go glides back slowly instead of snapping. Readings stop at about 30 N.
+
+## 9. Row at 4 fixed levels and the strength test (band engines, `software/simple_more.py`)
+
+Sim and mock only so far: not yet run on the real arm. Same routes and fields as Push (section 8).
+
+Ids: `row_1` .. `row_4` (the levels and newtons of Push, `group` "row") and `strength` (`group` "strength",
+`kind` "test", `reps` 3, `level` and `level_force_n` null). `--robot` offers `push_1..4`, `row_1..4` and
+`strength`; `--push-only` offers Push alone. `GET /api/exercises` lists them with `group`, `level`,
+`level_force_n`. `--mock` plays all of them.
+
+`POST /api/level {"level": n}` keeps the exercise: `row_2` becomes `row_n`, `push_2` becomes `push_n`.
+During `strength` it answers 409 "this exercise has no levels; levels are for Push and Row".
+
+Row, what the state and samples show after start (`message`, `countdown_s`; `phase` "idle" throughout):
+
+| Step | `message` | Handle |
+|---|---|---|
+| 1 | `Hands off: zeroing in 3` .. `1`, then `Zeroing. Hands off.` | at the start pose |
+| 2 | `Hands off: moving to the start position in 3` .. `1` (starts again while the handle moves or reads over 6 N) | at the start pose |
+| 3 | `The arm is moving to the start position. Hands off.` | carried to the far end, 0.28 m along the reach, at 0.05 m/s (5.6 s) |
+| 4 | `Hands off: zeroing in 2`, `1`, then `Zeroing. Hands off.` | at the far end |
+| 5 | null: the band is on | pulled towards the patient; `phase` "out" then "back", `rep_idx`, `rep_count` as Push |
+
+`path_start` is the far end and `path_end` lies 0.30 m from it towards the patient, from the first message
+on. `target` is the band's anchor, on the far-end side of `pos`. A rep counts when the handle has been
+pulled more than 0.20 m from the far end and is back within 0.05 m of it. `Turn back` from 0.27 m.
+At stop: `Returning to start, hands off: 3` .. then the arm carries the handle back to the START pose
+(`Back at the start.`), under the same rules as Push. If a move is stopped by something on the handle:
+`Not started: the move ended N cm short: something was on the handle. Stop the session and start again.`
+
+Strength test, after Push's `Hands off: zeroing in 3` .. `1`:
+
+| `message` | `countdown_s` | `phase` | `rep_idx` |
+|---|---|---|---|
+| `Get ready: 3`, `2`, `1` | 3.0 to 0 | idle | -1 |
+| `Push and hold` | 3.0 to 0 | out | the try, 0 to 2 |
+| `Rest` (or `Eased off: that's the most this arm measures.`) | 5.0 to 0 | idle | -1 |
+| `Set finished` after the third try | null | idle | -1 |
+
+Extra fields in state and samples (null for every other exercise): `try` (1 to 3, the try that is running
+or next), `tries` (3), `best_force_n` and `last_force_n` (peak of the best and of the last finished try,
+N, capped at `force_cap_n` 30). One `rep` message per try: `mode` "isometric", `peak_force_n`,
+`mean_force_n`, `rom_m` (how far the handle gave), `completed` true if the peak was over 5 N.

@@ -50,11 +50,14 @@ def default_engine_factory(**kw):
     """software.engine.Engine. An engine from before E1 has no `exercise`/`reps` arguments: it can
     only run "reach" (anything else is refused, never silently run as a reach) and ignores `reps`."""
     if exercises.is_band(kw.get("exercise")):
-        # Push at a fixed level: the small band engine beside the main one. It zeroes the force itself
-        # after a "hands off" countdown and returns the arm to the start at stop.
+        # Push or Row at a fixed level, or the strength test: the small band engines beside the main one
+        # (software/simple.py, software/simple_more.py). They zero the force themselves after a "hands off"
+        # countdown and return the arm to the start at stop.
         from software.simple import BandEngine
+        from software.simple_more import engine_class
         params = inspect.signature(BandEngine.__init__).parameters
-        return BandEngine(**{k: v for k, v in kw.items() if k in params}, prepare=True, return_home=True)
+        cls = engine_class(kw["exercise"])
+        return cls(**{k: v for k, v in kw.items() if k in params}, prepare=True, return_home=True)
     from software.engine import Engine
     params = inspect.signature(Engine.__init__).parameters
     if not any(p.kind is p.VAR_KEYWORD for p in params.values()):
@@ -95,7 +98,8 @@ class LevelBody(BaseModel):
 
 
 # snapshot fields copied into every sample message as they are (null when the engine does not report them)
-SNAPSHOT_FIELDS = ("group", "level", "level_force_n", "message", "countdown_s", "path_start", "path_end")
+SNAPSHOT_FIELDS = ("group", "level", "level_force_n", "message", "countdown_s", "path_start", "path_end",
+                   "try", "tries", "best_force_n", "last_force_n")       # the last four: strength test only
 
 
 class DialBody(BaseModel):
@@ -584,18 +588,20 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
 
     @app.post("/api/level")
     def level(body: LevelBody, x_operator_token: str | None = Header(default=None)):
-        """Change the resistance level (1 to 4) of a running Push session. The stiffness ramps over 0.5 s."""
+        """Change the resistance level (1 to 4) of a running Push or Row session; the exercise stays the same
+        (push_n becomes push_m, row_n becomes row_m). The stiffness ramps over 0.5 s."""
         guard(x_operator_token)
         if hub.engine is None:
             raise HTTPException(409, "no session running")
         fn = getattr(hub.engine, "set_level", None)
-        if fn is None:
-            raise HTTPException(409, "this exercise has no levels; levels are for Push (push_1 to push_4)")
+        if fn is None or hub.exercise == exercises.STRENGTH_ID:
+            raise HTTPException(409, "this exercise has no levels; levels are for Push and Row")
         try:
             fn(body.level)
         except (ValueError, RuntimeError) as e:
             raise HTTPException(409, f"level not changed: {e}")
-        hub.exercise = f"push_{body.level}"
+        group = "row" if exercises.row_level(hub.exercise) is not None else "push"
+        hub.exercise = f"{group}_{body.level}"
         return {"ok": True, "level": body.level, "level_force_n": exercises.BAND_LEVELS[body.level]}
 
     @app.post("/api/hold")

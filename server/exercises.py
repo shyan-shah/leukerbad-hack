@@ -28,6 +28,13 @@ BAND_LEVELS: dict[int, float] = {1: 10.0, 2: 15.0, 3: 20.0, 4: 28.0}
 BAND_IDS: tuple[str, ...] = tuple(f"push_{n}" for n in BAND_LEVELS)
 for _n, _f in BAND_LEVELS.items():
     BUILTIN[f"push_{_n}"] = {"name": f"Push \u00b7 Level {_n} ({_f:.0f} N)", "kind": "resist", "reps": 10}
+# Row at the same four levels and the strength test: the band engines of software/simple_more.py.
+ROW_IDS: tuple[str, ...] = tuple(f"row_{n}" for n in BAND_LEVELS)
+STRENGTH_ID = "strength"
+for _n in BAND_LEVELS:
+    BUILTIN[f"row_{_n}"] = {"name": f"Row \u00b7 Level {_n}", "kind": "resist", "reps": 10}
+BUILTIN[STRENGTH_ID] = {"name": "Strength test", "kind": "test", "reps": 3}
+BAND_ENGINE_IDS: tuple[str, ...] = BAND_IDS + ROW_IDS + (STRENGTH_ID,)      # everything the band engines run
 GROUPS = {"pull": "row"}                # id -> group shown as one card in the app (default: the id itself)
 FALLBACK_LIVE = ("reach",)
 
@@ -38,8 +45,31 @@ def band_level(exercise_id: str | None) -> int | None:
     return int(s[5:]) if s in BAND_IDS else None
 
 
+def row_level(exercise_id: str | None) -> int | None:
+    """Level of a row id ("row_3" -> 3), else None."""
+    s = str(exercise_id or "")
+    return int(s[4:]) if s in ROW_IDS else None
+
+
+def level_of(exercise_id: str | None) -> int | None:
+    """Level of a Push or Row id, else None (the strength test has no levels)."""
+    lv = band_level(exercise_id)
+    return lv if lv is not None else row_level(exercise_id)
+
+
 def is_band(exercise_id: str | None) -> bool:
-    return band_level(exercise_id) is not None
+    """True for everything that runs on the band engines: push_1..4, row_1..4 and strength."""
+    return str(exercise_id or "") in BAND_ENGINE_IDS
+
+
+def group_of(exercise_id: str | None) -> str:
+    """The card an exercise belongs to in the app: "push", "row", "strength", else the id itself."""
+    s = str(exercise_id or "")
+    if s in BAND_IDS:
+        return "push"
+    if s in ROW_IDS:
+        return "row"
+    return GROUPS.get(s, s)
 LEGACY = {"reach_line": "reach"}        # sessions stored before E2
 REPS_MAX = 100
 _REGISTRY_NAMES = ("EXERCISES", "REGISTRY", "PRESETS", "PROGRAMMES")
@@ -111,12 +141,12 @@ def info(exercise_id: str) -> dict[str, Any]:
             pass
     # comfortable-push calibration at the start of the session: on for resist exercises (push, pull)
     out["calibrates"] = bool(calibrates) if calibrates is not None else out["kind"] == "resist"
-    lv = band_level(exercise_id)
-    out["group"] = "push" if lv else GROUPS.get(exercise_id, exercise_id)
+    lv = level_of(exercise_id)
+    out["group"] = group_of(exercise_id)
     out["level"] = lv
     out["level_force_n"] = BAND_LEVELS[lv] if lv else None
-    if lv:
-        out["calibrates"] = False       # no comfortable push on the band: the level is the resistance
+    if is_band(exercise_id):
+        out["calibrates"] = False       # no comfortable push on the band engines: the level is the resistance
     return out
 
 

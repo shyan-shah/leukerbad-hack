@@ -7,7 +7,7 @@ from __future__ import annotations
 from statistics import fmean
 
 from .contract import RepResult, SessionSummary
-from .exercises import BAND_LEVELS, band_level, canonical
+from .exercises import BAND_LEVELS, STRENGTH_ID, band_level, canonical, row_level
 from .stats import METRICS, mode_of, session_means
 
 HEADER = "Drafted automatically from device data for therapist review. Not a clinical assessment."
@@ -60,6 +60,12 @@ def _exercise_line(ex: str) -> str:
     if lv:
         return (f"push forward against a constant resistance of {BAND_LEVELS[lv]:.0f} N (level {lv} of 4), "
                 "straight line on the robot arm; reps counted from the handle position")
+    lv = row_level(ex)
+    if lv:
+        return (f"row (pull towards the body) against a constant resistance of {BAND_LEVELS[lv]:.0f} N "
+                f"(level {lv} of 4), straight line on the robot arm; reps counted from the handle position")
+    if ex == STRENGTH_ID:
+        return EXERCISE_LINE["armtest"]
     return EXERCISE_LINE.get(ex, ex)
 
 
@@ -67,7 +73,7 @@ def _summary_line(ex: str, reps: list[RepResult], m: dict) -> str:
     """One line per exercise: reps, range, peak force, then contribution (reach) or resistance (push, pull)."""
     head = (f"Summary: {len(reps)} reps, range {m['mean_rom_m'] * 100:.1f} cm (mean), "
             f"peak force {max(r.peak_force_n for r in reps):.1f} N (best)")
-    lv = band_level(ex)
+    lv = band_level(ex) or row_level(ex)
     if lv:
         return head + (f", resistance level {lv} ({BAND_LEVELS[lv]:.0f} N constant band), "
                        f"mean force {m['mean_mean_force_n']:.1f} N")
@@ -118,7 +124,7 @@ def session_note(summary: SessionSummary, reps: list[RepResult],
     if not reps:
         lines.append("No repetitions recorded.")
         return "\n".join(lines) + "\n"
-    if ex == "armtest":
+    if ex in ("armtest", STRENGTH_ID):
         return "\n".join(lines + _armtest_lines(reps, previous)) + "\n"
 
     m = session_means(reps)

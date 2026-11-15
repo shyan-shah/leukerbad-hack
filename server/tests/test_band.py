@@ -164,3 +164,173 @@ def test_robot_offers_only_the_four_push_levels_unless_exercises_is_given(monkey
     assert set(BAND) <= set(live) and "reach" in live and enabled is None
     with pytest.raises(ValueError):
         exercise_sets(_ns(robot="", exercises="circle"))
+
+
+# ================================================================ Row and Strength test (software/simple_more.py)
+# Added below; nothing above this line was changed.
+
+ROW = ["row_1", "row_2", "row_3", "row_4"]
+NINE = BAND + ROW + ["strength"]
+
+
+def test_row_and_strength_ids_levels_and_groups():
+    from software.simple import LEVELS
+    from software.simple_more import ROW_IDS, STRENGTH_ID
+    assert exercises.BAND_LEVELS == LEVELS                                   # Row reads the same four levels
+    assert exercises.ROW_IDS == ROW_IDS == tuple(ROW) and exercises.STRENGTH_ID == STRENGTH_ID == "strength"
+    assert list(exercises.BAND_ENGINE_IDS) == NINE and all(exercises.is_band(i) for i in NINE)
+    assert [exercises.level_of(i) for i in NINE] == [1, 2, 3, 4, 1, 2, 3, 4, None]
+    groups = [exercises.group_of(i) for i in ("push_2", "row_3", "strength", "pull", "reach")]
+    assert groups == ["push", "row", "strength", "row", "reach"]
+    assert exercises.band_level("row_2") is None and not exercises.is_band("pull") and not exercises.is_band("armtest")
+
+
+def test_exercise_list_has_all_nine_with_group_and_level(tmp_path):
+    app = create_app(MockArm, tmp_path / "b.db", engine_factory=partial(MockEngine, time_scale=100),
+                     site_dir=tmp_path / "nosite", live_exercises=NINE)
+    with TestClient(app) as c:
+        out = {e["id"]: e for e in c.get("/api/exercises").json()}
+    assert sorted(out) == sorted(NINE)
+    assert out["row_3"] == {"id": "row_3", "name": "Row · Level 3", "kind": "resist", "reps": 10,
+                            "calibrates": False, "group": "row", "level": 3, "level_force_n": 20.0}
+    assert out["strength"] == {"id": "strength", "name": "Strength test", "kind": "test", "reps": 3,
+                               "calibrates": False, "group": "strength", "level": None, "level_force_n": None}
+    assert [out[i]["level_force_n"] for i in ROW] == [out[i]["level_force_n"] for i in BAND]
+    assert out["push_2"]["group"] == "push" and out["push_2"]["level"] == 2
+
+
+def test_robot_offers_push_row_and_strength_and_push_only_is_a_flag(monkeypatch):
+    monkeypatch.setattr(exercises, "live_ids", lambda: ["reach", "push", "pull", "armtest"])
+    assert exercise_sets(_ns(robot="", push_only=False)) == (NINE, None)
+    assert exercise_sets(_ns(robot="", push_only=True)) == (BAND, None)
+    live, enabled = exercise_sets(_ns(robot="", push_only=False, exercises="row_2,strength"))
+    assert enabled == ["row_2", "strength"] and set(NINE) <= set(live)
+    live, enabled = exercise_sets(_ns(mock=True, push_only=False))
+    assert set(NINE) <= set(live) and "reach" in live
+    live, enabled = exercise_sets(_ns(sim=True, push_only=False, exercises="row_1"))
+    assert enabled == ["row_1"]
+
+
+def test_mock_plays_row_with_the_move_to_the_far_end_and_levels_stay_in_the_group(tmp_path):
+    app = create_app(MockArm, tmp_path / "b.db", engine_factory=partial(MockEngine, time_scale=8),
+                     site_dir=tmp_path / "nosite", live_exercises=NINE)
+    with TestClient(app) as c:
+        r = c.post("/api/session/start", json={"patient_id": "sim-r", "exercise": "row_1", "reps": 2})
+        assert r.status_code == 200 and r.json()["exercise"] == "row_1"
+        st = _wait(c, lambda s: (s.get("message") or "").startswith("Hands off: zeroing in"))
+        assert FIELDS <= set(st) and st["group"] == "row" and st["level"] == 1 and st["level_force_n"] == 10.0
+        start_x = st["pos"][0]
+        far, end = st["path_start"], st["path_end"]
+        assert far[0] - start_x == pytest.approx(0.28, abs=1e-6)             # the path starts at the far end
+        assert far[0] - end[0] == pytest.approx(0.30)                        # and runs towards the patient
+        st = _wait(c, lambda s: (s.get("message") or "").startswith("Hands off: moving to the start position in"))
+        assert 0 < st["countdown_s"] <= 3.0 and st["pos"][0] == pytest.approx(start_x)
+        st = _wait(c, lambda s: s.get("message") == "The arm is moving to the start position. Hands off.")
+        st = _wait(c, lambda s: s.get("phase") == "out")
+        assert st["message"] is None and st["countdown_s"] is None and st["rep_idx"] == 0
+        assert st["pos"][0] <= far[0] + 1e-9 and st["target"][0] > st["pos"][0]     # pulled towards the patient, band behind
+        assert c.post("/api/level", json={"level": 3}).json() == {"ok": True, "level": 3, "level_force_n": 20.0}
+        st = c.get("/api/state").json()
+        assert st["exercise"] == "row_3" and st["level"] == 3 and st["group"] == "row"
+        st = _wait(c, lambda s: s.get("done"), timeout=30)
+        assert st["message"] == "Set finished" and st["rep_count"] == 2
+        s = c.post("/api/session/stop").json()
+        assert s["exercise"] == "row_3" and s["n_reps"] == 2
+        note = c.get(f"/api/sessions/{s['session_id']}/note").text
+        assert "row (pull towards the body) against a constant resistance of 20 N (level 3 of 4)" in note
+
+
+def test_mock_plays_the_strength_test_and_it_refuses_levels(tmp_path):
+    app = create_app(MockArm, tmp_path / "b.db", engine_factory=partial(MockEngine, time_scale=8),
+                     site_dir=tmp_path / "nosite", live_exercises=NINE)
+    with TestClient(app) as c:
+        r = c.post("/api/session/start", json={"patient_id": "sim-s", "exercise": "strength"})
+        assert r.status_code == 200 and r.json()["reps"] == 3
+        r = c.post("/api/level", json={"level": 2})
+        assert r.status_code == 409 and r.json()["detail"].startswith("this exercise has no levels")
+        st = _wait(c, lambda s: (s.get("message") or "").startswith("Get ready: "))
+        assert st["group"] == "strength" and st["level"] is None and st["level_force_n"] is None
+        assert st["try"] == 1 and st["tries"] == 3 and st["best_force_n"] is None and st["force_cap_n"] == 30.0
+        assert st["phase"] == "idle" and 0 < st["countdown_s"] <= 3.0
+        st = _wait(c, lambda s: s.get("message") == "Push and hold")
+        assert st["phase"] == "out" and st["rep_idx"] == 0
+        st = _wait(c, lambda s: s.get("message") == "Rest")
+        assert st["try"] == 2 and st["best_force_n"] == st["last_force_n"] and 5 < st["best_force_n"] <= 30.0
+        st = _wait(c, lambda s: s.get("done"), timeout=30)
+        assert st["rep_count"] == 3 and st["exercise"] == "strength"
+        s = c.post("/api/session/stop").json()
+        assert s["exercise"] == "strength" and s["n_reps"] == 3
+        reps = c.get(f"/api/sessions/{s['session_id']}/reps").json()
+        assert [r["mode"] for r in reps] == ["isometric"] * 3
+        assert "Tries: 3" in c.get(f"/api/sessions/{s['session_id']}/note").text
+
+
+def _sim_app(tmp_path, live):
+    from software.sim_arm import SimArm
+    from software.sim_patient import SimPatient
+    box = []
+
+    def arm_factory():
+        box.append(SimArm(SimPatient(strength=1.0), friction_n=4.5))
+        return box[-1]
+    return create_app(arm_factory, tmp_path / "s.db", site_dir=tmp_path / "nosite", live_exercises=live,
+                      exports_dir=tmp_path / "exports"), box
+
+
+def test_row_engine_through_the_api_on_simarm(tmp_path):
+    """Default engine factory -> software.simple_more.RowEngine on a real-time SimArm: countdown, zero, the move
+    to the far end, the second zero, rows counted from position, a level change inside the group, stop. About 60 s."""
+    pytest.importorskip("software.simple_more")
+    from software.simple_more import FAR_M
+    app, box = _sim_app(tmp_path, NINE)
+    with TestClient(app) as c:
+        r = c.post("/api/session/start", json={"patient_id": "sim-row", "exercise": "row_1", "reps": 2})
+        assert r.status_code == 200, r.text
+        sid = r.json()["session_id"]
+        st = _wait(c, lambda s: (s.get("message") or "").startswith("Hands off: zeroing in "))
+        start = st["pos"]
+        assert st["group"] == "row" and st["level"] == 1
+        assert st["path_start"][0] == pytest.approx(start[0] + FAR_M, abs=2e-3)
+        _wait(c, lambda s: (s.get("message") or "").startswith("Hands off: moving to the start position in"))
+        _wait(c, lambda s: s.get("message") == "The arm is moving to the start position. Hands off.", timeout=10)
+        st = _wait(c, lambda s: s.get("arm_mode") == "compliant" and s.get("message") is None, timeout=20)
+        assert st["pos"][0] == pytest.approx(start[0] + FAR_M, abs=5e-3) and st["force_cap_n"] == 30.0
+        _wait(c, lambda s: (s.get("rep_count") or 0) >= 1, timeout=40)
+        assert c.post("/api/level", json={"level": 2}).json() == {"ok": True, "level": 2, "level_force_n": 15.0}
+        st = _wait(c, lambda s: s.get("done"), timeout=40)
+        assert st["rep_count"] >= 2 and st["exercise"] == "row_2" and st["level"] == 2 and st["group"] == "row"
+        s = c.post("/api/session/stop").json()
+        assert s["exercise"] == "row_2" and s["n_reps"] >= 2
+        reps = c.get(f"/api/sessions/{sid}/reps").json()
+        assert len(reps) == s["n_reps"] and all(r["mode"] == "resist" and r["completed"] for r in reps)
+        assert all(r["exercise"] == "row_2" for r in reps)
+        assert "level 2 of 4" in c.get(f"/api/sessions/{sid}/note").text
+        assert (tmp_path / "exports").exists() and c.get("/api/health").json()["session"] is False
+    assert box[0].get_state().mode in ("hold", "idle") and not box[0].test_limits_on
+
+
+def test_strength_engine_through_the_api_on_simarm(tmp_path):
+    """Default engine factory -> software.simple_more.StrengthEngine on a real-time SimArm: three tries, one
+    isometric rep each, no levels, stored and exported. About 45 s."""
+    pytest.importorskip("software.simple_more")
+    app, box = _sim_app(tmp_path, NINE)
+    with TestClient(app) as c:
+        r = c.post("/api/session/start", json={"patient_id": "sim-str", "exercise": "strength"})
+        assert r.status_code == 200, r.text
+        sid = r.json()["session_id"]
+        st = _wait(c, lambda s: (s.get("message") or "").startswith("Get ready: "), timeout=10)
+        assert st["group"] == "strength" and st["level"] is None and st["try"] == 1 and st["tries"] == 3
+        assert st["reps_target"] == 3 and st["force_cap_n"] == 30.0 and st["arm_mode"] == "compliant"
+        r = c.post("/api/level", json={"level": 2})
+        assert r.status_code == 409 and r.json()["detail"].startswith("this exercise has no levels")
+        st = _wait(c, lambda s: s.get("message") == "Push and hold", timeout=10)
+        assert st["phase"] == "out" and st["rep_idx"] == 0
+        st = _wait(c, lambda s: s.get("done"), timeout=45)
+        assert st["rep_count"] == 3 and st["exercise"] == "strength" and st["best_force_n"] is not None
+        assert st["arm_mode"] == "compliant"                                 # no trip
+        s = c.post("/api/session/stop").json()
+        assert s["exercise"] == "strength" and s["n_reps"] == 3
+        reps = c.get(f"/api/sessions/{sid}/reps").json()
+        assert [r["mode"] for r in reps] == ["isometric"] * 3 and all(r["peak_force_n"] <= 30.0 for r in reps)
+        assert "Tries: 3" in c.get(f"/api/sessions/{sid}/note").text
+    assert not box[0].test_limits_on

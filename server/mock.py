@@ -36,7 +36,15 @@ PRESETS = {"reach": (1.0, True, 0.30), "push": (-0.6, False, 0.28), "pull": (-0.
 BAND_LEVELS = {1: 10.0, 2: 15.0, 3: 20.0, 4: 28.0}      # push_1 .. push_4, as software/simple.py
 for _n, _f in BAND_LEVELS.items():
     PRESETS[f"push_{_n}"] = (-_f / 30.0, False, 0.30)
-HANDS_OFF_S = 3.0        # push_N: the "hands off" countdown before the band comes on
+# Row and the strength test (software/simple_more.py). Kept beside PRESETS, which older callers list.
+MORE_PRESETS = {f"row_{_n}": (-_f / 30.0, False, 0.28) for _n, _f in BAND_LEVELS.items()}   # far end to the start pose
+MORE_PRESETS["strength"] = (0.0, False, 0.30)
+ALL_PRESETS = PRESETS | MORE_PRESETS
+HANDS_OFF_S = 3.0        # push_N, row_N, strength: the "hands off" countdown before the band comes on
+ROW_FAR_M = 0.28         # row_N: the far end, as software.simple_more.FAR_M
+ROW_MOVE_SPEED = 0.05    # m/s, the arm's own move to the far end
+REZERO_S = 2.0           # row_N: the second countdown, at the far end
+READY_S = 3.0            # strength: "Get ready"
 
 
 class MockArm:
@@ -76,12 +84,15 @@ class MockEngine:
         `calibration_state`: `calibration_state_after` of this patient's previous session of the exercise."""
         self.arm = arm
         self.exercise = exercise
-        p_dial, p_auto, p_reach = PRESETS.get(exercise, PRESETS["reach"])
+        p_dial, p_auto, p_reach = ALL_PRESETS.get(exercise, PRESETS["reach"])
         dial = p_dial if dial is None else dial
         auto = p_auto if auto is None else auto
         reach_m = p_reach if reach_m is None else reach_m
-        self.reps = (3 if exercise == "armtest" else None) if reps is None else int(reps)
-        self.flip = exercise == "pull"            # pull runs the line from the far end towards the patient
+        self.reps = (3 if exercise in ("armtest", "strength") else None) if reps is None else int(reps)
+        known = exercise in ALL_PRESETS
+        self.group = ("push" if known and exercise.startswith("push_") else "row" if known and exercise.startswith("row_")
+                      else "strength" if exercise == "strength" else None)      # the band engines' programmes
+        self.flip = exercise == "pull" or self.group == "row"    # the line runs from the far end towards the patient
         self.session_id, self.patient_id = session_id, patient_id
         self.simulated = True                     # always: nothing here comes from a real person
         self.axis, self.sign, self.reach = reach_axis, (1 if reach_sign >= 0 else -1), reach_m
@@ -106,9 +117,11 @@ class MockEngine:
             reason="waiting for a push" if self.calibrate else "calibration turned off for this session")
         self._arming = {"progress": 0.0, "reason": "calibrating" if self.calibrate else "resting before the rep"}
         self._go = threading.Event()
-        self.level = int(exercise[5:]) if exercise in PRESETS and exercise.startswith("push_") else None
+        self.level = int(exercise.split("_")[1]) if self.group in ("push", "row") else None
         self._message: str | None = None
         self._countdown: float | None = None
+        self._best: float | None = None           # strength: best and last peak so far
+        self._last: float | None = None
 
     # ---------------------------------------------------------------- interface (4.4)
     def start(self) -> None:
@@ -143,25 +156,35 @@ class MockEngine:
                         "arming": dict(self._arming)} | self._band_fields()
 
     def _band_fields(self) -> dict:
-        """push_1 .. push_4: the fields the band engine (software/simple.py) reports."""
-        if self.level is None:
+        """push_N, row_N, strength: the fields the band engines (software/simple.py, simple_more.py) report."""
+        if self.group is None:
             return {}
         start = self.start_xyz.copy()
-        end = start.copy()
-        end[self.axis] += self.sign * self.reach
-        return {"exercise": self.exercise, "group": "push", "level": self.level,
-                "level_force_n": BAND_LEVELS[self.level], "message": self._message,
-                "countdown_s": self._countdown, "force_cap_n": 30.0, "arming": None,
-                "path_start": [float(v) for v in start], "path_end": [float(v) for v in end]}
+        if self.group == "row":         # the path starts at the far end and runs 0.30 m towards the patient
+            start[self.axis] += self.sign * ROW_FAR_M
+            end = start.copy()
+            end[self.axis] -= self.sign * 0.30
+        else:
+            end = start.copy()
+            end[self.axis] += self.sign * self.reach
+        out = {"exercise": self.exercise, "group": self.group, "level": self.level,
+               "level_force_n": BAND_LEVELS[self.level] if self.level else None, "message": self._message,
+               "countdown_s": self._countdown, "force_cap_n": 30.0, "arming": None,
+               "path_start": [float(v) for v in start], "path_end": [float(v) for v in end]}
+        if self.group == "strength":
+            n = self.reps or 3
+            out |= {"kind": "test", "try": min(self.rep_count + 1, n), "tries": n,
+                    "best_force_n": self._best, "last_force_n": self._last}
+        return out
 
     def set_level(self, level: int) -> None:
-        """push_N only: change the resistance level now."""
+        """push_N and row_N only: change the resistance level now. The exercise stays Push or Row."""
         if self.level is None:
-            raise RuntimeError("levels are for push_1 to push_4")
+            raise RuntimeError("levels are for push_1 to push_4 and row_1 to row_4")
         if level not in BAND_LEVELS:
             raise ValueError(f"level must be 1 to 4, got {level!r}")
         with self._lock:
-            self.level, self.exercise = int(level), f"push_{int(level)}"
+            self.level, self.exercise = int(level), f"{self.group}_{int(level)}"
             self.dial = -BAND_LEVELS[level] / 30.0
 
     def go(self) -> None:
@@ -302,9 +325,95 @@ class MockEngine:
                 self.on_rep(rep)
         self._idle_forever(t)
 
+    def _count(self, t: float, seconds: float, text: str, s: float = 0.0, floor: int = 0) -> float | None:
+        """A countdown in the state ("<text> 3", 2, 1) with the handle resting at progress s. Returns the new
+        t, or None if stopped."""
+        dt = 0.01
+        for i in range(int(seconds / dt)):
+            if self._stop.is_set():
+                return None
+            left = seconds - i * dt
+            with self._lock:
+                self._countdown = round(left, 1)
+                self._message = f"{text} {max(floor, math.ceil(left - 0.005))}"
+            self._tick(t, s, 0.0, "idle", -1, 0.0, 0.0, 0.0)
+            t += dt
+            self._sleep(dt)
+        with self._lock:
+            self._countdown, self._message = None, None
+        return t
+
+    def _run_strength(self) -> None:
+        """The strength test of software/simple_more.py: hands-off countdown, then per try "Get ready: 3, 2, 1",
+        3 s "Push and hold" (phase "out"), 5 s "Rest". The handle gives way by force / K_HOLD_TEST."""
+        dt, rng = 0.01, self.rng
+        t = self._count(0.0, HANDS_OFF_S, "Hands off: zeroing in")
+        if t is None:
+            return
+        for idx in range(self.reps or 3):
+            t = self._count(t, READY_S, "Get ready:", floor=1)
+            if t is None:
+                return
+            peak = 8.0 + 30.0 * float(np.clip(self.strength + rng.normal(0, 0.05), 0.02, 1.0))
+            t_start, fs, n = t, [], int(TRY_S / dt)
+            for i in range(n):
+                if self._stop.is_set():
+                    return
+                x = i / max(n - 1, 1)
+                f = min(FORCE_CAP_N, max(0.0, peak * min(1.0, x / 0.25) * (1 - 0.15 * x) + rng.normal(0, 0.3)))
+                with self._lock:
+                    self._countdown, self._message = round(TRY_S - i * dt, 1), "Push and hold"
+                self._tick(t, f / K_HOLD_TEST / self.reach, 0.0, "out", idx, f, 0.0, 0.0, dial=0.0)
+                fs.append(f)
+                t += dt
+                self._sleep(dt)
+            pk = round(float(np.max(fs)), 2)
+            rep = RepResult(
+                session_id=self.session_id, idx=idx, mode="isometric", dial=0.0, t_start=round(t_start, 2),
+                duration_s=TRY_S, rom_m=round(max(fs) / K_HOLD_TEST, 4), path_err_mean_m=0.0,
+                path_err_max_m=0.0, sparc=0.0, peak_force_n=pk, mean_force_n=round(float(np.mean(fs)), 2),
+                contribution=1.0, completed=True, simulated=True, rescued=False)
+            with self._lock:
+                self.rep_count = idx + 1
+                self._last, self._best = pk, pk if self._best is None else max(self._best, pk)
+            if self.on_rep:
+                self.on_rep(rep)
+            n = int(REST_S / dt)
+            for i in range(n):
+                if self._stop.is_set():
+                    return
+                with self._lock:
+                    self._countdown, self._message = round(REST_S - i * dt, 1), "Rest"
+                self._tick(t, 0.0, 0.0, "idle", -1, 0.0, 0.0, 0.0, dial=0.0)
+                t += dt
+                self._sleep(dt)
+        with self._lock:
+            self._countdown, self._message = None, "Set finished"
+        self._idle_forever(t)
+
+    def _run_row_start(self, t: float) -> float | None:
+        """Row after the first zero: a countdown, the arm's own move from the start pose to the far end at
+        ROW_MOVE_SPEED, then a second short countdown at the far end (as software.simple_more.RowEngine)."""
+        dt = 0.01
+        t = self._count(t, HANDS_OFF_S, "Hands off: moving to the start position in", s=1.0)
+        if t is None:
+            return None
+        with self._lock:
+            self._message = "The arm is moving to the start position. Hands off."
+        n = int(ROW_FAR_M / ROW_MOVE_SPEED / dt)
+        for i in range(n):
+            if self._stop.is_set():
+                return None
+            self._tick(t, 1.0 - (i + 1) / n, 0.0, "idle", -1, 0.0, -ROW_MOVE_SPEED, 0.0)
+            t += dt
+            self._sleep(dt)
+        return self._count(t, REZERO_S, "Hands off: zeroing in")
+
     def _run(self) -> None:
         if self.exercise == "armtest":
             return self._run_armtest()
+        if self.group == "strength":
+            return self._run_strength()
         dt = 0.01
         t = 0.0
         idx = 0
@@ -322,12 +431,16 @@ class MockEngine:
                 with self._lock:
                     self._countdown = round(left, 1)
                     self._message = f"Hands off: zeroing in {math.ceil(left - 0.005)}"
-                self._tick(t, 0.0, 0.0, "idle", -1, 0.0, 0.0, 0.0)
+                self._tick(t, 1.0 if self.group == "row" else 0.0, 0.0, "idle", -1, 0.0, 0.0, 0.0)   # at the start pose
                 t += dt
                 self._sleep(dt)
             with self._lock:
                 self._countdown, self._message = None, None
-        if self.flip:       # pull: the person first moves the handle from the start to the far end
+        if self.group == "row":         # the arm takes the handle to the far end by itself
+            t = self._run_row_start(t)
+            if t is None:
+                return
+        elif self.flip:     # pull: the person first moves the handle from the start to the far end
             n = int(SETUP_S / dt)
             for i in range(n):
                 if self._stop.is_set():
