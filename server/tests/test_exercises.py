@@ -223,7 +223,7 @@ def test_mock_runs_each_exercise_stored_and_exported(tmp_path, all_live, ex, n, 
     if mode:
         assert {r["mode"] for r in reps} == {mode}
     if ex == "armtest":
-        assert all(r["rom_m"] < 0.011 and r["peak_force_n"] <= 30.0 for r in reps)
+        assert all(r["rom_m"] <= 0.05 and r["peak_force_n"] <= 30.0 for r in reps)
         assert FORCE_CAP_NOTE in note and "Tries: 3" in note
     else:
         assert f"Summary: {n} reps" in note
@@ -254,12 +254,14 @@ def test_mock_pull_runs_the_line_in_reverse_after_setup():
     out = [s for s in samples if s.phase == "out"]
     assert setup[0].pos[0] == pytest.approx(0.45) and setup[-1].pos[0] == pytest.approx(0.73)   # to the far end
     assert out[0].pos[0] == pytest.approx(0.73, abs=0.01) and out[-1].pos[0] == pytest.approx(0.45, abs=0.01)
-    assert all(s.rep_idx == -1 for s in setup)
+    assert all(s.rep_idx == -1 and s.dial == 0.0 for s in setup)      # free movement, as the real engine reports
+    assert all(s.dial == -0.6 for s in out)
 
 
 def test_mock_armtest_defaults_to_three_isometric_tries():
-    reps = []
-    e = MockEngine(MockArm(), "s", "p", True, exercise="armtest", time_scale=500, on_rep=reps.append)
+    reps, samples = [], []
+    e = MockEngine(MockArm(), "s", "p", True, exercise="armtest", time_scale=500, on_rep=reps.append,
+                   on_sample=samples.append)
     e.start()
     t0 = time.time()
     while e.rep_count < 3 and time.time() - t0 < 20:
@@ -267,6 +269,9 @@ def test_mock_armtest_defaults_to_three_isometric_tries():
     time.sleep(0.1)
     e.stop()
     assert [r.mode for r in reps] == ["isometric"] * 3 and e.snapshot()["phase"] == "idle"
+    seq = [p for i, p in enumerate(s.phase for s in samples) if i == 0 or samples[i - 1].phase != p]
+    assert seq == ["idle", "out", "back", "out", "back", "out", "idle"]     # same order as software/engine.py
+    assert all(s.rep_idx == -1 for s in samples if s.phase == "back")
 
 
 def test_previous_session_for_the_note_is_the_same_exercise(tmp_path, all_live):

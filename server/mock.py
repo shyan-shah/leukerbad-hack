@@ -22,6 +22,8 @@ from .stats import mode_of
 IDLE_S = 1.0
 SETUP_S = 2.5            # pull: time the pretend patient takes to move the handle to the far end
 TRY_S = 3.0              # armtest: length of one push-and-hold try
+REST_S = 5.0             # armtest: rest between tries (phase "back", rep_idx -1, as the real engine reports it)
+K_HOLD_TEST = 600.0      # N/m: the handle gives way by force / this during a try (about 5 cm at 30 N)
 FORCE_CAP_N = 30.0       # armtest readings stop at about this (the robot's safety limit)
 # exercise -> (dial, auto, reach_m) used when the caller does not set them
 PRESETS = {"reach": (1.0, True, 0.30), "push": (-0.6, False, 0.28), "pull": (-0.6, False, 0.28),
@@ -111,7 +113,7 @@ class MockEngine:
 
     # ---------------------------------------------------------------- internals
     def _tick(self, t: float, s: float, lateral: float, phase: str, rep_idx: int, force_along: float,
-              vel_along: float, lead: float) -> Sample:
+              vel_along: float, lead: float, dial: float | None = None) -> Sample:
         a = self.axis
         side = (a + 1) % 3
         if self.flip:      # progress s counts from the far end back towards the start
@@ -126,8 +128,9 @@ class MockEngine:
         target = pos.copy()
         target[a] += self.sign * lead
         q = tuple(round(0.3 * math.sin(0.7 * j + 2 * s), 4) for j in range(7))
-        with self._lock:
-            dial = self.dial
+        if dial is None:
+            with self._lock:
+                dial = self.dial
         smp = Sample(t=round(t, 3), pos=tuple(pos), vel=tuple(vel), force=tuple(force), target=tuple(target),
                      dial=dial, rep_idx=rep_idx, simulated=True, phase=phase, q=q)
         with self._lock:
@@ -150,10 +153,11 @@ class MockEngine:
         """Isometric strength test: the handle stays still, the person pushes for TRY_S, `reps` tries."""
         dt, t, rng = 0.01, 0.0, self.rng
         for idx in range(self.reps or 3):
-            for _ in range(int(IDLE_S / dt)):
+            # 1 s of rest before the first try, then REST_S between tries (reported as phase "back")
+            for _ in range(int((IDLE_S if idx == 0 else REST_S) / dt)):
                 if self._stop.is_set():
                     return
-                self._tick(t, 0.0, 0.0, "idle", -1, 0.0, 0.0, 0.0)
+                self._tick(t, 0.0, 0.0, "idle" if idx == 0 else "back", -1, 0.0, 0.0, 0.0)
                 t += dt
                 self._sleep(dt)
             peak = (8.0 + 30.0 * float(np.clip(self.strength + rng.normal(0, 0.05), 0.02, 1.0)))
@@ -164,13 +168,13 @@ class MockEngine:
                     return
                 x = i / max(n - 1, 1)
                 f = min(FORCE_CAP_N, max(0.0, peak * min(1.0, x / 0.25) * (1 - 0.15 * x) + rng.normal(0, 0.3)))
-                self._tick(t, 0.008 * f / FORCE_CAP_N / self.reach, 0.0, "out", idx, f, 0.0, 0.0)
+                self._tick(t, f / K_HOLD_TEST / self.reach, 0.0, "out", idx, f, 0.0, 0.0)
                 fs.append(f)
                 t += dt
                 self._sleep(dt)
             rep = RepResult(
                 session_id=self.session_id, idx=idx, mode="isometric", dial=0.0, t_start=round(t_start, 2),
-                duration_s=TRY_S, rom_m=round(0.008 * max(fs) / FORCE_CAP_N, 4), path_err_mean_m=0.0,
+                duration_s=TRY_S, rom_m=round(max(fs) / K_HOLD_TEST, 4), path_err_mean_m=0.0,
                 path_err_max_m=0.0, sparc=0.0, peak_force_n=round(float(np.max(fs)), 2),
                 mean_force_n=round(float(np.mean(fs)), 2), contribution=1.0, completed=True, simulated=True,
                 rescued=False)
@@ -192,7 +196,7 @@ class MockEngine:
             for i in range(n):
                 if self._stop.is_set():
                     return
-                self._tick(t, 1.0 - _min_jerk(i / max(n - 1, 1)), 0.0, "setup", -1, 0.0, 0.0, 0.0)
+                self._tick(t, 1.0 - _min_jerk(i / max(n - 1, 1)), 0.0, "setup", -1, 0.0, 0.0, 0.0, dial=0.0)
                 t += dt
                 self._sleep(dt)
         while not self._stop.is_set():

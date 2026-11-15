@@ -167,7 +167,7 @@ Real arm:
 
 One exercise = one session. The whole flow is five calls. Every example below is a **real message** from a running server with the mock engine (`--mock`, so everything is simulated), numbers shortened.
 
-**Which exercises work today.** `reach`, `push`, `pull` and `armtest`, on `--mock`, `--sim` and `--robot`. The list comes from the robot side (`software/exercises.py`), so if one is switched off or `circle` is switched on, `/api/exercises` changes with no change on your side. Build the screen from `/api/exercises`, not from a fixed list. (On the real arm only `reach` has been run so far; the other three are tested on the simulated arm.)
+**Which exercises work today.** `reach`, `push`, `pull` and `armtest`, on `--mock`, `--sim` and `--robot`. With `--sim` and `--robot` the list comes from the robot side (`software/exercises.py`), so if one is switched off or `circle` is switched on, `/api/exercises` changes with no change on your side (`--mock` always offers these four). Build the screen from `/api/exercises`, not from a fixed list. (On the real arm only `reach` has been run so far; the other three are tested on the simulated arm.)
 
 ### Step 1. Ask what the robot can do
 
@@ -225,29 +225,31 @@ About 30 `sample` messages a second, and one `rep` message when each rep ends. U
  "completed": true, "simulated": true, "rescued": false, "exercise": "push"}
 ```
 
-`pull` starts with a `setup` phase: the patient moves the handle to the far end, then the reps run from there towards the body. Show "Move the handle to the far end" while `phase` is `setup`:
+`pull` starts with a `setup` phase: the arm moves freely (`dial` is 0) while the patient moves the handle to the far end, then the reps run from there towards the body. Show "Move the handle to the far end" while `phase` is `setup`:
 
 ```json
-{"type": "sample", "t": 0.48, "pos": [0.465, 0.0, 0.3], "vel": [0.0, 0.0, 0.0], "force": [0.0, 0.0, 0.0],
- "target": [0.465, 0.0, 0.3], "dial": -0.6, "rep_idx": -1, "simulated": true, "phase": "setup",
- "q": [0.032, 0.216, 0.299, 0.242, 0.07, -0.134, -0.276], "rep_count": 0, "auto": false,
+{"type": "sample", "t": 0.05, "pos": [0.45, 0.0, 0.3], "vel": [0.0, 0.0, 0.0], "force": [0.0, 0.0, 0.0],
+ "target": [0.45, 0.0, 0.3], "dial": 0.0, "rep_idx": -1, "simulated": true, "phase": "setup",
+ "q": [0.0, 0.193, 0.296, 0.259, 0.101, -0.105, -0.262], "rep_count": 0, "auto": false,
  "arm_mode": "compliant", "exercise": "pull", "reps_target": 2, "done": false}
 ```
 
-`armtest` (strength test): the handle stays still and the patient pushes for 3 seconds, 3 tries. During a try `phase` is `out`: show "Push and hold" and a bar from `force`:
+A pull session ends with the handle at the far end. Move it back to the start before the next exercise (see the note under step 4).
+
+`armtest` (strength test): the arm holds the handle in place (it gives way a few centimetres under a hard push) and the patient pushes for 3 seconds, 3 tries, with 5 seconds of rest between tries. The phases are `idle`, then for each try `out` (push now) followed by `back` with `rep_idx` -1 (rest), and `idle` again after the last try. During `out` show "Push and hold" and a bar from `force`; during `back` show "Rest":
 
 ```json
-{"type": "sample", "t": 1.49, "pos": [0.455, 0.0, 0.3], "vel": [0.0, 0.0, 0.0],
- "force": [18.771, 0.0, 0.0], "target": [0.455, 0.0, 0.3], "dial": 0.0, "rep_idx": 0,
- "simulated": true, "phase": "out", "q": [0.01, 0.201, 0.297, 0.254, 0.091, -0.115, -0.266],
+{"type": "sample", "t": 1.44, "pos": [0.478, 0.0, 0.3], "vel": [0.0, 0.0, 0.0],
+ "force": [16.708, 0.0, 0.0], "target": [0.478, 0.0, 0.3], "dial": 0.0, "rep_idx": 0,
+ "simulated": true, "phase": "out", "q": [0.055, 0.232, 0.3, 0.227, 0.047, -0.155, -0.284],
  "rep_count": 0, "auto": false, "arm_mode": "compliant", "exercise": "armtest", "reps_target": 3, "done": false}
 ```
 
-Each try ends with a `rep` whose `mode` is `isometric`. The result is `peak_force_n`; the best try is the highest one. Ignore `rom_m`, `sparc`, `contribution` and the path errors for this exercise:
+Each try ends with a `rep` whose `mode` is `isometric`. The result is `peak_force_n`; the best try is the highest one. `completed` is false for a try with almost no push or one that moved the handle too far. Ignore `rom_m` (how far the handle gave way), `sparc`, `contribution` and the path errors for this exercise:
 
 ```json
 {"type": "rep", "session_id": "20261115-124340-b01d", "idx": 0, "mode": "isometric", "dial": 0.0,
- "t_start": 1.0, "duration_s": 3.0, "rom_m": 0.008, "path_err_mean_m": 0.0, "path_err_max_m": 0.0,
+ "t_start": 1.0, "duration_s": 3.0, "rom_m": 0.048, "path_err_mean_m": 0.0, "path_err_max_m": 0.0,
  "sparc": 0.0, "peak_force_n": 28.65, "mean_force_n": 23.35, "contribution": 1.0,
  "completed": true, "simulated": true, "rescued": false, "exercise": "armtest"}
 ```
@@ -275,7 +277,7 @@ If `arm_mode` becomes `hold` or `fault`, the arm has stopped safely: show "Arm s
  "ended_at": "2026-11-15T12:43:36", "exercise": "push", "n_reps": 3, "simulated": true}
 ```
 
-Always call it, also when the patient gives up early. Then start the next exercise of the plan with step 2. All reps of the session: `GET /api/sessions/{session_id}/reps`.
+Always call it, also when the patient gives up early. Then start the next exercise of the plan with step 2. Every exercise starts from the start position, so after a `pull` (which ends at the far end) the handle has to be brought back first; simplest is to put `pull` last in a plan. All reps of the session: `GET /api/sessions/{session_id}/reps`.
 
 ### Step 5. Get the note
 
