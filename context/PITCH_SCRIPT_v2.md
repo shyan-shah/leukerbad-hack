@@ -95,4 +95,17 @@ otherwise a silent clip of a person doing Push on it, with the phone and the rep
 - The disclaimer is small and only on the last frame.
 - No real robot appears. Five seconds of the real arm before the logo would help.
 - It runs 2:02, so the talk has 1:58, not 2:00.
-- Checked by frames only: the sound was not heard, so a voice-over (if any) is not reflected here.
+- The ad has a voice-over. Read here from a rough machine transcript (offline recogniser, garbled in
+  places) plus the on-screen text; nobody on this side heard it. Its gist, in order: one second to get
+  hurt, months to get back; 1.7 billion people, about one in five; recovery comes from repetition, about
+  32 arm movements in a typical stroke session, recovery needs hundreds; care can't keep up (capacity,
+  waiting lists past a year, cost); Vita, a station on a robot arm placed where people already are; she
+  walks into the gym, scans, her plan loads, she sits down; the arm guides each movement and measures
+  every rep; "it supports her when she slows down and adds gentle resistance when she is strong";
+  shoulder circles, knee extensions; one red button and the arm holds still; progress and a weekly
+  report; six practices a week instead of two; today rehabilitation and elderly care, later strength
+  training for everyone; every rep at exactly the weight you can handle.
+- The talk above repeats none of that except the closing line (on purpose). The voice-over's
+  "supports her when she slows down and adds gentle resistance" describes the adaptive arm; on the
+  real arm today the resistance is a fixed level the patient picks. That is the gap the "was the
+  video real?" answer covers.
