@@ -176,7 +176,17 @@ class Hub:
 
     def snapshot(self) -> dict:
         snap = self.engine.snapshot() if self.engine else {}
+        if snap:
+            snap["arm_fault"] = self.arm_fault(snap.get("arm_mode"))
         return snap
+
+    def arm_fault(self, arm_mode) -> str | None:
+        """Why the arm stopped (the trip text, e.g. "speed 0.44 m/s above 0.40 m/s"), while it is in
+        hold or fault; else None. After a trip nothing restarts by itself: stop the session, home,
+        prepare, start again."""
+        if arm_mode not in ("hold", "fault"):
+            return None
+        return getattr(self.arm, "_fault", None) or getattr(self.arm, "fault", None) or None
 
     def progress(self, snap: dict) -> dict:
         """exercise, reps_target and done for state and sample messages. The engine's own values win
@@ -236,7 +246,8 @@ class Hub:
                     snap = self.snapshot()
                     msgs.insert(0, {"type": "sample"} | s.to_dict() | {
                         "rep_count": snap.get("rep_count"), "auto": snap.get("auto"),
-                        "arm_mode": snap.get("arm_mode")} | self.progress(snap))
+                        "arm_mode": snap.get("arm_mode"),
+                        "arm_fault": snap.get("arm_fault")} | self.progress(snap))
                 if not msgs or not self.clients:
                     continue
                 for ws in list(self.clients):

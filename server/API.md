@@ -57,6 +57,7 @@ Connect with a WebSocket; you do not need to send anything. Two kinds of message
 | `rep_count` | reps finished so far |
 | `auto` | true when the dial adjusts itself after each rep |
 | `arm_mode` | `compliant` (normal), `hold` (stopped softly), `idle`, `fault` |
+| `arm_fault` | Why the arm stopped, while `arm_mode` is `hold` or `fault`: the trip text, for example `"speed 0.44 m/s above 0.40 m/s"` or `"hand 3.4 cm outside workspace box on axis y"`; otherwise `null` (a hold with `null` is an ordinary stop). After a trip no rep can start in that session: show the text, tell the person to let go, then stop the session, home, prepare and start again. In `/api/state` and every `sample` message |
 | `q` | 7 joint angles in radians, for a future 3D arm view |
 | `simulated` | true unless the data comes from the real robot |
 
