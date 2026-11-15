@@ -41,6 +41,7 @@ In Auto (Remote) mode the robot comes up already enabled (`operational()` is tru
 | `drift_check.py` | **yes** | Zeroes, then moves the flange 0.30 m along a world axis at 0.05 m/s at nominal stiffness and back, reading the empty force every 5 cm and again 30 s later. Without `--go` it only prints the plan. |
 | `home_check.py` | **yes** | Moves the flange 5 cm along the reach, then `Arm.home()` back; pass within 3 mm. 5 s countdown. |
 | `engine_empty_check.py` | **commands the arm, it must not move** | Runs each live exercise through the real engine for 20 s on an EMPTY handle (zeroing before each). Pass: no rep, no movement, no trip. Stops if the hand moves 3 cm. 5 s countdown. |
+| `trace_path.py` | **yes** | Shows where an exercise's handle travels (`reach`, `push`, `pull`, `armtest`) with nobody touching: the drift check's slow straight-line motion along the configured reach. 5 s countdown. |
 | `run_studio.sh` | no | Starts Flexiv Elements Studio (Linux build) in WSL. PC-side app only. |
 | `checked_arm.py` | not a script | `CheckedArm`, the arm class `python -m server.run --robot` uses. Same as `robot.arm.Arm`, but `connect()` never clears faults or enables: it refuses unless the robot is fault-free, operational, in IDLE, e-stop released and the expected tool (`--tool`, default `Flange`) is selected. |
 
