@@ -103,3 +103,27 @@ We built this in 48 hours. Here it is working.
 Optional inserts, only if they run cleanly on the real arm (each replaces 10 s of the Level 1 reps): Row ("the same arm, pulling instead of pushing"), guided reach ("for a weak arm, it does the moving"), strength test ("it measures how hard you can push").
 
 Not in the film any more: the dial falling by itself, the let-go stop, the comfortable-push calibration.
+
+## SHOOT PLAN (15 Nov night): exact order for filming film v2
+
+Crew: Shiv = patient, Kian = e-stop (out of frame, hand on it every take, calls "clear"), Shyan = operator + camera.
+Rules: hands off whenever the screen says zeroing / moving / returning. Level 4 only with slow pushes. Every shot at least 3 takes. Landscape, 1080p+, 30 or 60 fps.
+
+Setup (10 min): chair taped in place; big screen (patient.html) where the camera sees it beside the arm; NFC tag + "Tap to start" label on the station; coats, bottles, cables out of frame; phone A (camera) on a tripod/prop; phone B (patient's) unlocked, brightness up, Do Not Disturb on, on the laptop hotspot; laptop: app + big screen + operator console open; Start Demo running; arm homed and zeroed.
+
+| # | Shot | Framing | Action | Check before keeping |
+|---|---|---|---|---|
+| 1 | Establishing | Wide, tripod, arm + chair + big screen | Shiv walks in and sits, hand off the arm | Big screen readable, REAL ROBOT badge visible |
+| 2 | NFC tap | Close on the station tag | Phone B taps the tag, app opens | Tap is clear; app opens connected |
+| 3 | Phone: start | Over-the-shoulder on phone B (plus a screen recording of the app) | Push → Level 1 → Start → hands-off countdown | Countdown visible, hands off the arm |
+| 4 | Push Level 1 | Wide, tripod | 5 slow reps (about 4 s out, back to start) | Counter rises 1 per rep on phone and big screen; no trip |
+| 5 | Push Level 1 close | Hand-held close on hand + handle, outside the arm's reach | 3 reps | Smooth movement, no jerk |
+| 6 | Level change | Close on phone B | Tap "3 Firm" mid-set | Session continues, label changes |
+| 7 | Push Level 3 | Wide, tripod | 3 slow reps, visibly more effort | Force bar higher; no trip |
+| 8 | Set end + return | Wide, tripod | Last rep, hands off, arm returns to start by itself | Hands clearly off; return is one smooth move |
+| 9 | Big screen insert | Laptop screen recording (Win+Alt+R) of patient.html during a set | 3 reps | Clean, readable |
+| 10 | Physio screen | Laptop screen recording of physio.html after the sets | Scroll: today's reps, forces, session note, history (SIMULATED label visible) | Today's session present |
+| 11 | Optional: Row / Strength test | As 4 and 3 | Only if they pass on the arm tonight | Same checks |
+| 12 | Voice-over | Quiet room, phone voice memo | Read the film v2 voice-over lines | No background noise |
+
+After each shot: watch it back on the phone before moving on. After shooting: copy every clip from both phones into one shared folder named by shot number; back up to a second laptop/USB.
