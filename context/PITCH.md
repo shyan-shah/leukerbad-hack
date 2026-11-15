@@ -37,3 +37,9 @@ Optional second motion if it works on the arm: shoulder circles (5 s insert afte
 - Screen-record the phone app and the big screen as clean inserts.
 - Simulated data is labelled on screen wherever it appears.
 - Cast: patient actor, operator, e-stop holder (out of frame, hand on the button).
+
+## Film crew (three people: Shyan, Shiv, Kian)
+- **Shiv: patient actor.** Holds the handle, starts each exercise in the app on the phone.
+- **Kian: e-stop holder.** Out of frame, hand on the button for every take, does nothing else. Calls "clear" before each take.
+- **Shyan: operator and camera.** Runs the operator console (home, prepare, go, resume), then films. Wide shots from a fixed tripod or propped phone; hand-held only for close-ups, never standing inside the arm's reach.
+- Nobody is spare, so screen recordings (phone app, big screen, physio screen) are captured separately, not during takes.
