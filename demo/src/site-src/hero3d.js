@@ -6,7 +6,7 @@ catcher.rotation.x = -Math.PI / 2; catcher.position.y = .001; catcher.receiveSha
 // a robot hand on the tool flange: palm, four two-jointed fingers and a thumb. Local frame: fingers along +Y, palm faces +Z.
 function makeHand() {
   const HAND = new THREE.Group(), fingers = [];
-  const shell = M.arm, dark = M.joint, pad = glow('#5FE0A0');
+  const shell = M.arm, dark = M.joint, pad = glow('#58E6F2');
   const mesh = (geo, m, x = 0, y = 0, z = 0, parent = HAND) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; parent.add(o); return o; };
   const seg = (r, len) => new THREE.CapsuleGeometry(r, len, 6, 14);
   mesh(new THREE.CylinderGeometry(.05, .056, .05, 32), dark, 0, .012, 0);                       // wrist drum, on the flange

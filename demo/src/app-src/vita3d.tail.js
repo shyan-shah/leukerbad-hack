@@ -16,7 +16,7 @@ const MOV = {
   kneebend: { view: [.36, .13, 4.3], leg: true, at(t) { const k = there(t, .4, .55, .92); return { th: lerp(.55, -.28, k), lean: -.02, look: -.3 }; } },
   kneehold: { view: [.36, .13, 4.3], leg: true, push: V(Math.cos(.9), Math.sin(.9), 0), at(t) { const f = press(t); return { th: .9 + f * .02 + f * Math.sin(t * 190) * .004, lean: -.03 - f * .03, look: -.3, load: f }; } },
 };
-const LEGBASE = V(.8, 0, -.42), H = V(), S = V(), Eh = V(), look = V(), cT = new THREE.Color(), RING = { ok: '#5FE0A0', load: '#FF7A5E' };
+const LEGBASE = V(.8, 0, -.42), H = V(), S = V(), Eh = V(), look = V(), cT = new THREE.Color(), RING = { ok: '#58E6F2', load: '#FF7A5E' };
 cuff.visible = false;
 function pose(fig, t) { const d = MOV[fig] || MOV.reach, s = d.at(t), isLeg = !!d.leg;
   base.position.copy(isLeg ? LEGBASE : BASE0); SHO.set(base.position.x, .9, base.position.z);
@@ -43,8 +43,8 @@ function pose(fig, t) { const d = MOV[fig] || MOV.reach, s = d.at(t), isLeg = !!
 
 // ---------- motion lines: dark dots show the whole movement, a green tail shows where the hand (or foot) has just been, an arrow shows where it goes next ----------
 const OFFH = V(0, -.07, .09), OFFL = V(.02, 0, .13), GD = 46, TD = 20, dotGeo = new THREE.SphereGeometry(1, 12, 8), mtx = new THREE.Matrix4(), quiet = (m) => { m.castShadow = m.receiveShadow = false; m.frustumCulled = false; m.renderOrder = 10; m.material.depthTest = false; scene.add(m); return m; };      // drawn on top, so the body never hides them
-const gDots = quiet(new THREE.InstancedMesh(dotGeo, new THREE.MeshBasicMaterial({ color: '#1E2A26' }), GD)), tDots = quiet(new THREE.InstancedMesh(dotGeo, new THREE.MeshBasicMaterial({ color: '#19B36B' }), TD));
-const arrowMat = new THREE.MeshBasicMaterial({ color: '#1E2A26' }), arrow = quiet(new THREE.Mesh(new THREE.ConeGeometry(.028, .07, 20), arrowMat));
+const gDots = quiet(new THREE.InstancedMesh(dotGeo, new THREE.MeshBasicMaterial({ color: '#1E282A' }), GD)), tDots = quiet(new THREE.InstancedMesh(dotGeo, new THREE.MeshBasicMaterial({ color: '#1997B3' }), TD));
+const arrowMat = new THREE.MeshBasicMaterial({ color: '#1E282A' }), arrow = quiet(new THREE.Mesh(new THREE.ConeGeometry(.028, .07, 20), arrowMat));
 const pA = V(), pB = V(), pC = V(), paths = {};
 function pt(d, t, out) { const s = d.at(((t % 1) + 1) % 1); return d.leg ? out.set(KNEE_R.x + SHIN * Math.sin(s.th), KNEE_R.y - SHIN * Math.cos(s.th), .1).add(OFFL) : out.set(s.x, s.y, s.z).add(OFFH); }
 function pathOf(fig, d) { if (paths[fig]) return paths[fig]; const a = [];
@@ -54,9 +54,9 @@ function pathOf(fig, d) { if (paths[fig]) return paths[fig]; const a = [];
 function guides(fig, d, t, s) { const a = pathOf(fig, d);
   a.forEach((p, i) => { mtx.makeScale(.0088, .0088, .0088).setPosition(p); gDots.setMatrixAt(i, mtx); }); gDots.instanceMatrix.needsUpdate = true;
   if (d.push) {      // a strength test: the arrow at the end of the line shows which way to push, and turns red while she pushes
-    tDots.count = 0; const k = s.load || 0; arrow.visible = true; arrow.position.copy(a[GD - 1]).addScaledVector(d.push, .03); arrow.quaternion.setFromUnitVectors(YA, d.push); arrow.scale.setScalar(1 + k * .35); arrowMat.color.set('#1E2A26').lerp(cT.set('#E8472B'), k); return; }
+    tDots.count = 0; const k = s.load || 0; arrow.visible = true; arrow.position.copy(a[GD - 1]).addScaledVector(d.push, .03); arrow.quaternion.setFromUnitVectors(YA, d.push); arrow.scale.setScalar(1 + k * .35); arrowMat.color.set('#1E282A').lerp(cT.set('#E8472B'), k); return; }
   tDots.count = TD; for (let i = 0; i < TD; i++) { pt(d, t - i * .011, pB); const r = .014 * (1 - i / TD) + .004; mtx.makeScale(r, r, r).setPosition(pB); tDots.setMatrixAt(i, mtx); } tDots.instanceMatrix.needsUpdate = true;
-  pt(d, t + .02, pA); pt(d, t + .07, pC); const dir = pC.sub(pA), len = dir.length(); arrow.visible = len > .006; arrowMat.color.set('#0E7A4F'); arrow.scale.setScalar(1);
+  pt(d, t + .02, pA); pt(d, t + .07, pC); const dir = pC.sub(pA), len = dir.length(); arrow.visible = len > .006; arrowMat.color.set('#0E657A'); arrow.scale.setScalar(1);
   if (arrow.visible) { dir.multiplyScalar(1 / len); arrow.position.copy(pA).addScaledVector(dir, .03); arrow.quaternion.setFromUnitVectors(YA, dir); } }
 
 let W0 = 0, H0 = 0, zoom = .84;

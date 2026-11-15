@@ -156,11 +156,11 @@
   };
   function muscleMap(svg, def) {
     const NS = 'http://www.w3.org/2000/svg', mk = (tag, at, parent) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); (parent || svg).appendChild(e); return e; };
-    const FLESH = '#ECE5D6', BONE = '#FBF8F0', BONEL = '#CFC6AE', F = (v) => v.toFixed(1);
+    const FLESH = '#DCE2E5', BONE = '#F4F6F7', BONEL = '#CFC6AE', F = (v) => v.toFixed(1);
     const flesh = (w, p) => mk('line', { stroke: FLESH, 'stroke-width': w, 'stroke-linecap': 'round' }, p), bone = (p) => [mk('line', { stroke: BONEL, 'stroke-width': 3.6, 'stroke-linecap': 'round' }, p), mk('line', { stroke: BONE, 'stroke-width': 2.4, 'stroke-linecap': 'round' }, p)];
     const seg = (els, a, b) => [].concat(els).forEach((e) => { e.setAttribute('x1', F(a[0])); e.setAttribute('y1', F(a[1])); e.setAttribute('x2', F(b[0])); e.setAttribute('y2', F(b[1])); });
     const n2 = (a, b) => { const x = b[0] - a[0], y = b[1] - a[1], l = Math.hypot(x, y) || 1; return [x / l, y / l]; }, upn = (d) => (d[0] >= 0 ? [d[1], -d[0]] : [-d[1], d[0]]), along = (p, d, k, n, j) => [p[0] + d[0] * k + n[0] * j, p[1] + d[1] * k + n[1] * j];
-    mk('path', { d: 'M-22 -47 H27 M-19 -47 L-23 -100', stroke: '#DCE5D8', 'stroke-width': 3, 'stroke-linecap': 'round', fill: 'none' });
+    mk('path', { d: 'M-22 -47 H27 M-19 -47 L-23 -100', stroke: '#D8E4E5', 'stroke-width': 3, 'stroke-linecap': 'round', fill: 'none' });
     const gT = mk('g', {}), gL = mk('g', {}), gA = mk('g', {}), gTxt = mk('g', {});
     mk('ellipse', { cx: 1, cy: -75, rx: 12, ry: 27, fill: FLESH }, gT); mk('circle', { cx: 3, cy: -114, r: 10.5, fill: FLESH }, gT); mk('path', { d: 'M-6 -98 Q-9 -76 -5 -52', stroke: BONEL, 'stroke-width': 2.2, 'stroke-dasharray': '2.4 1.4', fill: 'none' }, gT);
     [-90, -84, -78, -72].forEach((y) => mk('path', { d: `M-5 ${y} Q4 ${y + 5} 10 ${y + 1}`, stroke: BONEL, 'stroke-width': .9, fill: 'none', opacity: .8 }, gT)); mk('ellipse', { cx: 3, cy: -54, rx: 9, ry: 5.5, fill: BONE, stroke: BONEL, 'stroke-width': .8 }, gT);
@@ -181,7 +181,7 @@
     ];
     const ACT = {}; def.mus.forEach((m, i) => { ACT[m[0]] = { a: m[3], st: m[4] || 0, ph: i * 1.3, name: m[5] ? '' : m[1].replace('Front d', 'D').replace('Back of the d', 'D').replace(' muscles', '').replace(' muscle', '').replace('Shoulder-blade', 'Shoulder blade').replace('Shoulder capsule', '') } });
     MAP.forEach((m) => { m.el = mk('path', { 'stroke-width': .45, 'stroke-linejoin': 'round' }, m.g); m.fib = mk('path', { fill: 'none', stroke: '#fff', 'stroke-width': .45, opacity: .5 }, m.g);
-      m.txt = mk('text', { 'font-size': 4.3, 'font-weight': 600, 'text-anchor': 'middle', fill: '#1E2A26', stroke: '#fff', 'stroke-width': 1.3, 'paint-order': 'stroke', 'font-family': 'Outfit, sans-serif' }, gTxt); m.txt.textContent = ACT[m.id] ? ACT[m.id].name : ''; });
+      m.txt = mk('text', { 'font-size': 4.3, 'font-weight': 600, 'text-anchor': 'middle', fill: '#1E282A', stroke: '#fff', 'stroke-width': 1.3, 'paint-order': 'stroke', 'font-family': 'Outfit, sans-serif' }, gTxt); m.txt.textContent = ACT[m.id] ? ACT[m.id].name : ''; });
     const BASE = [230, 201, 192], HOT = [232, 71, 43], BLU = [63, 134, 219], lerp = (a, b, k) => a + (b - a) * k, rgb = (a, st, dark = 1) => { const col = st === 1 ? BLU : HOT, m = a < .01 ? 0 : .18 + a * .82; return `rgb(${BASE.map((v, i) => Math.round(lerp(v, col[i], m) * dark)).join(',')})`; };
     svg.setAttribute('viewBox', def.vb || (def.leg ? '-24 -93 116 86' : '-27 -134 116 86'));
     return function draw(t, k) {

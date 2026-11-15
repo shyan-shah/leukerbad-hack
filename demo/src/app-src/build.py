@@ -24,7 +24,7 @@ open(os.path.expanduser('~/Desktop/vita-pitch-deck/vita-app.html'), 'w').write('
 import shutil
 N = os.path.expanduser('~/Desktop/vita-app-netlify'); os.makedirs(N + '/vendor', exist_ok=True)
 for f in ['three.module.min.js', 'RoomEnvironment.js', 'RoundedBoxGeometry.js', 'jsQR.js', 'qrcode.js']: shutil.copy('vendor/' + f, N + '/vendor/' + f)
-open(N + '/index.html', 'w').write('<!doctype html><html lang="en" style="height:100%"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0f3d34"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>' + s + '</body></html>')
+open(N + '/index.html', 'w').write('<!doctype html><html lang="en" style="height:100%"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0A3A45"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>' + s + '</body></html>')
 shutil.copy('app-src/stations.html', N + '/stations.html')
 open(N + '/_headers', 'w').write('/*\n  Permissions-Policy: camera=(self)\n  Cache-Control: no-cache\n')
 B = os.path.expanduser('~/vita-backend/app'); shutil.rmtree(B, ignore_errors=True); shutil.copytree(N, B, ignore=shutil.ignore_patterns('_headers'))
