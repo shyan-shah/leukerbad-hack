@@ -36,6 +36,9 @@ In Auto (Remote) mode the robot comes up already enabled (`operational()` is tru
 | `tool_switch.py` | no motion commanded, **changes a robot setting** | Switches the selected tool (default `Flange`, meaning no tool) and reverts if the empty-arm force reading gets worse. |
 | `motion_stages.py` | **yes** | Stages 1 to 4 of the first-motion test: hold, 2 cm move, soft hold, free axis. |
 | `demo_motion.py` | **yes, larger and faster** | Continuous translation-only motion for videos, 4 minutes by default. |
+| `move_joints.py` | **yes, joint space** | Slow `MoveJ` to named joint angles (`A2=-40 A4=90`). Without `--go` it only prints the predicted flange path. Use `--scale 2` or `3` (percent of each joint's maximum speed; 5 can put the wrist joints over the script's 0.2 rad/s stop). Stops on a fault, a force change over 20 N, a joint over 0.2 rad/s, or a joint within 10° of a limit. Run it in your own terminal so Ctrl+C reaches it. |
+| `zero_ft.py` | no motion, **commands the robot** | Runs `ZeroFTSensor` once (nothing touching) and prints the empty force and per-joint residual before and after. Without `--go` it only reads. |
+| `drift_check.py` | **yes** | Zeroes, then moves the flange 0.30 m along a world axis at 0.05 m/s at nominal stiffness and back, reading the empty force every 5 cm and again 30 s later. Without `--go` it only prints the plan. |
 | `run_studio.sh` | no | Starts Flexiv Elements Studio (Linux build) in WSL. PC-side app only. |
 | `checked_arm.py` | not a script | `CheckedArm`, the arm class `python -m server.run --robot` uses. Same as `robot.arm.Arm`, but `connect()` never clears faults or enables: it refuses unless the robot is fault-free, operational, in IDLE, e-stop released and the expected tool (`--tool`, default `Flange`) is selected. |
 
@@ -117,3 +120,9 @@ wsl -d Ubuntu-22.04 -u shyan -- bash -lc "~/flexiv/studio-3.9.3/run_studio.sh"
 | `demo.json` | 4-minute video run: no trips, peak 0.106 m/s, mean tracking lag 14.9 mm |
 
 Stages 3 and 4 and the engine dry run have not been run yet.
+
+## Results from 15 Nov (`results/drift_check_2026-11-15.json`)
+
+- **Joint moves** to a new start pose (legs at scale 3 and 2): the empty-flange force estimate climbed to 11 N, then 27 N, with nothing touching. It was a constant offset on the shoulder joints (about -5.7 Nm on A2, +1.9 Nm on A3), not a load: the force stop in `move_joints.py` (20 N change) fired twice because of it. It did not decay in 60 s.
+- **`ZeroFTSensor` works on this arm** (no wrist sensor, force estimated from joint torques): 15.5 N to 0.1-0.4 N in 0.1 s, joints moved 0.001°, all joint residuals within ±0.1 Nm.
+- **Drift along the reach** from the start pose `(0.213, 0.470, 0.375)` towards -x, zeroed at the start: standing readings 0.04 to 2.76 N (worst at 20 cm out), up to 3.39 N while moving at 0.05 m/s, 0.95 N back at the start, 0.86 N 30 s later; never more than 0.3 mm off the line. So zero at the start pose before every set, and expect an empty handle to read up to about 3 N along the reach.
