@@ -38,6 +38,7 @@ def make(exercise="reach", strength=1.0, present=True, arm_kw=None, **kw):
     arm = sim(SimPatient(strength=strength, present=present), **(arm_kw if arm_kw is not None else REAL))
     samples: list[Sample] = []
     reps: list[RepResult] = []
+    kw.setdefault("calibrate", False)        # the band at the preset dial (calibration: test_calibration.py)
     eng = Engine(arm, "sess-r", "pat-r", True, on_sample=samples.append, on_rep=reps.append,
                  exercise=exercise, **kw)
     eng.start()
@@ -217,7 +218,7 @@ def test_start_is_not_refused_on_a_prepared_arm_anywhere_on_the_reach(exercise, 
         across._pos[0] += 0.30
         assert np.linalg.norm(across._empty_force()) == pytest.approx(2.98, abs=0.01)
         assert across._empty_force()[0] == 0.0
-    eng = Engine(arm, "s", "p", True, exercise=exercise)
+    eng = Engine(arm, "s", "p", True, exercise=exercise, calibrate=False)
     eng.start()                                                      # no RuntimeError
     assert 0.0 <= np.linalg.norm(eng.force_baseline) < 3.5
     eng.run_for(2.0)
@@ -492,13 +493,14 @@ def test_idle_near_the_start_walks_the_target_there_and_then_holds_it_firmly():
 
 def pull_then(nxt, arm_kw, **kw):
     arm = sim(SimPatient(strength=0.8), **arm_kw)
-    eng = Engine(arm, "s1", "p", True, exercise="pull", reps=2)
+    eng = Engine(arm, "s1", "p", True, exercise="pull", reps=2, calibrate=False)
     eng.start()
     eng.run_until_reps(2, max_s=90.0)
     eng.run_for(0.5)
     eng.stop()
     assert x(arm.get_state().pos) > 0.20                              # pull leaves the handle at the far end
     samples, reps = [], []
+    kw.setdefault("calibrate", False)
     eng = Engine(arm, "s2", "p", True, exercise=nxt, on_sample=samples.append, on_rep=reps.append, **kw)
     eng.start()
     return eng, arm, samples, reps

@@ -147,7 +147,8 @@ ARM_HOLD_S = 0.6             # s of hand force in the firm hold at the start bef
 ARM_DIST_M = 0.05            # m (3D) from the start: inside this a rep can be armed and the start is held firmly
 ARM_MAX_SPEED = 0.05         # m/s: a faster handle does not arm ("hold still")
 ARM_MAX_N = 25.0             # N: a harder push does not arm ("pushing too hard")
-IDLE_SPRING_N = 8.0          # N: an idle hold pulling harder than this needs a hand pushing back with at least half of it
+IDLE_FRICTION_N = 4.5        # N of the idle hold's pull that the arm's own friction can be carrying
+IDLE_SPRING_N = 10.0          # N: an idle hold pulling harder than this needs a hand pushing back with at least half of it
 ARM_HANDOVER_S = 0.25        # s after arming with the target on the hand (longer than the stiffness latency)
 ARM_GRACE_S = 0.5            # s after arming during which the one-tick let-go test is off
 FIRM_EXIT_M = 0.07           # m: the firm hold is given up only beyond this (arming still needs ARM_DIST_M)
@@ -155,6 +156,11 @@ FIRM_RAMP_S = 1.5            # s, the idle hold at the start goes from k_hold to
 FIRM_STEP_S = 0.25           # s between its steps (longer than the arm's stiffness latency, up to 0.2 s)
 GO_COUNTDOWN_S = 3.0         # s between Engine.go() and the rep it arms
 GO_MIN_N = 2.0               # N of hand force needed for go() to arm the rep
+CAL_PUSH_S = 3.0             # s, the comfortable push (handle held still)
+CAL_START_N = 2.0            # N along the push direction: the push has begun
+CAL_WINDOW_S = 1.0           # s, comfort force = mean over the steadiest window of this length
+CAL_MIN_N = 5.0              # N, a comfortable push under this gives the lightest resistance
+CAL_WAIT_S = 20.0            # s without a push: give up, lightest resistance
 SETUP_DWELL_S = 1.0          # s at the far end before a "far" exercise (pull) leaves the setup phase
 EXERCISE = "reach_line"      # SessionSummary.exercise for the default "reach" preset (unchanged)
 
@@ -235,12 +241,25 @@ class Engine:
         self._f_filt: np.ndarray | None = None
         self._vel = np.zeros(3)             # handle velocity of the current tick
         self._f_now = np.zeros(3)           # baseline-relative force of the current tick (unfiltered)
+        self._f_hist: list[np.ndarray] = []  # calibrate: recent force readings
+        self._default_limits = getattr(arm, "limits", None)
         self._last_tick_t: float | None = None
-        # calibration (contract of 15 Nov). The calibrate phase itself is NOT implemented yet:
-        # the status is always "skipped" and the resistance is the preset's.
-        self.calibrate = (p.kind == "resist") if calibrate is None else bool(calibrate)
-        self.calibration_state = dict(calibration_state) if calibration_state else strength_model.new_state()
+        # comfortable-push calibration (contract of 15 Nov, server/API.md section 7): resist presets only
+        can_cal = p.kind == "resist"
+        self.calibrate = can_cal and (True if calibrate is None else bool(calibrate))
+        self.calibration_state = (dict(calibration_state) if isinstance(calibration_state, dict) and calibration_state
+                                  else strength_model.new_state())
         self.calibration_state_after = dict(self.calibration_state)
+        self._cal: dict | None = None if not can_cal else self._cal_dict(
+            "waiting" if self.calibrate else "skipped",
+            reason="waiting for a push" if self.calibrate else "calibration turned off for this session")
+        self._cal_pending = self.calibrate   # the calibrate phase has not run yet
+        self._cal_anchor: np.ndarray | None = None
+        self._cal_t0 = 0.0                   # arm time the calibrate phase began
+        self._cal_push_t0: float | None = None
+        self._cal_f: list[float] = []
+        self._dial_by_user = False           # set_dial() after start: calibration does not override it
+        self._test_limits = False
         self._arming = {"progress": 0.0, "reason": None}
         self._go_at: float | None = None
         self._go_req = False
@@ -268,6 +287,7 @@ class Engine:
                 "the robot, or something is resting on the handle. With nobody touching the arm, "
                 "run arm.zero_force() (robot/RUNBOOK.md), then start the session again.")
         self.force_baseline = baseline
+        self._default_limits = self.arm.limits       # before any test profile
         self.arm.start_compliance()
         # The line always lies between the arm's start pose and the far end of the configured
         # reach. "far" presets (pull) run it backwards: path start = the far end.
@@ -282,6 +302,8 @@ class Engine:
             # The handle is not at this exercise's start (pull: the far end; any other exercise
             # after a pull, or when the handle was left out): the person brings it there first.
             self._phase = "setup"
+        if self._phase != "setup" and self._cal_pending:
+            self._phase = "calibrate"
         if hasattr(self.arm, "patient") and hasattr(self.arm, "cue"):
             # Simulated patient: where its reach starts, and whether the engine cues it itself
             # (pull and armtest) or it follows the stiffness change as before (reach, push).
@@ -328,7 +350,10 @@ class Engine:
             if th is not None and th is not threading.current_thread():
                 th.join(timeout=2.0)
         finally:
-            self.arm.hold()
+            try:
+                self._set_test_limits(False)
+            finally:
+                self.arm.hold()
         with self._lock:
             if self._started and self._phase in ("out", "back") and self._rep_idx >= 0:
                 self._abort_rep(self._dial)          # a rep in progress at stop() is recorded as not completed
@@ -347,6 +372,7 @@ class Engine:
             raise ValueError(f"dial must be finite, got {dial}")
         with self._lock:
             self._dial = float(np.clip(dial, -1.0, 1.0))
+            self._dial_by_user = True
             if auto is not None:
                 self._auto = bool(auto)
 
@@ -360,14 +386,116 @@ class Engine:
                         "done": self.done, "arming": dict(self._arming),
                         "calibration": self._calibration_snapshot()}
 
-    def _calibration_snapshot(self) -> dict:
-        """Contract shape. The calibrate phase is not implemented yet: always "skipped"."""
-        resist = self.preset.kind == "resist"
-        return {"status": "skipped", "progress": 0.0, "comfort_force_n": None,
-                "resistance_n": (abs(self._dial) * controller.K_RESIST * controller.MAX_LEAD) if resist else None,
-                "fraction": float(self.calibration_state.get("fraction", 0.5)) if resist else None,
-                "reason": ("calibration push not implemented yet, preset resistance used"
-                           if resist and self.calibrate else None)}
+    def _calibration_snapshot(self) -> dict | None:
+        """Contract shape (server/API.md section 7); None for presets without calibration."""
+        return None if self._cal is None else dict(self._cal)
+
+    @staticmethod
+    def _cal_dict(status, progress=0.0, comfort=None, resistance=None, fraction=None, reason=None) -> dict:
+        return {"status": status, "progress": float(progress), "comfort_force_n": comfort,
+                "resistance_n": resistance, "fraction": fraction, "reason": reason}
+
+    def _max_resistance_n(self) -> float:
+        """The most the band can pull with the DEFAULT arm limits (15 N)."""
+        lim = self._default_limits
+        return float(min(controller.K_RESIST, lim.k_max) * min(controller.MAX_LEAD, lim.max_lead_m))
+
+    def _set_test_limits(self, on: bool) -> None:
+        if hasattr(self.arm, "set_test_limits") and on != self._test_limits:
+            self.arm.set_test_limits(on)
+            self._test_limits = on
+            self._k_sent = None              # the arm changed its stiffness: send ours again
+
+    def _end_calibration(self, comfort: float | None, reason: str | None, pos=None) -> None:
+        """Close the calibrate phase. ``reason`` None: a valid push, resistance from the strength
+        model, status "done". Otherwise the lightest resistance, status "skipped", with the reason."""
+        mx = self._max_resistance_n()
+        if reason is None:
+            r = strength_model.resistance_for(comfort, self.calibration_state, mx)
+            self._cal = self._cal_dict("done", 1.0, round(float(comfort), 2), round(r["resistance_n"], 2),
+                                       r["fraction"], None)
+        else:
+            r = strength_model.resistance_for(0.0, self.calibration_state, mx)
+            self._cal = self._cal_dict("skipped", 0.0, None if comfort is None else round(float(comfort), 2),
+                                       round(r["resistance_n"], 2), None, reason)
+        with self._lock:
+            if not self._dial_by_user:
+                self._dial = float(r["dial"])
+        self._cal_pending = False
+        self._cal_push_t0 = None
+        self._sim_cue("rest")
+        if pos is not None and self._started:
+            # the hold is loaded by the push: target onto the hand first, then the default limits
+            # (the arm drops to k_hold), then the ordinary idle hold walks the target back.
+            self.arm.set_target(_tup3(pos))
+        self._set_test_limits(False)
+        self._latch = None if pos is None else np.asarray(pos, dtype=float).copy()
+        self._firm = False
+        self._arm_acc = 0.0
+        self._phase = "idle"
+
+    def _tick_calibrate(self, state, t_arm, t, pos, force, dt_tick) -> None:
+        """One comfortable push with the handle held still (k_max of the test profile if the arm
+        has one). Waits for CAL_START_N along the push direction, then CAL_PUSH_S of pushing."""
+        if self._cal_anchor is None:
+            self._cal_anchor = np.asarray(pos, dtype=float).copy()
+            self._cal_t0 = t_arm
+            self._set_test_limits(True)
+            self._sim_cue("out")
+        along = float(force[self.reach_axis]) * self.reach_sign
+        along_f = float(self._f_filt[self.reach_axis]) * self.reach_sign
+        km = float(self.arm.limits.k_max)
+        if self._cal_push_t0 is None:
+            if along_f > CAL_START_N and along > CAL_START_N:
+                self._cal_push_t0 = t_arm
+                self._cal_f = []
+            elif t_arm - self._cal_t0 >= CAL_WAIT_S:
+                self._end_calibration(None, "no push within 20 s, lightest resistance set", pos)
+        if self._cal_push_t0 is not None and self._phase == "calibrate":
+            self._cal_f.append(along)
+            el = t_arm - self._cal_push_t0
+            self._cal = self._cal_dict("pushing", min(1.0, el / CAL_PUSH_S))
+            n = len(self._cal_f)
+            w = int(round(CAL_WINDOW_S / DT))
+            # let go: nothing on the handle for 0.3 s (the hold is stiff, so the handle stays put)
+            k = int(round(0.3 / DT))
+            # ... or, at once, a loaded hold with nothing pushing back (as in the idle hold): waiting
+            # 0.3 s let the 1500 N/m hold throw the handle back and trip the speed limit
+            pull = km * (self._cal_anchor - pos)
+            spring = float(np.linalg.norm(pull))
+            thrown = (spring > IDLE_SPRING_N
+                      and -float(np.asarray(force) @ (pull / spring)) + IDLE_FRICTION_N < 0.5 * spring)
+            if thrown or (n > k and max(np.linalg.norm(self._f_hist[-k:], axis=1)) < CAL_START_N):
+                self._end_calibration(None, "let go during the push, lightest resistance set", pos)
+            elif el >= CAL_PUSH_S:
+                f = np.asarray(self._cal_f)
+                if len(f) >= w:
+                    c = np.cumsum(np.insert(f, 0, 0.0))
+                    c2 = np.cumsum(np.insert(f * f, 0, 0.0))
+                    mean = (c[w:] - c[:-w]) / w
+                    var = (c2[w:] - c2[:-w]) / w - mean ** 2
+                    comfort = float(mean[int(np.argmin(var))])
+                else:
+                    comfort = float(f.mean())
+                if comfort < CAL_MIN_N:
+                    self._end_calibration(comfort, "push under 5 N, lightest resistance set", pos)
+                else:
+                    self._end_calibration(comfort, None, pos)
+        self._f_hist.append(np.asarray(force, dtype=float))
+        if len(self._f_hist) > 200:
+            del self._f_hist[:100]
+        if self._phase != "calibrate":       # ended on this tick: soft hold on the hand
+            kh = float(self.arm.limits.k_hold)
+            self._send(_tup3(pos), (kh, kh, kh))
+            self._arming = {"progress": 0.0, "reason": "hold still"}
+            self._emit(t, state, _tup3(pos), self._dial, "idle", -1, force)
+            return
+        if self._cal_push_t0 is None:
+            self._cal = self._cal_dict("waiting", 0.0, reason="waiting for a push")
+        self._arming = {"progress": 0.0, "reason": "calibrating"}
+        target = _tup3(self._cal_anchor)
+        self._send(target, (km, km, km))
+        self._emit(t, state, target, 0.0, "calibrate", -1, force)
 
     def go(self) -> None:
         """Operator "go": after GO_COUNTDOWN_S the next rep is armed if the handle is within
@@ -545,6 +673,9 @@ class Engine:
             # hold, fault or idle: never command. Abandon any rep in progress.
             if self._phase in ("out", "back"):
                 self._abort_rep(dial)
+            if self._phase == "calibrate":
+                self._test_limits = False        # the arm restored its default profile itself
+                self._end_calibration(None, "the arm stopped during the push, lightest resistance set")
             self._phase = "idle"
             self._near_since = None
             self._latch = None
@@ -588,7 +719,7 @@ class Engine:
                 if self._near_since is None:
                     self._near_since = t_arm
                 if t_arm - self._near_since >= SETUP_DWELL_S:
-                    self._phase = "idle"
+                    self._phase = "calibrate" if self._cal_pending else "idle"
                     self._near_since = None
                     if hasattr(self.arm, "patient") and hasattr(self.arm, "cue"):
                         self.arm.auto_cue = not self._explicit_cues
@@ -604,6 +735,9 @@ class Engine:
                 self._emit(t, state, target, 0.0, "setup", -1, force)
                 return
 
+        if self._phase == "calibrate":
+            self._tick_calibrate(state, t_arm, t, pos, force, dt_tick)
+            return
         if self._phase == "release":
             self._tick_release(state, t_arm, t, pos, force, occupied, dial, dt_tick)
             return
@@ -740,7 +874,9 @@ class Engine:
                 seen = -float(self._f_now @ u)
                 if speed >= V_MOVING:
                     seen += EMPTY_MOVING_N * abs(float(self._vel @ u)) / speed
-            if spring > IDLE_SPRING_N and seen < 0.5 * spring:
+            # (friction can carry up to IDLE_FRICTION_N of the pull for the hand: a strong patient
+            # whose limb reads 5.7 N on a hold pulling 8 N lost the firm hold every 1.5 s)
+            if spring > IDLE_SPRING_N and seen + IDLE_FRICTION_N < 0.5 * spring:
                 self._firm = False
                 self._latch = np.asarray(pos, dtype=float).copy()
                 self._arm_acc = 0.0

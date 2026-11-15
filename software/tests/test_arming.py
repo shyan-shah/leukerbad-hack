@@ -75,7 +75,7 @@ def test_empty_handle_never_arms_and_snapshot_has_the_contract_fields():
     snap = eng.snapshot()
     assert eng.rep_count == 0 and eng.phase == "idle"
     assert snap["arming"] == {"progress": 0.0, "reason": "press gently"}
-    assert set(snap["calibration"]) == {"status", "progress", "comfort_force_n", "resistance_n", "fraction", "reason"}
+    assert snap["calibration"] is None            # reach has no calibration (server/API.md section 7)
     assert np.linalg.norm(np.subtract(arm.get_state().pos, START)) < 0.002
 
 

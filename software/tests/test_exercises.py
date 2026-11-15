@@ -26,6 +26,7 @@ def make(exercise=None, strength=1.0, present=True, **kw):
     reps: list[RepResult] = []
     if exercise is not None:
         kw["exercise"] = exercise
+    kw.setdefault("calibrate", False)        # these tests are about the band at the preset dial (calibration: test_calibration.py)
     eng = Engine(arm, "sess-x", "pat-x", True, on_sample=samples.append, on_rep=reps.append, **kw)
     eng.start()
     return eng, arm, samples, reps
@@ -405,7 +406,7 @@ def test_hands_off_circle_stops_the_target():
 
 def session(arm, exercise, **kw):
     samples, reps = [], []
-    eng = Engine(arm, "sess-y", "pat-y", True, on_sample=samples.append, on_rep=reps.append,
+    eng = Engine(arm, "sess-y", "pat-y", True, on_sample=samples.append, on_rep=reps.append, calibrate=False,
                  exercise=exercise, **kw)
     eng.start()
     return eng, samples, reps
