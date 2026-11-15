@@ -54,8 +54,20 @@ def default_engine_factory(**kw):
     if not any(p.kind is p.VAR_KEYWORD for p in params.values()):
         if "exercise" not in params and kw.get("exercise", "reach") != "reach":
             raise RuntimeError(f"the engine on this laptop cannot run {kw['exercise']!r} yet (only reach)")
-        kw = {k: v for k, v in kw.items() if k in params or k not in ("exercise", "reps")}
+        kw = {k: v for k, v in kw.items() if k in params or k not in ("exercise", "reps") + CALIBRATION_ARGS}
     return Engine(**kw)
+
+
+CALIBRATION_ARGS = ("calibrate", "calibration_state")
+
+
+def _accepts(factory, name: str) -> bool:
+    """True if `factory` takes the keyword `name` (or any keyword). Unknown signatures: False."""
+    try:
+        params = inspect.signature(factory).parameters
+    except (TypeError, ValueError):
+        return False
+    return name in params or any(p.kind is p.VAR_KEYWORD for p in params.values())
 
 
 class StartBody(BaseModel):
@@ -65,6 +77,7 @@ class StartBody(BaseModel):
     auto: bool | None = None                             # omitted: the exercise's own setting
     exercise: str = Field("reach", max_length=32)        # one of GET /api/exercises
     reps: int | None = Field(None, ge=0, le=exercises.REPS_MAX)   # omitted: the exercise default; 0: no limit
+    calibrate: bool | None = None                        # comfortable-push calibration; omitted: on for push and pull
 
 
 class IdsBody(BaseModel):
@@ -114,6 +127,13 @@ def _baseline_force(arm: Any) -> list[float]:
         if i + 1 < PREPARE_SAMPLES:
             time.sleep(PREPARE_SAMPLE_DT)
     return [a / PREPARE_SAMPLES for a in acc]
+
+
+def _num(v: Any) -> float | None:
+    try:
+        return None if v is None else float(v)
+    except (TypeError, ValueError):
+        return None
 
 
 class Hub:
@@ -178,6 +198,8 @@ class Hub:
         snap = self.engine.snapshot() if self.engine else {}
         if snap:
             snap["arm_fault"] = self.arm_fault(snap.get("arm_mode"))
+            snap.setdefault("calibration", None)      # engines from before the calibration contract: null
+            snap.setdefault("arming", None)
         return snap
 
     def arm_fault(self, arm_mode) -> str | None:
@@ -205,16 +227,31 @@ class Hub:
         with self.ctl_lock:
             if self.engine is None or self.session is None:
                 return None
+            engine, cal, state_after = self.engine, None, None
             try:
-                self.engine.stop()
+                cal = engine.snapshot().get("calibration")
+            except Exception as e:
+                print(f"[api] snapshot before stop failed: {e!r}", flush=True)
+            try:
+                engine.stop()
+                state_after = getattr(engine, "calibration_state_after", None)
             finally:
                 self.engine = None
             self.flush_reps()
+            done = cal if isinstance(cal, dict) and cal.get("status") == "done" else {}
             with self.db_lock:
                 n = db.count_reps(self.conn, self.session.session_id)
                 s = SessionSummary(**(self.session.to_dict() | {
-                    "ended_at": clock.now_iso(), "n_reps": n}))
+                    "ended_at": clock.now_iso(), "n_reps": n,
+                    "comfort_force_n": _num(done.get("comfort_force_n")),
+                    "resistance_n": _num(done.get("resistance_n")),
+                    "resistance_fraction": _num(done.get("fraction"))}))
                 db.save_session(self.conn, s)
+                if isinstance(state_after, dict) and state_after:     # never overwrite a stored state with nothing
+                    try:
+                        db.save_calibration_state(self.conn, s.patient_id, s.exercise, state_after)
+                    except (TypeError, ValueError) as e:
+                        print(f"[api] calibration state not stored (not JSON): {e!r}", flush=True)
                 if self.exports_dir:
                     export_all(self.conn, self.exports_dir)
             self.session = None
@@ -247,7 +284,8 @@ class Hub:
                     msgs.insert(0, {"type": "sample"} | s.to_dict() | {
                         "rep_count": snap.get("rep_count"), "auto": snap.get("auto"),
                         "arm_mode": snap.get("arm_mode"),
-                        "arm_fault": snap.get("arm_fault")} | self.progress(snap))
+                        "arm_fault": snap.get("arm_fault"), "calibration": snap.get("calibration"),
+                        "arming": snap.get("arming")} | self.progress(snap))
                 if not msgs or not self.clients:
                     continue
                 for ws in list(self.clients):
@@ -272,7 +310,7 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     arm_factory()      -> arm object (connected on first session start)
     engine_factory(**) -> engine with the MASTER_PLAN 4.4 interface (default software.engine.Engine)
     exports_dir        -> if set, exports are rewritten after every session stop
-    control_token      -> if set, POST start/stop/dial/go, arm/prepare, arm/home, exercises/enable|disable
+    control_token      -> if set, POST start/stop/dial/go/resume, arm/prepare, arm/home, exercises/enable|disable
                           and shutdown need header `x-operator-token`.
                           /api/hold never does.
     live_exercises     -> ids this engine can run. Default: software.exercises.LIVE, read on every request
@@ -463,6 +501,11 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
                 kw["dial"] = body.dial
             if body.auto is not None:
                 kw["auto"] = body.auto
+            if _accepts(hub.engine_factory, "calibrate"):
+                kw["calibrate"] = body.calibrate
+            if _accepts(hub.engine_factory, "calibration_state"):
+                with hub.db_lock:
+                    kw["calibration_state"] = db.get_calibration_state(conn, body.patient_id, body.exercise)
             hub.latest = hub.sent = None
             hub.exercise, hub.reps_target = body.exercise, reps or default_reps
             try:
@@ -526,8 +569,29 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
         guard(x_operator_token)
         fn = getattr(hub.engine, "go", None)
         if fn is None:
-            raise HTTPException(501, "this engine has no operator cue (go)")
-        fn()
+            raise HTTPException(501, "this engine has no operator cue (go)" if hub.engine is not None
+                                else "no session running, so there is nothing to cue (go)")
+        try:
+            fn()
+        except RuntimeError as e:
+            raise HTTPException(409, f"go refused: {e}")
+        return {"ok": True}
+
+    @app.post("/api/session/resume")
+    def resume(x_operator_token: str | None = Header(default=None)):
+        """Operator: continue a session the engine has paused (engine.resume()). 409 when there is no
+        session, the engine cannot resume, or it refuses."""
+        guard(x_operator_token)
+        if hub.engine is None:
+            raise HTTPException(409, "no session running, so there is nothing to resume")
+        fn = getattr(hub.engine, "resume", None)
+        if fn is None:
+            raise HTTPException(409, "the engine on this laptop cannot resume a session; "
+                                     "stop it and start a new one")
+        try:
+            fn()
+        except RuntimeError as e:
+            raise HTTPException(409, f"not resumed: {e}")
         return {"ok": True}
 
     @app.get("/api/patients")

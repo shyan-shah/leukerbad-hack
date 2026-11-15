@@ -21,6 +21,11 @@ from .stats import mode_of
 
 IDLE_S = 1.0
 SETUP_S = 2.5            # pull: time the pretend patient takes to move the handle to the far end
+CAL_WAIT_S = 1.0         # calibrate: wait for the push to begin
+CAL_PUSH_S = 3.0         # calibrate: the comfortable push itself (handle held still)
+CAL_FRACTION = 0.6       # resistance = this share of the comfortable push (first session)
+CAL_FRACTION_MAX = 0.8   # each later session of the same patient and exercise: +0.05 up to this
+CALIBRATES = ("push", "pull")
 TRY_S = 3.0              # armtest: length of one push-and-hold try
 REST_S = 5.0             # armtest: rest between tries (phase "back", rep_idx -1, as the real engine reports it)
 K_HOLD_TEST = 600.0      # N/m: the handle gives way by force / this during a try (about 5 cm at 30 N)
@@ -55,9 +60,12 @@ class MockEngine:
                  reach_axis: int = 0, reach_sign: int = 1, reach_m: float | None = None,
                  dial: float | None = None, auto: bool | None = None, on_sample=None, on_rep=None,
                  strength: float = 0.6, time_scale: float = 1.0, seed: int = 0,
-                 start_pos=(0.45, 0.0, 0.30), exercise: str = "reach", reps: int | None = None) -> None:
+                 start_pos=(0.45, 0.0, 0.30), exercise: str = "reach", reps: int | None = None,
+                 calibrate: bool | None = None, calibration_state: dict | None = None) -> None:
         """`exercise`: reach, push, pull or armtest (anything else behaves like reach).
-        `reps`: stop making reps after this many and stay idle; None = no limit (armtest: 3 tries)."""
+        `reps`: stop making reps after this many and stay idle; None = no limit (armtest: 3 tries).
+        `calibrate`: play the comfortable-push phase first (None: on for push and pull, never for the others).
+        `calibration_state`: `calibration_state_after` of this patient's previous session of the exercise."""
         self.arm = arm
         self.exercise = exercise
         p_dial, p_auto, p_reach = PRESETS.get(exercise, PRESETS["reach"])
@@ -80,6 +88,16 @@ class MockEngine:
         self._latest: Sample | None = None
         self.rep_count = 0
         self.started_at = ""
+        can_cal = exercise in CALIBRATES
+        self.calibrate = can_cal and (True if calibrate is None else bool(calibrate))
+        self.calibration_state = dict(calibration_state) if isinstance(calibration_state, dict) else None
+        self.calibration_state_after: dict | None = self.calibration_state
+        self.resistance_n: float | None = None
+        self._cal: dict | None = None if not can_cal else self._cal_dict(
+            "waiting" if self.calibrate else "skipped", 0.0,
+            reason="waiting for a push" if self.calibrate else "calibration turned off for this session")
+        self._arming = {"progress": 0.0, "reason": "calibrating" if self.calibrate else "resting before the rep"}
+        self._go = threading.Event()
 
     # ---------------------------------------------------------------- interface (4.4)
     def start(self) -> None:
@@ -109,9 +127,71 @@ class MockEngine:
         with self._lock:
             d = self._latest.to_dict() if self._latest else {}
             return d | {"rep_count": self.rep_count, "auto": self.auto,
-                        "arm_mode": getattr(self.arm, "mode", None)}
+                        "arm_mode": getattr(self.arm, "mode", None),
+                        "calibration": None if self._cal is None else dict(self._cal),
+                        "arming": dict(self._arming)}
+
+    def go(self) -> None:
+        """Operator cue: start the next rep now instead of waiting out the rest."""
+        self._go.set()
+
+    def resume(self) -> None:
+        """Continue after a hold: the pretend arm goes back to compliant."""
+        if hasattr(self.arm, "start_compliance"):
+            self.arm.start_compliance()
 
     # ---------------------------------------------------------------- internals
+    @staticmethod
+    def _cal_dict(status: str, progress: float, comfort=None, resistance=None, fraction=None, reason=None) -> dict:
+        return {"status": status, "progress": round(float(progress), 3), "comfort_force_n": comfort,
+                "resistance_n": resistance, "fraction": fraction, "reason": reason}
+
+    def _set_arming(self, progress: float, reason: str | None) -> None:
+        with self._lock:
+            self._arming = {"progress": round(float(progress), 3), "reason": reason}
+
+    def _run_calibrate(self, t: float) -> float | None:
+        """One comfortable push with the handle held still: CAL_WAIT_S of waiting, then CAL_PUSH_S with a
+        rising then steady force. Sets the resistance from it. Uses no random numbers, so the reps that
+        follow are the same with and without it. Returns the new t, or None if stopped."""
+        dt = 0.01
+        s0 = 1.0 if self.flip else 0.0            # _tick flips it back: the handle stays at the start
+        comfort = 10.0 + 20.0 * self.strength     # N, the pretend patient's comfortable push
+        for _ in range(int(CAL_WAIT_S / dt)):
+            if self._stop.is_set():
+                return None
+            self._tick(t, s0, 0.0, "calibrate", -1, 0.0, 0.0, 0.0, dial=0.0)
+            t += dt
+            self._sleep(dt)
+        n, fs = int(CAL_PUSH_S / dt), []
+        for i in range(n):
+            if self._stop.is_set():
+                return None
+            x = i / max(n - 1, 1)
+            f = comfort * min(1.0, x / 0.3) + 0.4 * math.sin(40 * x)      # rises for 0.9 s, then steady
+            with self._lock:
+                self._cal = self._cal_dict("pushing", (i + 1) / n)
+            self._tick(t, s0, 0.0, "calibrate", -1, -f if self.flip else f, 0.0, 0.0, dial=0.0)
+            if x >= 0.4:
+                fs.append(f)
+            t += dt
+            self._sleep(dt)
+        prev = self.calibration_state or {}
+        try:
+            fraction = min(CAL_FRACTION_MAX, float(prev["fraction"]) + 0.05)
+            sessions = int(prev.get("sessions", 0)) + 1
+        except (KeyError, TypeError, ValueError):
+            fraction, sessions = CAL_FRACTION, 1
+        comfort_n = round(float(np.mean(fs)), 1)
+        resistance = round(fraction * comfort_n, 1)
+        with self._lock:
+            self.resistance_n = resistance
+            self._cal = self._cal_dict("done", 1.0, comfort_n, resistance, round(fraction, 2))
+            self.calibration_state_after = {"version": 1, "fraction": round(fraction, 2),
+                                            "comfort_force_n": comfort_n, "resistance_n": resistance,
+                                            "sessions": sessions}
+        return t
+
     def _tick(self, t: float, s: float, lateral: float, phase: str, rep_idx: int, force_along: float,
               vel_along: float, lead: float, dial: float | None = None) -> Sample:
         a = self.axis
@@ -191,6 +271,10 @@ class MockEngine:
         t = 0.0
         idx = 0
         rng = self.rng
+        if self.calibrate:
+            t = self._run_calibrate(t)
+            if t is None:
+                return
         if self.flip:       # pull: the person first moves the handle from the start to the far end
             n = int(SETUP_S / dt)
             for i in range(n):
@@ -201,6 +285,7 @@ class MockEngine:
                 self._sleep(dt)
         while not self._stop.is_set():
             if self.reps is not None and idx >= self.reps:
+                self._set_arming(0.0, "set finished")
                 return self._idle_forever(t)
             with self._lock:
                 dial = self.dial
@@ -211,14 +296,20 @@ class MockEngine:
             err_amp = 0.004 + 0.025 * (1 - cap) * (1 - 0.4 * help_)
             contribution = float(np.clip(0.15 + 0.85 * cap - 0.1 * help_ * (1 - cap) + rng.normal(0, 0.04), 0, 1))
             rescued = help_ > 0.05 and cap < 0.2
-            resist_n = 15.0 * max(-dial, 0.0)
+            resist_n = 15.0 * max(-dial, 0.0) if self.resistance_n is None else self.resistance_n
             # idle
-            for _ in range(int(IDLE_S / dt)):
+            n_idle = int(IDLE_S / dt)
+            for i in range(n_idle):
                 if self._stop.is_set():
                     return
+                if self._go.is_set():       # operator cue: skip the rest
+                    break
+                self._set_arming((i + 1) / n_idle, "resting before the rep")
                 self._tick(t, 0.0, 0.0, "idle", -1, 0.0, 0.0, 0.0)
                 t += dt
                 time.sleep(dt / self.time_scale)
+            self._go.clear()
+            self._set_arming(1.0, None)
             t_start = t
             out_s, out_err, out_f, out_v = [], [], [], []
             for phase, n in (("out", int(T / dt)), ("back", int(T / dt))):

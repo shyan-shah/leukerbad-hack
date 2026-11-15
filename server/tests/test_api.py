@@ -98,14 +98,14 @@ def test_auto_dial_falls_for_strong_patient(client):
     assert st["dial"] < 0.5
 
 
-def test_hold_always_allowed_and_go_501(tmp_path):
+def test_hold_always_allowed_and_go(tmp_path):
     with TestClient(_app(tmp_path, control_token="secret")) as c:
         assert c.post("/api/hold").status_code == 200
         assert c.post("/api/session/start", json=START).status_code == 403
         h = {"x-operator-token": "secret"}
         assert c.post("/api/session/start", json=START, headers=h).status_code == 200
         assert c.post("/api/dial", json={"dial": 0}).status_code == 403
-        assert c.post("/api/go", headers=h).status_code == 501
+        assert c.post("/api/go", headers=h).status_code == 200       # the mock has an operator cue
         assert c.post("/api/hold").status_code == 200
         assert c.app.state.hub.arm.mode == "hold"
         assert c.post("/api/session/stop", headers=h).status_code == 200

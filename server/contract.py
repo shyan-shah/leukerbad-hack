@@ -50,7 +50,7 @@ class Sample(_Record):
     dial: float                               # -1 full resistance .. 0 transparent .. +1 full assistance
     rep_idx: int                              # -1 between reps
     simulated: bool
-    phase: str = "idle"                       # "idle" | "out" | "back" (v1) | "setup" (pull: moving to the far end)
+    phase: str = "idle"                       # "idle" | "out" | "back" (v1) | "setup" (pull: moving to the far end) | "calibrate" (push, pull: the comfortable push)
     q: tuple[float, ...] = ()                 # 7 joint angles, rad      (v1)
 
 
@@ -84,3 +84,6 @@ class SessionSummary(_Record):
     exercise: str                             # programme id: "reach" | "push" | "pull" | "armtest" | "circle"
     n_reps: int
     simulated: bool
+    comfort_force_n: float | None = None      # comfortable-push calibration (push, pull); None: not calibrated
+    resistance_n: float | None = None         # resistance set from it, N
+    resistance_fraction: float | None = None  # resistance_n / comfort_force_n

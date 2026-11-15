@@ -5,6 +5,7 @@ a real session cannot be saved under a simulated patient, nor the reverse.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import fields
 from pathlib import Path
@@ -40,6 +41,10 @@ def _create(conn: sqlite3.Connection) -> None:
     cols = ", ".join(f"{f.name} {_sql_type(f)}" for f in fields(RepResult))
     conn.execute(f"CREATE TABLE IF NOT EXISTS reps({cols}, PRIMARY KEY(session_id, idx), "
                  "FOREIGN KEY(session_id) REFERENCES sessions(session_id))")
+    # Comfortable-push calibration: the engine's model state per patient and exercise (JSON text).
+    conn.execute("""CREATE TABLE IF NOT EXISTS calibration(
+        patient_id TEXT NOT NULL, exercise TEXT NOT NULL, state TEXT NOT NULL, updated_at TEXT,
+        PRIMARY KEY(patient_id, exercise), FOREIGN KEY(patient_id) REFERENCES patients(id))""")
     # Forward migration: add columns for fields added to the contract after the table was created.
     for table, dc in (("sessions", SessionSummary), ("reps", RepResult)):
         have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
@@ -161,3 +166,27 @@ def list_reps(conn, session_id: str) -> list[RepResult]:
 
 def count_reps(conn, session_id: str) -> int:
     return conn.execute("SELECT COUNT(*) FROM reps WHERE session_id = ?", (session_id,)).fetchone()[0]
+
+
+def save_calibration_state(conn, patient_id: str, exercise: str, state: dict) -> None:
+    """Store the engine's calibration model state for the patient's next session of this exercise."""
+    from .clock import now_iso
+    from .exercises import canonical
+    conn.execute("INSERT INTO calibration(patient_id, exercise, state, updated_at) VALUES (?, ?, ?, ?) "
+                 "ON CONFLICT(patient_id, exercise) DO UPDATE SET state = excluded.state, "
+                 "updated_at = excluded.updated_at",
+                 (patient_id, canonical(exercise), json.dumps(state), now_iso()))
+    conn.commit()
+
+
+def get_calibration_state(conn, patient_id: str, exercise: str) -> dict | None:
+    from .exercises import canonical
+    row = conn.execute("SELECT state FROM calibration WHERE patient_id = ? AND exercise = ?",
+                       (patient_id, canonical(exercise))).fetchone()
+    if row is None:
+        return None
+    try:
+        state = json.loads(row["state"])
+    except ValueError:
+        return None
+    return state if isinstance(state, dict) else None

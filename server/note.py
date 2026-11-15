@@ -84,6 +84,11 @@ def _armtest_lines(reps: list[RepResult], previous: list[RepResult] | None) -> l
     return lines
 
 
+def calibration_line(summary: SessionSummary) -> str:
+    return (f"Resistance set to {summary.resistance_n:.1f} N from a comfortable push of "
+            f"{summary.comfort_force_n:.1f} N (team heuristic, adjusts to the patient)")
+
+
 def session_note(summary: SessionSummary, reps: list[RepResult],
                  previous: list[RepResult] | None = None) -> str:
     """`previous` is the rep list of the patient's previous session of the same exercise, if any."""
@@ -106,6 +111,8 @@ def session_note(summary: SessionSummary, reps: list[RepResult],
 
     m = session_means(reps)
     lines.append(_summary_line(ex, reps, m))
+    if summary.resistance_n is not None and summary.comfort_force_n is not None:
+        lines.append(calibration_line(summary))
     p = session_means(previous) if previous else None
     n_done = sum(r.completed for r in reps)
     lines.append(f"Repetitions: {len(reps)} started, {n_done} completed")

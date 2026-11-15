@@ -122,7 +122,7 @@ def test_exercises_route_lists_live_programmes(tmp_path, all_live, monkeypatch):
     with _client(tmp_path, FakeEngine) as c:
         out = c.get("/api/exercises").json()
     assert [e["id"] for e in out] == ALL
-    assert all(set(e) == {"id", "name", "kind", "reps"} for e in out)
+    assert all(set(e) == {"id", "name", "kind", "reps", "calibrates"} for e in out)
     by = {e["id"]: e for e in out}
     assert by["armtest"]["reps"] == 3 and by["armtest"]["kind"] == "test"
     assert by["reach"]["kind"] == "assist" and by["push"]["kind"] == by["pull"]["kind"] == "resist"
@@ -142,16 +142,16 @@ def test_adapter_reads_engine_registry_as_dicts_or_objects(monkeypatch, registry
         setattr(mod, k, v)
     monkeypatch.setitem(sys.modules, "software.exercises", mod)
     assert exercises.live_ids() == ["reach", "push"]            # circle is in the registry but not LIVE
-    assert exercises.catalog() == [{"id": "reach", "name": "Reach X", "kind": "assist", "reps": 8},
-                                   {"id": "push", "name": "Push X", "kind": "resist", "reps": 6}]
+    assert exercises.catalog() == [{"id": "reach", "name": "Reach X", "kind": "assist", "reps": 8, "calibrates": False},
+                                   {"id": "push", "name": "Push X", "kind": "resist", "reps": 6, "calibrates": True}]
 
 
 def test_adapter_falls_back_when_registry_missing_or_partial(monkeypatch):
     mod = types.ModuleType("software.exercises")
     mod.LIVE = ["armtest", "reach"]
     monkeypatch.setitem(sys.modules, "software.exercises", mod)
-    assert exercises.catalog() == [{"id": "reach", "name": "Forward reach (assisted)", "kind": "assist", "reps": 10},
-                                   {"id": "armtest", "name": "Push strength test", "kind": "test", "reps": 3}]
+    assert exercises.catalog() == [{"id": "reach", "name": "Forward reach (assisted)", "kind": "assist", "reps": 10, "calibrates": False},
+                                   {"id": "armtest", "name": "Push strength test", "kind": "test", "reps": 3, "calibrates": False}]
 
 
 def test_default_factory_with_an_engine_that_has_no_exercise_argument(monkeypatch):

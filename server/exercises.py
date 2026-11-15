@@ -71,9 +71,10 @@ def live_ids() -> list[str]:
 
 
 def info(exercise_id: str) -> dict[str, Any]:
-    """{"id", "name", "kind", "reps"} for one programme (registry values win over the built-in table)."""
+    """{"id", "name", "kind", "reps", "calibrates"} for one programme (registry values win over the built-in table)."""
     base = BUILTIN.get(exercise_id, {"name": exercise_id, "kind": "unknown", "reps": 10})
     out = {"id": exercise_id, **base}
+    calibrates = None
     mod = _module()
     entry = _registry(mod).get(exercise_id) if mod is not None else None
     if entry is not None:
@@ -83,11 +84,14 @@ def info(exercise_id: str) -> dict[str, Any]:
             out["name"] = str(name)
         if kind:
             out["kind"] = str(kind)
+        calibrates = _get(entry, "calibrates", "calibrate")
         try:
             if reps is not None and int(reps) > 0:
                 out["reps"] = int(reps)
         except (TypeError, ValueError):
             pass
+    # comfortable-push calibration at the start of the session: on for resist exercises (push, pull)
+    out["calibrates"] = bool(calibrates) if calibrates is not None else out["kind"] == "resist"
     return out
 
 
