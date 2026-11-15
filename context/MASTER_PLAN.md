@@ -2,7 +2,7 @@
 
 Leukerbad Robotics Hackathon, Track 4 (Elderly Care and Rehabilitation). Written Sat 14 Nov 2026. Supersedes `context/KICKOFF.md` where they differ; KICKOFF packages (K0, S0a to S0d, Y0a to Y0d, B0, B1) stay valid and are prerequisites here.
 
-**Dates:** checkpoint **Sun 15 Nov 17:00** (show it working once). Final deadline **Mon 16 Nov 13:00**.
+**Dates:** the only deadline is **Mon 16 Nov 13:00**, when everything has to be finished. There is NO Sunday 17:00 checkpoint (corrected 15 Nov; see DECISIONS). The Sunday 17:00 to 20:00 Startup Pitch Competition is a separate event that only Mat and Gio attend.
 
 **Team:** Kian `robot/`, Shiv `software/`, Shyan `server/`, Mat and Gio `demo/` and `business/`.
 
@@ -525,7 +525,7 @@ No code required. Each package can be given to an AI assistant as a research or 
 | **Sun 12:00** | | | | | **Internal scope freeze.** Anything not working on the real arm is cut. Decide live-screen owner and wiring now |
 | Sun 12:00 to 15:00 | reliability: 10 runs in a row | reliability | live feed for screens | B5 script, B6 | |
 | Sun 15:00 | | | | | **I4:** three clean full demo runs in a row |
-| **Sun 17:00** | | | | | **Official checkpoint: show it working once** |
+| **Sun 17:00** | | | | | (no checkpoint: corrected 15 Nov. Mat and Gio are at the separate Startup Pitch Competition 17:00 to 20:00) |
 | Sun 17:00 to 21:00 | K5 run book, fixes | SHOULD items only if I4 was clean | SHOULD items | record backup video, deck v1 | |
 | Sun 21:00 | | | | | **I5:** backup video exists; deck v1 done |
 | Sun 21:00 to 23:00 | fixes only | fixes only | fixes only | deck v2, claims final | Feature freeze 23:00 |
