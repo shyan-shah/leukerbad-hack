@@ -68,6 +68,18 @@ class Limits:
     box_half_m: tuple[float, float, float] = (0.35, 0.10, 0.10)   # around the start pose, base axes
 
 
+# Test profile: only for isometric pushes (strength test, comfortable-push calibration), switched on with
+# Arm.set_test_limits(True). Everything not listed here stays as in the default profile.
+TEST_K_MAX = 1500.0         # N/m: holds the handle against 60 N within about 4 cm (60 / 1500), inside the 5 cm lead
+TEST_MAX_CONTACT_N = 65.0   # robot-side contact limit, above the 60 N a test may read
+TEST_TRIP_FORCE = 75.0      # our own force trip
+
+
+def isometric_limits(base: Limits) -> Limits:
+    """The test profile derived from a default profile."""
+    return replace(base, k_max=TEST_K_MAX, max_contact_n=TEST_MAX_CONTACT_N, trip_force=TEST_TRIP_FORCE)
+
+
 # --------------------------------------------------------------------------- config
 
 @dataclass(frozen=True)
@@ -201,7 +213,6 @@ class HomeInterrupted(RuntimeError):
 class Arm:
     """Real Flexiv Rizon 4 behind the section 4.3 interface. See the module docstring."""
 
-    limits: Limits
     start_pos: tuple[float, float, float]     # set by home() or start_compliance()
 
     def __init__(self, serial: str, limits: Limits = Limits(),
@@ -210,7 +221,8 @@ class Arm:
         self.serial = serial
         self.force_sign = self.config.force_sign
         self.reach_axis = self.config.reach_axis
-        self.limits = limits_for_reach_axis(limits, self.reach_axis)
+        self._test_limits_on = False
+        self.limits = limits_for_reach_axis(limits, self.reach_axis)   # the default profile (see the property)
         self.start_pos = None  # type: ignore[assignment]
         self.start_quat: tuple[float, float, float, float] | None = None
 
@@ -230,6 +242,53 @@ class Arm:
         self._stiff_pending: tuple[Vec3, int] | None = None
         self._running = False
         self._threads: list[threading.Thread] = []
+
+    # ------------------------------------------------------------------ limits: default profile and test profile
+
+    @property
+    def limits(self) -> Limits:
+        """The limits in force now: the default profile, or the test profile while set_test_limits(True) is on."""
+        return self._limits_test if self._test_limits_on else self._limits_default
+
+    @limits.setter
+    def limits(self, value: Limits) -> None:
+        self._limits_default = value
+        self._limits_test = isometric_limits(value)
+
+    @property
+    def test_limits_on(self) -> bool:
+        return self._test_limits_on
+
+    def set_test_limits(self, on: bool) -> None:
+        """Switch to the test profile for an isometric push (k_max 1500 N/m, contact 65 N, force trip 75 N),
+        or back to the default profile. Call it after start_compliance(): start_compliance(), hold(), stop(),
+        close(), home(), zero_force() and every trip put the default profile back by themselves.
+        The robot's contact limit is re-sent whenever the profile changes. Switching off while compliant also
+        drops the stiffness to k_hold, so nothing above the default cap stays on the robot."""
+        with self._lock:
+            on = bool(on)
+            if on == self._test_limits_on:
+                return
+            if on:
+                self._require_connected()
+            self._test_limits_on = on
+            if self._robot is not None and self._in_cartesian:
+                self._send_contact_limit()
+                if not on and self._mode == "compliant":
+                    self._gen += 1
+                    self._drop_pending_stiffness()
+                    self._set_impedance((self.limits.k_hold,) * 3)
+
+    def _default_limits_locked(self) -> None:
+        """Back to the default profile (lock held). Re-sends the contact limit if the robot is in Cartesian mode."""
+        if self._test_limits_on:
+            self._test_limits_on = False
+            if self._robot is not None and self._in_cartesian:
+                self._send_contact_limit()
+
+    def _send_contact_limit(self) -> None:
+        lim = self.limits
+        self._robot.SetMaxContactWrench([lim.max_contact_n] * 3 + [lim.max_contact_nm] * 3)
 
     @classmethod
     def from_config(cls, limits: Limits = Limits(), config_path: str | Path | None = None) -> "Arm":
@@ -324,8 +383,7 @@ class Arm:
         if not self._in_cartesian:
             self._robot.SwitchMode(self._rdk.Mode.NRT_CARTESIAN_MOTION_FORCE)
             self._in_cartesian = True
-        lim = self.limits
-        self._robot.SetMaxContactWrench([lim.max_contact_n] * 3 + [lim.max_contact_nm] * 3)
+        self._send_contact_limit()
 
     def _drop_pending_stiffness(self) -> None:
         with self._stiff_cv:
@@ -337,6 +395,7 @@ class Arm:
         """ZeroFTSensor primitive. Nothing may touch the arm. Leaves mode "idle"."""
         self._require_connected()
         with self._lock:
+            self._default_limits_locked()
             self._gen += 1
             self._drop_pending_stiffness()
             self._mode = "idle"
@@ -370,6 +429,7 @@ class Arm:
         goal_pos = self.config.start_tcp_pose[:3]
         goal_quat = _normalize(self.config.start_tcp_pose[3:7])
         with self._lock:
+            self._test_limits_on = False     # _enter_cartesian() below sends the default contact limit
             self._gen += 1
             self._drop_pending_stiffness()
             self._mode = "idle"
@@ -424,6 +484,7 @@ class Arm:
         """
         self._require_connected()
         with self._lock:
+            self._test_limits_on = False     # always starts in the default profile; _enter_cartesian() sends its contact limit
             self._gen += 1
             self._drop_pending_stiffness()
             self._enter_cartesian()
@@ -495,6 +556,10 @@ class Arm:
 
     def _hold_locked(self) -> None:
         homing = self._home_gen is not None and self._home_gen == self._gen
+        try:
+            self._default_limits_locked()     # hold, trip, close: back to the default profile first
+        except Exception:
+            pass                              # the hold below still runs; its own failure path stops the robot
         self._gen += 1                          # also ends a home() in progress (it checks _gen every tick)
         self._drop_pending_stiffness()
         if self._robot is not None and self._in_cartesian:
@@ -520,6 +585,7 @@ class Arm:
     def stop(self) -> None:
         """Hard stop: robot.Stop(), mode "idle"."""
         with self._lock:
+            self._test_limits_on = False     # the default contact limit is sent again by the next _enter_cartesian()
             self._gen += 1
             self._drop_pending_stiffness()
             if self._robot is not None:

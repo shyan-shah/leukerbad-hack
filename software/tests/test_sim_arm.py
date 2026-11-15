@@ -323,3 +323,41 @@ def test_cued_patient_does_not_start_alone_and_near_start_is_along_reach():
     arm._intent_t0 = arm._t - 3.0
     arm._update_intent()
     assert arm._intent == "rest"                   # sag does not hide "back at the start"
+
+
+# --------------------------------------------------------------------------- test-limits profile (same contract as robot.arm.Arm)
+
+def test_test_limits_profile_and_default_untouched():
+    arm = make_arm()
+    default = arm.limits
+    assert default == Limits() and not arm.test_limits_on
+    arm.start_compliance()
+    arm.set_test_limits(True)
+    t = arm.limits
+    assert (t.k_max, t.max_contact_n, t.trip_force) == (1500.0, 65.0, 75.0)
+    assert (t.k_hold, t.max_lead_m, t.trip_speed, t.box_half_m) == (default.k_hold, default.max_lead_m, default.trip_speed, default.box_half_m)
+    arm.set_stiffness(5000, 5000, 5000)
+    arm.step(STIFFNESS_LATENCY_S + 0.05)
+    assert np.allclose(arm._k, 1500.0)
+    arm.set_test_limits(False)
+    assert arm.limits is default and np.allclose(arm._k, default.k_hold)     # nothing above the default cap stays on
+    arm.close()
+
+
+@pytest.mark.parametrize("how", ["hold", "stop", "start_compliance", "close", "trip"])
+def test_test_limits_restored_to_default(how):
+    arm = make_arm()
+    arm.start_compliance()
+    arm.set_test_limits(True)
+    if how == "trip":
+        arm._trip("test trip")
+        assert arm.get_state().mode == "hold"
+    else:
+        getattr(arm, how)()
+    assert not arm.test_limits_on and arm.limits == Limits()
+    if how != "close":
+        arm.close()
+
+
+def test_set_test_limits_signature_matches_arm():
+    assert inspect.signature(SimArm.set_test_limits) == inspect.signature(Arm.set_test_limits)

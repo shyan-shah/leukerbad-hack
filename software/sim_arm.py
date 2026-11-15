@@ -93,7 +93,7 @@ import time
 
 import numpy as np
 
-from robot.arm import ArmState, Limits, check_trip, clamp_stiffness, clamp_target
+from robot.arm import ArmState, Limits, check_trip, clamp_stiffness, clamp_target, isometric_limits
 from software.paths import min_jerk
 from software.sim_patient import HAND_DAMPING_NS_M, HAND_MASS_KG, SimPatient
 
@@ -125,7 +125,6 @@ ZERO_Q = (0.0,) * 7
 class SimArm:
     """Simulated arm with the section 4.3 interface. See the module docstring."""
 
-    limits: Limits
     start_pos: tuple[float, float, float]
 
     def __init__(self, patient: SimPatient, limits: Limits = Limits(),
@@ -163,7 +162,8 @@ class SimArm:
         self.force_noise_n = float(force_noise_n)
         self.stiffness_latency_s = float(stiffness_latency_s)
         self._rng = np.random.default_rng(seed)
-        self.limits = limits
+        self._test_limits_on = False
+        self.limits = limits          # the default profile (see the property)
         self.start_pos = tuple(float(v) for v in start_pos)  # type: ignore[assignment]
         if len(self.start_pos) != 3:
             raise ValueError("start_pos must have 3 elements")
@@ -242,10 +242,41 @@ class SimArm:
             self._vel = np.zeros(3)
             self._target = self._pos.copy()
 
+    # ------------------------------------------------------------------ limits: default and test profile (as robot.arm.Arm)
+
+    @property
+    def limits(self) -> Limits:
+        return self._limits_test if self._test_limits_on else self._limits_default
+
+    @limits.setter
+    def limits(self, value: Limits) -> None:
+        self._limits_default = value
+        self._limits_test = isometric_limits(value)
+
+    @property
+    def test_limits_on(self) -> bool:
+        return self._test_limits_on
+
+    def set_test_limits(self, on: bool) -> None:
+        """Test profile for an isometric push (k_max 1500 N/m, contact 65 N, force trip 75 N), or back to the
+        default. Same rules as Arm.set_test_limits: start_compliance(), hold(), stop(), close() and every trip
+        restore the default; switching off while compliant drops the stiffness to k_hold."""
+        with self._lock:
+            on = bool(on)
+            if on == self._test_limits_on:
+                return
+            if on:
+                self._require_connected()
+            self._test_limits_on = on
+            if not on and self._mode == "compliant":
+                self._k_pending = None
+                self._k = np.full(3, float(self.limits.k_hold))
+
     def start_compliance(self) -> None:
         """Hold the current pose at k_hold and accept commands. Re-arms after a trip."""
         self._require_connected()
         with self._lock:
+            self._test_limits_on = False
             self._k_pending = None
             self._k = np.full(3, float(self.limits.k_hold))
             self._target = self._pos.copy()
@@ -303,6 +334,7 @@ class SimArm:
             self._hold_locked()
 
     def _hold_locked(self) -> None:
+        self._test_limits_on = False      # hold, trip, close: back to the default profile
         self._k_pending = None
         self._target = self._pos.copy()
         self._k = np.full(3, float(self.limits.k_hold))
@@ -316,6 +348,7 @@ class SimArm:
     def stop(self) -> None:
         """Hard stop: the hand is frozen in place, mode "idle"."""
         with self._lock:
+            self._test_limits_on = False
             self._k_pending = None
             self._vel = np.zeros(3)
             self._mode = "idle"

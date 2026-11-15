@@ -453,3 +453,84 @@ def test_home_still_completes_and_a_later_hold_uses_the_start_orientation(tmp_pa
         assert a.get_state().mode == "hold"
     finally:
         a.close()
+
+
+# --------------------------------------------------------------------------- test-limits profile (isometric pushes)
+
+def _differs(a, b):
+    from dataclasses import fields
+    return {f.name for f in fields(a) if getattr(a, f.name) != getattr(b, f.name)}
+
+
+def test_test_profile_changes_only_three_limits_and_default_is_untouched(arm):
+    a, robot = arm
+    default = a.limits
+    assert default == limits_for_reach_axis(LIM, a.reach_axis) and not a.test_limits_on
+    a.start_compliance()
+    a.set_test_limits(True)
+    t = a.limits
+    assert a.test_limits_on and (t.k_max, t.max_contact_n, t.trip_force) == (1500.0, 65.0, 75.0)
+    assert _differs(t, default) == {"k_max", "max_contact_n", "trip_force"}
+    assert t.k_max * t.max_lead_m >= 60.0            # holds 60 N within the 5 cm lead
+    a.set_test_limits(False)
+    assert a.limits == default and a.limits is default
+
+
+def test_contact_limit_is_resent_when_the_profile_changes(arm):
+    a, robot = arm
+    a.set_test_limits(True)                          # not in Cartesian mode yet: nothing to send, and start_compliance resets it
+    assert robot.count("SetMaxContactWrench") == 0
+    a.start_compliance()
+    assert not a.test_limits_on and robot.last("SetMaxContactWrench")[0] == [30.0] * 3 + [5.0] * 3
+    n = robot.count("SetMaxContactWrench")
+    a.set_test_limits(True)
+    assert robot.count("SetMaxContactWrench") == n + 1 and robot.last("SetMaxContactWrench")[0] == [65.0] * 3 + [5.0] * 3
+    a.set_test_limits(True)                          # no change, nothing sent
+    assert robot.count("SetMaxContactWrench") == n + 1
+    a.set_test_limits(False)
+    assert robot.last("SetMaxContactWrench")[0] == [30.0] * 3 + [5.0] * 3
+    assert robot.last("SetCartesianImpedance")[0] == [LIM.k_hold] * 3 + list(K_NOM[3:])   # nothing above the default cap stays on
+
+
+def test_test_profile_lifts_the_stiffness_cap_and_the_force_trip(arm):
+    a, robot = arm
+    a.start_compliance()
+    a.set_test_limits(True)
+    a.set_stiffness(5000, 5000, 5000)
+    time.sleep(0.15)
+    assert robot.last("SetCartesianImpedance")[0] == [1500.0] * 3 + list(K_NOM[3:])
+    robot.wrench = [60.0, 0, 0, 0, 0, 0]             # over the default trip (40 N), under the test trip (75 N)
+    a.set_target(START)
+    assert a.get_state().mode == "compliant"
+    robot.wrench = [80.0, 0, 0, 0, 0, 0]
+    s = a.get_state()
+    assert s.mode == "hold" and "force" in s.fault
+    assert not a.test_limits_on and a.limits.trip_force == 40.0                     # a trip puts the default back
+    assert robot.last("SetMaxContactWrench")[0] == [30.0] * 3 + [5.0] * 3
+
+
+@pytest.mark.parametrize("how", ["hold", "stop", "start_compliance", "close", "watchdog"])
+def test_default_profile_is_restored(arm, how):
+    a, robot = arm
+    a.start_compliance()
+    a.set_test_limits(True)
+    a.set_target(START)
+    if how == "watchdog":
+        time.sleep(LIM.watchdog_s + 0.15)
+        assert a.get_state().mode == "hold"
+    else:
+        getattr(a, how)()
+    assert not a.test_limits_on and a.limits.max_contact_n == 30.0 and a.limits.k_max == 600.0
+    if how != "stop" and how != "close":             # after a hard stop the limit is sent by the next start_compliance()
+        assert robot.last("SetMaxContactWrench")[0] == [30.0] * 3 + [5.0] * 3
+    if how in ("stop", "close"):
+        a._attach(robot, FAKE_RDK, K_NOM) if how == "close" else None
+        a.start_compliance()
+        assert robot.last("SetMaxContactWrench")[0] == [30.0] * 3 + [5.0] * 3
+
+
+def test_default_force_trip_still_40_n_without_the_test_profile(arm):
+    a, robot = arm
+    a.start_compliance()
+    robot.wrench = [45.0, 0, 0, 0, 0, 0]
+    assert a.get_state().mode == "hold"
