@@ -196,3 +196,16 @@ If 1 shows more than about 2 N across the motion, or 3 shows under 4.5 N, do not
 ## Simulated patient hooks (`software/sim_arm.py`)
 
 `SimArm.reach_origin` (where the patient's reach starts), `SimArm.auto_cue` and `SimArm.cue("out" | "rest" | "back")`. The engine sets them in `start()`; for `pull` and `armtest` it cues the patient itself, for `reach`, `push` and `circle` the patient follows the stiffness change as before. Defaults reproduce the old behaviour.
+
+## Arming, idle and go() (15 Nov, 16:45; supersedes the "1 s with a hand at the start" rule above for reach, push, pull and armtest)
+
+Sim only (`software/tests/test_arming.py`); not run on the real arm.
+
+- **Idle near the start (within 5 cm, 3D):** the idle target walks to the start at 2 cm/s in the 300 N/m hold; when it is there and the handle is within 3 cm, the hold stiffens to `k_max` (600 N/m) on all three axes over 1.5 s in 0.25 s steps (at once if the handle is within 5 mm of the start).
+- **Arming:** in that firm hold, a baseline-relative force (50 ms smoothed, any direction) over 4.5 N and at most 25 N, with the handle slower than 0.05 m/s, for 0.6 s. Ticks that fail count the 0.6 s back down. The circle keeps the old rule.
+- **`snapshot()["arming"]`** = `{"progress": 0..1, "reason": ...}`; reasons "press gently", "hold still", "too far from start" (empty and away, being walked back), "pushing too hard", "return to start" (hand on and away, or the target still walking in).
+- **Idle away from the start:** hand on = soft hold where it is, the target follows the hand only towards the start. Empty = walked back to the start at 2 cm/s (also after an assist-side let-go).
+- **`Engine.go()`:** 3 s later the next rep is armed if the handle is within 5 cm of the start and the force is between 2 and 25 N.
+- **`Engine.resume()`:** after a trip, home and prepare: compliance restarts and the session keeps its reps. **`stop()`** records a rep in progress as not completed.
+- **Calibration:** `software/strength_model.py` exists (fraction 0.5, bounds 0.3 to 0.8, step 0.05 per set; resistance = fraction x comfort force, 3 N to the maximum). The engine's calibrate phase does not: `snapshot()["calibration"]["status"]` is always "skipped" and push and pull use the preset dial.
+- Measured: grips of 6, 10 and 18 N arm in 0.74 to 1.00 s and complete the first rep; an empty handle did not arm in 20 s; after go() an empty handle moved under 8 cm. Limit: a hand pushing about 15 N or more while the hold is still stiffening after a rep slides past 5 cm and has to come back.

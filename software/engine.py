@@ -736,8 +736,9 @@ class Engine:
                     self._latch = start.copy()
                     if dist <= NEAR_START_M:
                         self._firm = True
-                        # already on the start (5 mm): firm at once; else ramp (no snap)
-                        self._firm_t0 = t_arm - (FIRM_RAMP_S if dist <= 0.005 else 0.0)
+                        # already on the start (5 mm): firm at once; else ramp (no snap). armtest always ramps:
+                        # armed at once, a strong sim patient's first try was cut short as a let-go
+                        self._firm_t0 = t_arm - (FIRM_RAMP_S if dist <= 0.005 and self.preset.kind != "test" else 0.0)
                 else:
                     self._latch = self._latch + d / left * step_m
                 reason = ("too far from start" if not near else
