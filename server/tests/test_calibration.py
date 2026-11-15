@@ -269,6 +269,39 @@ def test_real_engine_never_raises_limits_with_no_calibrate():
     assert snap["calibration"]["status"] == "skipped"
 
 
+def test_force_cap_30_normally_and_60_while_the_test_profile_is_on(tmp_path):
+    slow = partial(MockEngine, time_scale=4)
+    with _client(tmp_path, factory=slow) as c:
+        with c.websocket_connect("/ws/live") as ws:
+            _start(c)
+            caps = set()
+            for m in iter(ws.receive_json, None):
+                if m["type"] != "sample":
+                    continue
+                caps.add((m["phase"], m["force_cap_n"]))
+                if m["phase"] != "calibrate":
+                    break
+        assert caps == {("calibrate", 60.0), ("idle", 30.0)}        # the mock raises it for the push only
+        assert c.get("/api/state").json()["force_cap_n"] == 30.0
+        c.app.state.hub.arm.test_limits_on = True                    # whatever switches the arm's profile on
+        assert c.get("/api/state").json()["force_cap_n"] == 60.0
+        c.post("/api/session/stop")
+        _start(c, exercise="reach")
+        assert _wait(c, lambda s: "phase" in s)["force_cap_n"] == 30.0   # stop held the arm: normal limits again
+        c.post("/api/session/stop")
+
+
+def test_shutdown_route_closes_the_arm_itself(tmp_path):
+    """The arm is held and closed by the route, not only by the lifespan: uvicorn may never get that far."""
+    with _client(tmp_path) as c:
+        c.app.state.request_exit = lambda: None          # a server that never manages to exit
+        _start(c)
+        assert c.app.state.hub.closed is False
+        assert c.post("/api/shutdown").status_code == 200
+        hub = c.app.state.hub
+        assert hub.closed is True and hub.arm.mode == "idle" and hub.session is None
+
+
 def test_run_flag_defaults():
     import argparse
     from server.run import no_calibrate_for

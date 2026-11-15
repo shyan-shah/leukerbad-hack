@@ -161,7 +161,8 @@ def main(argv=None) -> None:
                      engine_kwargs=engine_kwargs, live_exercises=mock_exercises(a),
                      enabled_exercises=enabled, no_calibrate=no_calibrate)
     host = "0.0.0.0" if a.lan else "127.0.0.1"
-    server = uvicorn.Server(uvicorn.Config(app, host=host, port=a.port, log_level="warning"))
+    server = uvicorn.Server(uvicorn.Config(app, host=host, port=a.port, log_level="warning",
+                                           timeout_graceful_shutdown=3))   # never wait forever on a dead client
     app.state.request_exit = lambda: setattr(server, "should_exit", True)   # used by POST /api/shutdown
     print(f"\n  Rehab station server: {label}")
     if not a.mock:
