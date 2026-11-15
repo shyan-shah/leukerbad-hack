@@ -113,7 +113,7 @@ class Hub:
         self.engine = None
         self.session: SessionSummary | None = None
         self.exercise: str | None = None        # programme id of the running session
-        self.reps_target: int | None = None     # reps asked for (None: no limit)
+        self.reps_target: int | None = None     # reps planned for the running session
         self.db_lock = threading.Lock()
         self.ctl_lock = threading.Lock()        # one start/stop at a time
         self.rep_q: queue.Queue[RepResult] = queue.Queue()
@@ -161,6 +161,15 @@ class Hub:
     def snapshot(self) -> dict:
         snap = self.engine.snapshot() if self.engine else {}
         return snap
+
+    def progress(self, snap: dict) -> dict:
+        """exercise, reps_target and done for state and sample messages. The engine's own values win
+        (E1 engines report them in snapshot()); otherwise they come from what was asked at start."""
+        target = snap.get("reps_target", self.reps_target)
+        done = snap.get("done")
+        if done is None:
+            done = target is not None and (snap.get("rep_count") or 0) >= target
+        return {"exercise": snap.get("exercise") or self.exercise, "reps_target": target, "done": bool(done)}
 
     def hold(self) -> None:
         if self.arm is not None and hasattr(self.arm, "hold"):
@@ -211,8 +220,7 @@ class Hub:
                     snap = self.snapshot()
                     msgs.insert(0, {"type": "sample"} | s.to_dict() | {
                         "rep_count": snap.get("rep_count"), "auto": snap.get("auto"),
-                        "arm_mode": snap.get("arm_mode"), "exercise": self.exercise,
-                        "reps_target": self.reps_target})
+                        "arm_mode": snap.get("arm_mode")} | self.progress(snap))
                 if not msgs or not self.clients:
                     continue
                 for ws in list(self.clients):
@@ -312,9 +320,9 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     def state():
         if hub.session is None or hub.engine is None:
             return {"session": None}
+        snap = hub.snapshot()
         return {"session": {"session_id": hub.session.session_id, "patient_id": hub.session.patient_id,
-                            "simulated": hub.session.simulated, "exercise": hub.exercise}} | hub.snapshot() | {
-                    "exercise": hub.exercise, "reps_target": hub.reps_target}
+                            "simulated": hub.session.simulated, "exercise": hub.exercise}} | snap | hub.progress(snap)
 
     @app.get("/api/exercises")
     def list_exercises():
@@ -328,7 +336,8 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
         if body.exercise not in live:
             raise HTTPException(422, {"message": f"exercise {body.exercise!r} is not live on the robot. "
                                                  f"Live exercises: {', '.join(live)}", "live": live})
-        reps = exercises.info(body.exercise)["reps"] if body.reps is None else (body.reps or None)
+        default_reps = exercises.info(body.exercise)["reps"]
+        reps = default_reps if body.reps is None else (body.reps or None)     # None: the engine keeps going
         with hub.ctl_lock:
             if hub.session is not None:
                 raise HTTPException(409, "a session is already running; stop it first")
@@ -359,7 +368,7 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             if body.auto is not None:
                 kw["auto"] = body.auto
             hub.latest = hub.sent = None
-            hub.exercise, hub.reps_target = body.exercise, reps
+            hub.exercise, hub.reps_target = body.exercise, reps or default_reps
             try:
                 engine = hub.engine_factory(arm=arm, session_id=sid, patient_id=body.patient_id, simulated=sim,
                                             exercise=body.exercise, reps=reps, on_sample=hub.on_sample,

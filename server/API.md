@@ -51,7 +51,8 @@ Connect with a WebSocket; you do not need to send anything. Two kinds of message
 | `dial` | **+1** the arm does the work, **0** free movement, **-1** maximum resistance |
 | `phase` | `idle` (between reps), `out` (reaching, pushing, pulling, or a strength-test try), `back` (returning), `setup` (`pull` only: the patient is moving the handle to the far end before the first rep) |
 | `exercise` | programme id of the session: `reach`, `push`, `pull`, `armtest` (section 6) |
-| `reps_target` | reps asked for at start; the set is finished when `rep_count` reaches it. `null` = no limit |
+| `reps_target` | reps planned for this session (asked for at start, else the exercise default) |
+| `done` | true once `rep_count` has reached `reps_target`: the set is finished, call stop |
 | `rep_idx` | number of the rep in progress, -1 when idle |
 | `rep_count` | reps finished so far |
 | `auto` | true when the dial adjusts itself after each rep |
@@ -111,7 +112,7 @@ Field meanings are the same as in `server/exports/README.md` (range of motion, p
 
 | Route | Body | Does |
 |-------|------|------|
-| `/api/session/start` | `{"patient_id": "sim-demo", "display_name": "Demo", "exercise": "push", "reps": 10}` | starts a session. Only `patient_id` is required. `exercise` defaults to `reach`; `reps` defaults to the exercise's own number (`0` = no limit); `dial` and `auto` are optional and, when left out, the exercise's own settings apply (reach starts at +1 with auto on, push and pull at -0.6 with auto off). Returns `{"session_id": "...", "simulated": true, "display_name": "Demo (SIMULATED)", "exercise": "push", "reps": 10}`. The server decides `simulated`; you cannot set it |
+| `/api/session/start` | `{"patient_id": "sim-demo", "display_name": "Demo", "exercise": "push", "reps": 10}` | starts a session. Only `patient_id` is required. `exercise` defaults to `reach`; `reps` defaults to the exercise's own number (`0` = keep going past it until stop; a strength test always ends after its tries); `dial` and `auto` are optional and, when left out, the exercise's own settings apply (reach starts at +1 with auto on, push and pull at -0.6 with auto off). Returns `{"session_id": "...", "simulated": true, "display_name": "Demo (SIMULATED)", "exercise": "push", "reps": 10}`. The server decides `simulated`; you cannot set it |
 | `/api/session/stop` | none | stops, saves, rewrites `server/exports/`. Returns the session summary |
 | `/api/dial` | `{"dial": 0.4, "auto": false}` | sets the dial by hand (`auto: false`) or hands it back to auto (`auto: true`) |
 | `/api/hold` | none | soft stop of the arm, any time |
@@ -166,17 +167,17 @@ Real arm:
 
 One exercise = one session. The whole flow is five calls. Every example below is a **real message** from a running server with the mock engine (`--mock`, so everything is simulated), numbers shortened.
 
-**Which exercises work today.** With `--mock` all four (`reach`, `push`, `pull`, `armtest`) work now, so you can build the whole flow. With the real robot (`--robot`) and the simulated arm (`--sim`) the robot side decides which are live (`software/exercises.py`): today that is only `reach`; the others appear in `/api/exercises` as soon as the engine has them, with no change on your side. So build the screen from `/api/exercises`, not from a fixed list.
+**Which exercises work today.** `reach`, `push`, `pull` and `armtest`, on `--mock`, `--sim` and `--robot`. The list comes from the robot side (`software/exercises.py`), so if one is switched off or `circle` is switched on, `/api/exercises` changes with no change on your side. Build the screen from `/api/exercises`, not from a fixed list. (On the real arm only `reach` has been run so far; the other three are tested on the simulated arm.)
 
 ### Step 1. Ask what the robot can do
 
 `GET /api/exercises`
 
 ```json
-[{"id": "reach", "name": "Forward reach", "kind": "assist", "reps": 10},
- {"id": "push", "name": "Push", "kind": "resist", "reps": 10},
- {"id": "pull", "name": "Row", "kind": "resist", "reps": 10},
- {"id": "armtest", "name": "Push strength test", "kind": "isometric", "reps": 3}]
+[{"id": "reach", "name": "Forward reach (assisted)", "kind": "assist", "reps": 10},
+ {"id": "push", "name": "Push (resisted)", "kind": "resist", "reps": 10},
+ {"id": "pull", "name": "Row (resisted)", "kind": "resist", "reps": 10},
+ {"id": "armtest", "name": "Push strength test", "kind": "test", "reps": 3}]
 ```
 
 The `id`s are the same as in your app's `EX` library. Anything in `EX` that is not in this list is animation only: do not send it to the robot. `reps` is the default number of reps (for `armtest`: tries).
@@ -212,7 +213,7 @@ About 30 `sample` messages a second, and one `rep` message when each rep ends. U
 {"type": "sample", "t": 1.78, "pos": [0.467, 0.006, 0.3], "vel": [0.057, 0.0, 0.0],
  "force": [3.541, 0.0, 0.0], "target": [0.417, 0.006, 0.3], "dial": -0.6, "rep_idx": 0,
  "simulated": true, "phase": "out", "q": [0.036, 0.219, 0.3, 0.239, 0.066, -0.138, -0.277],
- "rep_count": 0, "auto": false, "arm_mode": "compliant", "exercise": "push", "reps_target": 3}
+ "rep_count": 0, "auto": false, "arm_mode": "compliant", "exercise": "push", "reps_target": 3, "done": false}
 ```
 
 `push`, a finished rep:
@@ -230,7 +231,7 @@ About 30 `sample` messages a second, and one `rep` message when each rep ends. U
 {"type": "sample", "t": 0.48, "pos": [0.465, 0.0, 0.3], "vel": [0.0, 0.0, 0.0], "force": [0.0, 0.0, 0.0],
  "target": [0.465, 0.0, 0.3], "dial": -0.6, "rep_idx": -1, "simulated": true, "phase": "setup",
  "q": [0.032, 0.216, 0.299, 0.242, 0.07, -0.134, -0.276], "rep_count": 0, "auto": false,
- "arm_mode": "compliant", "exercise": "pull", "reps_target": 2}
+ "arm_mode": "compliant", "exercise": "pull", "reps_target": 2, "done": false}
 ```
 
 `armtest` (strength test): the handle stays still and the patient pushes for 3 seconds, 3 tries. During a try `phase` is `out`: show "Push and hold" and a bar from `force`:
@@ -239,7 +240,7 @@ About 30 `sample` messages a second, and one `rep` message when each rep ends. U
 {"type": "sample", "t": 1.49, "pos": [0.455, 0.0, 0.3], "vel": [0.0, 0.0, 0.0],
  "force": [18.771, 0.0, 0.0], "target": [0.455, 0.0, 0.3], "dial": 0.0, "rep_idx": 0,
  "simulated": true, "phase": "out", "q": [0.01, 0.201, 0.297, 0.254, 0.091, -0.115, -0.266],
- "rep_count": 0, "auto": false, "arm_mode": "compliant", "exercise": "armtest", "reps_target": 3}
+ "rep_count": 0, "auto": false, "arm_mode": "compliant", "exercise": "armtest", "reps_target": 3, "done": false}
 ```
 
 Each try ends with a `rep` whose `mode` is `isometric`. The result is `peak_force_n`; the best try is the highest one. Ignore `rom_m`, `sparc`, `contribution` and the path errors for this exercise:
@@ -255,12 +256,12 @@ Readings stop at about 30 N: that is the robot's safety limit, not the patient's
 
 **What to show from a rep:** reach in cm = `rom_m * 100`, peak force = `peak_force_n` N, contribution = `contribution * 100` % (reach only; our own index). If `"simulated": true`, label it simulated.
 
-**When is the set finished?** When a `sample` has `rep_count` equal to `reps_target` (the same number arrives as the last `rep`'s `idx + 1`). The server does not stop by itself: the session stays open and resting until you call stop.
+**When is the set finished?** When a `sample` has `"done": true` (`rep_count` has reached `reps_target`). The server does not stop by itself: the session stays open and resting until you call stop.
 
 ```json
 {"type": "sample", "t": 26.43, "pos": [0.45, 0.0, 0.3], "force": [0.0, 0.0, 0.0], "dial": -0.6,
  "rep_idx": -1, "phase": "idle", "rep_count": 3, "arm_mode": "compliant", "exercise": "push",
- "reps_target": 3, "...": "other sample fields"}
+ "reps_target": 3, "done": true, "...": "other sample fields"}
 ```
 
 If `arm_mode` becomes `hold` or `fault`, the arm has stopped safely: show "Arm stopped, please wait" and call stop. No WebSocket? Poll `GET /api/state` a few times a second; it has the same fields.

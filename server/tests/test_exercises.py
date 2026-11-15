@@ -68,6 +68,7 @@ def test_start_each_live_id_passes_exercise_and_reps_to_engine(tmp_path, all_liv
         assert "dial" not in kw and "auto" not in kw          # not sent: the exercise preset decides
         st = c.get("/api/state").json()
         assert st["exercise"] == ex and st["reps_target"] == 4 and st["session"]["exercise"] == ex
+        assert st["done"] is False
         s = c.post("/api/session/stop").json()
         assert s["exercise"] == ex
         assert c.get("/api/patients/sim-x/sessions").json()[-1]["exercise"] == ex
@@ -84,7 +85,7 @@ def test_start_defaults_to_reach_with_registry_reps_and_passes_dial_when_sent(tm
         c.post("/api/session/stop")
         r = c.post("/api/session/start", json={"patient_id": "sim-x", "reps": 0})      # 0 = no limit
         assert r.json()["reps"] is None and FakeEngine.calls[-1]["reps"] is None
-        assert c.get("/api/state").json()["reps_target"] is None
+        assert c.get("/api/state").json()["reps_target"] == 10       # shown as the default; the engine keeps going
 
 
 @pytest.mark.parametrize("ex", ["knee", "circle", "REACH", ""])
@@ -123,7 +124,7 @@ def test_exercises_route_lists_live_programmes(tmp_path, all_live, monkeypatch):
     assert [e["id"] for e in out] == ALL
     assert all(set(e) == {"id", "name", "kind", "reps"} for e in out)
     by = {e["id"]: e for e in out}
-    assert by["armtest"]["reps"] == 3 and by["armtest"]["kind"] == "isometric"
+    assert by["armtest"]["reps"] == 3 and by["armtest"]["kind"] == "test"
     assert by["reach"]["kind"] == "assist" and by["push"]["kind"] == by["pull"]["kind"] == "resist"
 
 
@@ -149,8 +150,8 @@ def test_adapter_falls_back_when_registry_missing_or_partial(monkeypatch):
     mod = types.ModuleType("software.exercises")
     mod.LIVE = ["armtest", "reach"]
     monkeypatch.setitem(sys.modules, "software.exercises", mod)
-    assert exercises.catalog() == [{"id": "reach", "name": "Forward reach", "kind": "assist", "reps": 10},
-                                   {"id": "armtest", "name": "Push strength test", "kind": "isometric", "reps": 3}]
+    assert exercises.catalog() == [{"id": "reach", "name": "Forward reach (assisted)", "kind": "assist", "reps": 10},
+                                   {"id": "armtest", "name": "Push strength test", "kind": "test", "reps": 3}]
 
 
 def test_default_factory_with_an_engine_that_has_no_exercise_argument(monkeypatch):
@@ -212,6 +213,7 @@ def test_mock_runs_each_exercise_stored_and_exported(tmp_path, all_live, ex, n, 
         _wait_reps(c, n)
         time.sleep(0.1)
         assert c.get("/api/state").json()["rep_count"] == n          # the set stops at the target and idles
+        assert c.get("/api/state").json()["done"] is True
         assert c.get("/api/state").json()["phase"] == "idle"
         summary = c.post("/api/session/stop").json()
         reps = c.get(f"/api/sessions/{sid}/reps").json()
@@ -374,7 +376,10 @@ def test_e2e_sim_per_exercise(tmp_path, ex):
         r = c.post("/api/session/start", json={"patient_id": "sim-e2e", "exercise": ex, "reps": n})
         assert r.status_code == 200, r.text
         sid = r.json()["session_id"]
-        _wait_reps(c, n, timeout=180)
+        st = _wait_reps(c, n, timeout=180)
+        assert st["exercise"] == ex and st["reps_target"] == n
+        time.sleep(0.3)
+        assert c.get("/api/state").json()["done"] is True
         summary = c.post("/api/session/stop").json()
         reps = c.get(f"/api/sessions/{sid}/reps").json()
         note = c.get(f"/api/sessions/{sid}/note").text

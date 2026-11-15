@@ -13,13 +13,14 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
-# id -> name, kind, default reps. Used when the engine registry has no (or a partial) entry.
+# id -> name, kind, default reps: a copy of software/exercises.py, used when that registry cannot be
+# imported or has no (or a partial) entry. Kinds: assist, resist, test (isometric), guided (robot-led).
 BUILTIN: dict[str, dict[str, Any]] = {
-    "reach":   {"name": "Forward reach", "kind": "assist", "reps": 10},
-    "push":    {"name": "Push", "kind": "resist", "reps": 10},
-    "pull":    {"name": "Row", "kind": "resist", "reps": 10},
-    "armtest": {"name": "Push strength test", "kind": "isometric", "reps": 3},
-    "circle":  {"name": "Circle", "kind": "robot-led", "reps": 5},
+    "reach":   {"name": "Forward reach (assisted)", "kind": "assist", "reps": 10},
+    "push":    {"name": "Push (resisted)", "kind": "resist", "reps": 10},
+    "pull":    {"name": "Row (resisted)", "kind": "resist", "reps": 10},
+    "armtest": {"name": "Push strength test", "kind": "test", "reps": 3},
+    "circle":  {"name": "Circle (robot-led)", "kind": "guided", "reps": 8},
 }
 FALLBACK_LIVE = ("reach",)
 LEGACY = {"reach_line": "reach"}        # sessions stored before E2
