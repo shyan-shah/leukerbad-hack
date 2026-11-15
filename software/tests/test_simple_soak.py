@@ -25,9 +25,9 @@ What this cannot show (sim time is stepped, SimArm(realtime=False)):
 
 The soak runs once (about 50 s); each requirement is its own test so one failure does not hide the rest.
 
-Three requirements do not hold on simple.py as of 15 Nov 23:30 and are marked ``xfail(strict=True)`` so
-main stays green; numbers in context/LOG.md (Shiv, 15 Nov 23:30). When simple.py or the server changes
-and one of them starts passing, pytest reports it as a failure: remove its marker then.
+One requirement does not hold on simple.py (cc6340b) and is marked ``xfail(strict=True)`` so main stays
+green: /api/state has no ``phase`` between the start call and the engine's first tick (context/LOG.md,
+Shiv, 15 Nov 23:30). When that changes pytest reports the test as a failure: remove the marker then.
 """
 from __future__ import annotations
 
@@ -556,7 +556,6 @@ def test_the_arm_never_sets_off_by_itself_against_a_hand(soak):
             assert s["band_from_m"] < AT_START_M, (s["i"], s["kind"], s["start_m"], s["band_from_m"])
 
 
-@pytest.mark.xfail(strict=True, reason="the return is given up at the first reading with a hand on the handle and never tried again: 5 of 5 sessions end in hold, 3 to 9 cm from the start (LOG, Shiv, 15 Nov 23:30)")
 def test_the_return_to_start_waits_for_the_hand(soak):
     """Stopped with a hand on the handle (it lets go 1.5 to 4 s later): the return waits for it, then runs."""
     rows = [(s["i"], s["kind"], "level", s["levels"][-1], "stop at m", s["stop_s_m"], "speed", s["stop_speed"],
@@ -569,7 +568,6 @@ def test_the_return_to_start_waits_for_the_hand(soak):
     assert not bad, _lines(bad)
 
 
-@pytest.mark.xfail(strict=True, reason="7 of 40 sessions end in hold away from the start: 5 stopped with a hand on the handle, 2 stopped while an empty handle was gliding back (LOG, Shiv, 15 Nov 23:30)")
 def test_no_session_ends_in_hold(soak):
     rows = [(s["i"], s["kind"], "level", s["levels"][-1], "hand on at stop", s["hand_on_at_stop"], "stop at m",
              s["stop_s_m"], "speed", s["stop_speed"], "m from start", s["end_m"], s["stop_message"])
