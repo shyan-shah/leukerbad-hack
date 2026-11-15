@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vita station codes</title>
+<style>
+:root{--ink:#0f2a24;--soft:#5b6f69;--line:#d9e4df;--bg:#f6f9f7;--brand:#0f3d34}
+body{margin:0;font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:980px;margin:0 auto;padding:32px max(16px,env(safe-area-inset-left,0px))}
+h1{font-size:28px;margin:0 0 6px}p{color:var(--soft);margin:0 0 24px;max-width:62ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;align-items:center;gap:10px;break-inside:avoid}
+.card svg{width:100%;max-width:230px;height:auto}.card b{font-size:22px;color:var(--brand)}.card small{color:var(--soft);word-break:break-all;text-align:center}
+@media print{body{background:#fff}p.hint{display:none}.card{border-color:#999}}
+</style></head><body><main>
+<h1>Vita station codes</h1>
+<p class="hint">Open the Vita app on your phone, tap the round Scan button, then “Open the camera” and point it at one of these codes. Scanning with the phone's own camera app works too: it opens the app already connected to that station. Print this page to stick a code on a real station.</p>
+<div class="grid" id="g"></div></main>
+<script src="./vendor/qrcode.js"></script>
+<script>
+const base = location.origin + location.pathname.replace(/stations\.html$/, '');
+document.getElementById('g').innerHTML = [1, 2, 3].map((n) => { const url = base + '?station=' + n, q = qrcode(0, 'M'); q.addData(url); q.make();
+  return `<div class="card">${q.createSvgTag({ cellSize: 6, margin: 2, scalable: true })}<b>Vita station ${n}</b><small>${url}</small></div>`; }).join('');
+</script></body></html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitalis · Care that pays attention</title>
+<meta name="description" content="Vita is a friendly speaker for older people living at home. She chats, reminds, watches over the house and calls for help when it matters.">
+<meta name="theme-color" content="#FBF6EE">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="vendor/lenis.css">
+<link rel="stylesheet" href="assets/site.css?v=32">
+<script src="vendor/lenis.min.js" defer></script>
+<script src="vendor/gsap.min.js" defer></script>
+<script src="vendor/SplitText.min.js" defer></script>
+<script src="assets/ui.js?v=32" defer></script>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/environments/RoomEnvironment.js":"./vendor/RoomEnvironment.js","three/addons/geometries/RoundedBoxGeometry.js":"./vendor/RoundedBoxGeometry.js"}}</script>
+</head>
+<body style="background-color:#FBF6EE">
+<div class="intro" aria-hidden="true"><svg viewBox="0 0 64 72"><path d="M32 70C14 62 5 44 6 22c16 6 26 24 26 48z" fill="#2E6B4F"/><path d="M32 70c18-8 27-26 26-48-16 6-26 24-26 48z" fill="#5F9E77"/><circle cx="32" cy="12" r="9" fill="#D9483F"/></svg></div>
+<canvas id="world" aria-hidden="true"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="#c0" aria-label="Vitalis home"><svg viewBox="0 0 64 72" aria-hidden="true"><path class="l1" d="M32 70C14 62 5 44 6 22c16 6 26 24 26 48z" fill="#2E6B4F"/><path class="l2" d="M32 70c18-8 27-26 26-48-16 6-26 24-26 48z" fill="#5F9E77"/><circle class="dot" cx="32" cy="12" r="9" fill="#D9483F"/></svg>Vitalis</a>
+  <nav aria-label="Main menu"><a href="#c1">Anna’s day</a><a href="#c2">Reminders</a><a href="#c4">Company</a><a href="#c5">Emergencies</a><a href="#c6">For family</a><a href="#c7">Privacy</a><a href="pricing.html">Pricing</a></nav>
+  <a class="pill" href="#c10">Join the pilot</a>
+</header>
+<div id="daybar" class="off"><b id="clock">07:45</b><div id="track"><i id="fill"></i><i id="knob"></i></div></div>
+<div id="say" aria-hidden="true"></div>
+
+<main>
+  <section class="ch" id="c0" data-say="Hello! I’m Vita." data-mood="happy" data-roof data-x=".55" data-y="-1.5" data-z="2.4" data-s=".46" data-ry=".3" data-ty=".6" data-name="Start">
+    <div class="copy">
+      <span class="kick"><i></i>Care that pays attention</span>
+      <h1 class="big">Home, for longer. <em>Happily.</em></h1>
+      <p class="line">Vita is a friendly speaker in every room. A buddy who chats, reminds and keeps watch, so older people can stay in their own home.</p>
+      <p class="hand">Scroll, and spend a day at Anna’s.</p>
+      <div class="acts"><a class="pill big" href="#c10">Join the pilot</a><a class="pill big ghost" href="#c1">Start Anna’s day</a></div>
+    </div>
+    <div class="hint" aria-hidden="true"><i></i>Scroll</div>
+  </section>
+
+  <section class="ch story" id="c1" data-time="07:45" data-room="2" data-s="0" data-say="Good morning, Anna. It’s Thursday." data-bg="#FFE2C4" data-mood="happy" data-name="Good morning">
+    <div class="copy">
+      <span class="kick"><i></i>07:45 · Bedroom</span>
+      <h2 class="big">Good morning, Anna.</h2>
+      <p class="line">Anna is 82 and lives alone. Vita opens the day with her: what day it is, what the weather does, and what is planned.</p>
+      <div class="chips"><span class="chip plain">Nothing to operate</span><span class="chip plain">Just talk</span></div>
+    </div>
+  </section>
+
+  <section class="ch story" id="c2" data-time="10:30" data-room="1" data-s="0" data-say="Half past ten. A sip of water?" data-fx="water" data-bg="#CDE8F6" data-name="Reminders">
+    <div class="copy">
+      <span class="kick"><i></i>10:30 · Kitchen</span>
+      <h2 class="big">Time for a glass of water.</h2>
+      <p class="line">Built with dementia in mind. Asked kindly, and again a little later. Vita never says: I already told you.</p>
+      <div class="chips"><span class="chip"><b>1</b>Water</span><span class="chip"><b>2</b>Medication</span><span class="chip"><b>3</b>Meals</span></div>
+    </div>
+  </section>
+
+  <section class="ch story" id="c3" data-time="13:30" data-room="4" data-s="0" data-say="Your taxi is downstairs." data-fx="calendar" data-bg="#CFE9D2" data-mood="happy" data-name="Appointments">
+    <div class="copy">
+      <span class="kick"><i></i>13:30 · Hall</span>
+      <h2 class="big">The doctor is at two.</h2>
+      <p class="line">Vita books the appointment and the taxi, and makes sure coat and keys are ready on time.</p>
+    </div>
+  </section>
+
+  <section class="ch story" id="c4" data-time="16:30" data-room="0" data-s="0" data-say="Tell me about the bakery again." data-fx="chat" data-bg="#FFD25E" data-mood="happy" data-name="Company">
+    <div class="copy">
+      <span class="kick"><i></i>16:30 · Living room</span>
+      <h2 class="big">Someone to talk to.</h2>
+      <p class="line">The long, quiet afternoon is the hardest part of living alone. Vita is there, and she remembers every story.</p>
+    </div>
+  </section>
+
+  <section class="ch story" id="c5" data-time="03:10" data-room="3" data-s="0" data-say="Anna, are you alright?" data-fx="night alarm" data-bg="#101B36" data-dark data-name="Emergencies">
+    <div class="copy">
+      <span class="kick"><i></i>03:10 · Bathroom · a loud bang</span>
+      <h2 class="big">A fall never goes unnoticed.</h2>
+      <p class="line">Too many people are found days later. When Vita hears a loud sound that could be a fall, she asks twice within ten seconds. No reaction? She calls Sophie. And if Sophie does not answer, Vita alerts the emergency services.</p>
+      <div class="chips"><span class="chip"><b>1</b>Hears a bang</span><span class="chip"><b>2</b>Asks twice in 10 s</span><span class="chip"><b>3</b>Calls Sophie</span><span class="chip"><b>4</b>No answer? 112</span></div>
+      <div class="acts"><button class="pill big alert" type="button" data-alarm>Try it: Anna falls</button><div class="wait" role="status"></div><div class="said" role="status">No reaction in 10 seconds. Sophie was called and is on her way.</div></div>
+    </div>
+  </section>
+
+  <section class="ch story" id="c6" data-time="08:00" data-shot="over" data-s="0" data-say="Anna is fine. She slept well." data-fx="family" data-bg="#E2DBFF" data-mood="happy" data-name="For family">
+    <div class="copy">
+      <span class="kick"><i></i>08:00 · The next morning</span>
+      <h2 class="big">Family can breathe again.</h2>
+      <p class="line">Sophie already knows how the night went. Fewer calls about small things, a calm update every day, and a loud signal only when it matters.</p>
+    </div>
+  </section>
+
+  <section class="ch story" id="c7" data-shot="over" data-s="0" data-say="Your voice never leaves this house." data-fx="shield" data-bg="#13201A" data-dark data-name="Privacy">
+    <div class="copy">
+      <span class="kick"><i></i>Private by design</span>
+      <h2 class="big">What happens at home stays at home.</h2>
+      <p class="line">No cameras, and no recordings. Three promises about everything Vita hears:</p>
+      <ol class="road dark">
+        <li><b>Voice</b><span>Anna’s voice is turned into text on the speaker. The sound never leaves the house.</span></li>
+        <li><b>Memory</b><span>What Vita remembers about Anna is kept in the home, not with us.</span></li>
+        <li><b>Words</b><span>To form a reply, the words go to Vitalis’s own servers in the EU. They are not stored and not shared with anyone.</span></li>
+      </ol>
+      <div class="chips"><span class="chip plain">“Vita, stop listening”</span><span class="chip plain">Anna decides what family sees</span></div>
+      <p class="made">Besides that, two things leave the house: the daily update Anna agrees to share, and the call for help after a fall with no answer: first to family, then to the emergency services.</p>
+    </div>
+  </section>
+
+  <section class="ch story" id="c8" data-shot="over" data-room="0" data-s="0" data-fx="setup" data-say="Hello Anna. I’m Vita." data-bg="#FFE7B8" data-mood="happy" data-name="Getting started">
+    <div class="copy">
+      <span class="kick"><i></i>How it starts</span>
+      <h2 class="big">One visit. Then she’s home.</h2>
+      <p class="line">Nothing to drill, nothing to learn. Keep scrolling and watch Vita move in.</p>
+      <ol class="road steps">
+        <li data-step="0"><b>Visit</b><span>We come by and place a speaker in every room.</span></li>
+        <li data-step="1"><b>Hello</b><span>Vita meets Anna: her name, her day, and who to call.</span></li>
+        <li data-step="2"><b>Family</b><span>Sophie is connected and gets the first daily update that evening.</span></li>
+      </ol>
+      <p class="line small">From €29 a month, speakers on loan. <a href="pricing.html">See pricing and insurance</a></p>
+    </div>
+  </section>
+
+  <section class="ch wide" id="c9" data-shot="none" data-bg="#F6EEDF" data-s="1.0" data-mood="happy" data-name="Questions">
+    <div class="copy">
+      <span class="kick"><i></i>Good to know</span>
+      <h2 class="big">Questions families ask.</h2>
+      <div class="qa">
+        <details><summary>Does Vita replace carers or family?</summary><p>No. Vita takes over the small questions and the reminders, and nudges towards people: call Sophie, go to the coffee morning. Care stays human.</p></details>
+        <details><summary>My mother has dementia. Will she manage?</summary><p>There is nothing to operate. Vita starts the conversation herself, speaks slowly and repeats things gladly, as often as needed.</p></details>
+        <details><summary>What happens after a fall?</summary><p>When Vita hears a loud sound that could be a fall, she asks twice within ten seconds whether everything is alright. An answer is enough to stop there. Without any reaction she calls the emergency contact and says which room it happened in. If the emergency contact does not pick up, Vita alerts the emergency services (112).</p></details>
+        <details><summary>Where does what Vita hears go?</summary><p>Anna’s voice is turned into text on the speaker, so the sound never leaves the house. What Vita remembers about her is kept in the home. To form a reply, the words are sent to our own servers in the EU, which store nothing and share nothing with anyone.</p></details>
+        <details><summary>Does the fall alarm work without internet?</summary><p>Hearing the fall and asking twice happen on the speaker itself, so they do not depend on our servers.</p></details>
+        <details><summary>Is Vita a medical device?</summary><p>No. Vita is a companion and a safety net at home. She does not diagnose and does not replace a doctor.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="ch" id="c10" data-shot="none" data-say="See you soon!" data-fx="ambient" data-bg="#D9483F" data-dark data-mood="happy" data-s="1.1" data-name="Join the pilot">
+    <div class="copy">
+      <span class="kick"><i style="background:#fff"></i>For families and care organisations</span>
+      <h2 class="big">Bring Vita home.</h2>
+      <p class="line">We are starting with a small group. Leave your details and we will tell you how to take part.</p>
+      <form class="form" novalidate>
+        <input id="fName" name="name" placeholder="Your name" autocomplete="name" aria-label="Your name" required>
+        <input id="fMail" name="mail" type="email" placeholder="Your email address" autocomplete="email" aria-label="Your email address" required>
+        <input id="fWho" name="who" placeholder="Who is Vita for?" aria-label="Who is Vita for?">
+        <button class="pill big" type="submit">Send</button>
+        <p class="ok" role="status">Thank you! This is a preview: the form does not send anything yet.</p>
+      </form>
+      <p class="made">Vita is a companion, not a medical device. In an emergency, always call 112.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="fb"><a class="brand" href="#c0"><svg viewBox="0 0 64 72" aria-hidden="true"><path class="l1" d="M32 70C14 62 5 44 6 22c16 6 26 24 26 48z"/><path class="l2" d="M32 70c18-8 27-26 26-48-16 6-26 24-26 48z"/><circle cx="32" cy="12" r="9" fill="#D9483F"/></svg>Vitalis</a><p>Care that pays attention. A friendly voice in every room.</p><a class="pill" href="#c10">Join the pilot</a></div>
+  <nav aria-label="Anna’s day"><b>Anna’s day</b><a href="#c1">Good morning</a><a href="#c2">Reminders</a><a href="#c3">Appointments</a><a href="#c4">Company</a></nav>
+  <nav aria-label="Safety"><b>Safety</b><a href="#c5">Emergencies</a><a href="#c6">For family</a><a href="#c7">Privacy</a><a href="#c8">Getting started</a><a href="#c9">Questions</a><a href="pricing.html">Pricing</a></nav>
+  <div class="fine"><span>© 2026 Vitalis · concept</span><span>Care that pays attention</span></div>
+</footer>
+<script type="module" src="assets/world.js?v=32"></script>
+</body>
+</html>

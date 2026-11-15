@@ -1,0 +1,14 @@
+# backups (git history replaces them)
+site-src-backups/
+site-src-bak-icons/
+*.before-*
+*.bak
+# backend secrets and patient data: never commit
+backend/config.json
+backend/*.db
+backend/*.db-*
+*.db
+__pycache__/
+.DS_Store
+*.zip
+*.mp4

@@ -1,0 +1,7 @@
+/* Instrument Sans + JetBrains Mono, embedded so nothing loads from the internet. SIL OFL. */
+@font-face{font-family:'Instrument Sans';font-style:normal;font-weight:400;font-display:swap;src:url(font-34c0565b38.woff2) format("woff2")}
+@font-face{font-family:'Instrument Sans';font-style:normal;font-weight:500;font-display:swap;src:url(font-b7964c79c7.woff2) format("woff2")}
+@font-face{font-family:'Instrument Sans';font-style:normal;font-weight:600;font-display:swap;src:url(font-62108f92f6.woff2) format("woff2")}
+@font-face{font-family:'Instrument Sans';font-style:normal;font-weight:700;font-display:swap;src:url(font-2c44b4c6e5.woff2) format("woff2")}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:400;font-display:swap;src:url(font-3ae6215182.woff2) format("woff2")}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:500;font-display:swap;src:url(font-35c2a72b75.woff2) format("woff2")}

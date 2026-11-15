@@ -42,8 +42,8 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | B1 Claims table with checked sources | Mat, Gio | business/ | Todo |
 | B2 Verify the claims list (MASTER_PLAN section 7) | Mat, Gio | business/ | Todo |
 | B3 Market model | Mat, Gio | business/ | Todo |
-| B4 Deck | Mat, Gio | demo/ | Sunday |
+| B4 Deck | Mat, Gio | demo/ | In progress (draft in demo/pitch-deck/) |
 | B5 Script, rehearsal, backup video | Mat, Gio | demo/ | Sunday |
-| B6 Website and screens | Mat, Gio | demo/ | Waiting on server/exports/ |
+| B6 Website and screens | Mat, Gio | demo/ | In progress (site live at vitarehab.netlify.app, app at vitastation.netlify.app; not yet using server/exports/) |
 | B7 Pilot outreach drafts | Mat, Gio | business/ | Sunday |
 | Register team by 17:00 on 14 Nov (name, track, members, 1 hardware item, sign agreement) | Shyan | n/a | Done (hardware: Flexiv Rizon 4) |

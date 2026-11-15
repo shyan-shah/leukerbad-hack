@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pricing · Vitalis</title>
+<meta name="description" content="Vita is a friendly speaker for older people living at home. She chats, reminds, watches over the house and calls for help when it matters.">
+<meta name="theme-color" content="#FBF6EE">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="vendor/lenis.css">
+<link rel="stylesheet" href="assets/site.css?v=32">
+<script src="vendor/lenis.min.js" defer></script>
+<script src="vendor/gsap.min.js" defer></script>
+<script src="vendor/SplitText.min.js" defer></script>
+<script src="assets/ui.js?v=32" defer></script>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/environments/RoomEnvironment.js":"./vendor/RoomEnvironment.js","three/addons/geometries/RoundedBoxGeometry.js":"./vendor/RoundedBoxGeometry.js"}}</script>
+</head>
+<body style="background-color:#FBF6EE">
+<div class="intro" aria-hidden="true"><svg viewBox="0 0 64 72"><path d="M32 70C14 62 5 44 6 22c16 6 26 24 26 48z" fill="#2E6B4F"/><path d="M32 70c18-8 27-26 26-48-16 6-26 24-26 48z" fill="#5F9E77"/><circle cx="32" cy="12" r="9" fill="#D9483F"/></svg></div>
+<canvas id="world" aria-hidden="true"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="index.html" aria-label="Vitalis home"><svg viewBox="0 0 64 72" aria-hidden="true"><path class="l1" d="M32 70C14 62 5 44 6 22c16 6 26 24 26 48z" fill="#2E6B4F"/><path class="l2" d="M32 70c18-8 27-26 26-48-16 6-26 24-26 48z" fill="#5F9E77"/><circle class="dot" cx="32" cy="12" r="9" fill="#D9483F"/></svg>Vitalis</a>
+  <nav aria-label="Main menu"><a href="index.html#c1">Anna’s day</a><a href="index.html#c5">Emergencies</a><a href="index.html#c6">For family</a><a href="index.html#c7">Privacy</a><a href="#c1">Plans</a><a href="#c2">Insurance</a></nav>
+  <a class="pill" href="index.html#c10">Join the pilot</a>
+</header>
+<div id="say" aria-hidden="true"></div>
+
+<main>
+  <section class="ch" id="c0" data-shot="none" data-say="No surprises. Promise." data-mood="happy" data-s="1.1" data-name="Pricing">
+    <div class="copy">
+      <span class="kick"><i></i>Pricing</span>
+      <h1 class="big">About one euro <em>a day.</em></h1>
+      <p class="line">One monthly price. The speakers are on loan, we install them at home, and you can stop any month.</p>
+      <p class="hand">Paid privately today. Insurance is the goal.</p>
+      <div class="acts"><a class="pill big" href="#c1">See the plans</a><a class="pill big ghost" href="#c2">What about insurance?</a></div>
+    </div>
+    <div class="hint" aria-hidden="true"><i></i>Scroll</div>
+  </section>
+
+  <section class="ch plansec" id="c1" data-shot="none" data-s="0" data-bg="#E6F1E4" data-name="Plans">
+    <div class="copy">
+      <span class="kick"><i></i>Three sizes of home</span>
+      <h2 class="big">Every plan does everything.</h2>
+      <p class="line">Company, reminders, appointments, family updates and the fall alarm are always included. You only choose how many rooms Vita covers.</p>
+      <div class="plans">
+        <article class="plan">
+          <h3>Vita One</h3><p class="for">One room, to get to know her</p>
+          <p class="price"><b>€29</b><span>per month</span></p>
+          <ul><li>1 speaker</li><li>Conversation and reminders</li><li>Daily update for family</li><li>Fall alarm in that room</li></ul>
+          <a class="pill ghost" href="index.html#c10">Join the pilot</a>
+        </article>
+        <article class="plan best">
+          <span class="tag">Most homes</span>
+          <h3>Vita Home</h3><p class="for">Where the day happens</p>
+          <p class="price"><b>€49</b><span>per month</span></p>
+          <ul><li>3 speakers: living room, kitchen, bedroom</li><li>Vita follows from room to room</li><li>Daily update for family</li><li>Fall alarm in three rooms</li></ul>
+          <a class="pill" href="index.html#c10">Join the pilot</a>
+        </article>
+        <article class="plan">
+          <h3>Vita Whole House</h3><p class="for">Nobody out of earshot</p>
+          <p class="price"><b>€69</b><span>per month</span></p>
+          <ul><li>5 speakers, bathroom and hall included</li><li>Vita follows from room to room</li><li>Daily update for family</li><li>Fall alarm everywhere</li></ul>
+          <a class="pill ghost" href="index.html#c10">Join the pilot</a>
+        </article>
+      </div>
+      <div class="chips"><span class="chip plain">€149 once: installation at home and introduction</span><span class="chip plain">Speakers on loan, no purchase</span><span class="chip plain">Cancel any month</span><span class="chip plain">Prices include VAT</span></div>
+      <p class="made">Indicative prices for the concept. Care organisations and municipalities: ask us for a price per client.</p>
+    </div>
+  </section>
+
+  <section class="ch story" id="c2" data-shot="none" data-say="I’d love to be covered one day." data-bg="#CDE8F6" data-mood="happy" data-s="1.0" data-name="Insurance">
+    <div class="copy">
+      <span class="kick"><i></i>Insurance and reimbursement</span>
+      <h2 class="big">Covered by insurance? Not yet.</h2>
+      <p class="line">Today families pay for Vita themselves. In the long run we want her to be reimbursed, like a personal alarm can be. That is a goal, not a promise.</p>
+      <ol class="road">
+        <li><b>Now</b><span>Private subscription. No reimbursement.</span></li>
+        <li><b>Next</b><span>Pilots with care organisations and municipalities, to measure what Vita changes: fewer emergency calls, more time safely at home.</span></li>
+        <li><b>Later</b><span>With that evidence, apply for reimbursement through the municipality and through health insurers.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="ch wide" id="c3" data-shot="none" data-bg="#FFF1BF" data-s="1.0" data-mood="happy" data-name="Questions">
+    <div class="copy">
+      <span class="kick"><i></i>Good to know</span>
+      <h2 class="big">Questions about the bill.</h2>
+      <div class="qa">
+        <details><summary>Can I claim Vita from my health insurance today?</summary><p>No. Vita is not on any insurer’s list. Some supplementary policies reimburse a personal alarm when there is a medical indication; we want Vita to qualify in the same way, but she does not yet.</p></details>
+        <details><summary>Will my price drop if insurance starts to pay?</summary><p>If Vita becomes reimbursed, the covered part comes off your bill from that moment. We cannot pay back earlier months.</p></details>
+        <details><summary>What does the €149 cover?</summary><p>Someone comes to the house, places the speakers, connects them and introduces Vita to your parent and to the family.</p></details>
+        <details><summary>Do we need internet at home?</summary><p>Yes, Vita needs a connection. If there is none, we can add one for a small monthly extra.</p></details>
+        <details><summary>What if it does not suit my mother?</summary><p>Stop any month. We collect the speakers and the subscription ends.</p></details>
+      </div>
+      <div class="acts"><a class="pill big" href="index.html#c10">Join the pilot</a><a class="pill big ghost" href="index.html">Back to Anna’s day</a></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="fb"><a class="brand" href="index.html#c0"><svg viewBox="0 0 64 72" aria-hidden="true"><path class="l1" d="M32 70C14 62 5 44 6 22c16 6 26 24 26 48z"/><path class="l2" d="M32 70c18-8 27-26 26-48-16 6-26 24-26 48z"/><circle cx="32" cy="12" r="9" fill="#D9483F"/></svg>Vitalis</a><p>Care that pays attention. A friendly voice in every room.</p><a class="pill" href="index.html#c10">Join the pilot</a></div>
+  <nav aria-label="Anna’s day"><b>Anna’s day</b><a href="index.html#c1">Good morning</a><a href="index.html#c2">Reminders</a><a href="index.html#c3">Appointments</a><a href="index.html#c4">Company</a></nav>
+  <nav aria-label="Safety"><b>Safety</b><a href="index.html#c5">Emergencies</a><a href="index.html#c6">For family</a><a href="index.html#c7">Privacy</a><a href="index.html#c8">Getting started</a><a href="pricing.html">Pricing</a></nav>
+  <div class="fine"><span>© 2026 Vitalis · concept</span><span>Care that pays attention</span></div>
+</footer>
+<script type="module" src="assets/world.js?v=32"></script>
+</body>
+</html>

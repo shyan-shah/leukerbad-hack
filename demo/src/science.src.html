@@ -1,0 +1,579 @@
+<title>Vita Rehab Pitch</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: the 3D station stays on screen (right on desktop, top on phones); the text scrolls past it and chooses the exercise. One light look, on purpose: the page lives inside the lit 3D room. */
+  :root { color-scheme: light; --bg: #EEF4EC; --paper: #FBFCF8; --card: #FFFFFF; --ink: #1E2A26; --soft: #55645E; --line: rgba(30,42,38,.12); --forest: #2E6B4F; --leaf: #5F9E77; --mint: #DDF1E3; --coral: #D9483F; --sun: #F1C36A;
+    --strong-bg: #DDF1E3; --strong-fg: #1F5239; --mod-bg: #FFF0C9; --mod-fg: #6B4E00; --early-bg: #F6E1DC; --early-fg: #7A2E26; --mixed-bg: #E3E8EE; --mixed-fg: #33475C;
+    --ease: cubic-bezier(.2,.8,.2,1); --display: Outfit, 'Instrument Sans', system-ui, sans-serif; --text: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --gl: max(16px, env(safe-area-inset-left, 0px)); --gr: max(16px, env(safe-area-inset-right, 0px)); }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--text); font-size: 17px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, p, ul, figure, fieldset { margin: 0; padding: 0; } ul { list-style: none; } fieldset { border: 0; min-width: 0; }
+  h1, h2, .display { font-family: var(--display); letter-spacing: -.02em; text-wrap: balance; }
+  button, textarea, input { font: inherit; color: inherit; }
+  a { color: var(--forest); } :focus-visible { outline: 3px solid var(--leaf); outline-offset: 2px; }
+
+  .stage { position: sticky; top: 0; height: 100vh; height: 100dvh; z-index: 0; overflow: hidden; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+  .stage canvas:active { cursor: grabbing; }
+  .top { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 28px; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); pointer-events: none; }
+  .brand { display: flex; align-items: center; gap: 9px; font: 600 21px var(--display); }
+  .brand svg { width: 30px; height: 25px; } .brand .wm { font-weight: 700; font-size: 25px; letter-spacing: -.01em; color: #064D3B; margin-right: 3px; } .brand em { font-style: normal; font-size: 13px; color: var(--forest); background: var(--mint); padding: 3px 9px; border-radius: 999px; }
+  .nav { display: flex; gap: 2px; padding: 5px; border-radius: 999px; background: var(--card); pointer-events: auto; position: relative; z-index: 2; }
+  .nav a { padding: 7px 13px; border-radius: 999px; font: 600 14px var(--display); color: var(--soft); text-decoration: none; white-space: nowrap; transition: background .25s, color .25s; }
+  .nav a:hover { color: var(--ink); } .nav a.on { background: var(--forest); color: #fff; }
+  .hud { position: absolute; right: max(28px, env(safe-area-inset-right, 0px)); bottom: 28px; width: 290px; padding: 16px 18px; border-radius: 24px; background: var(--card); box-shadow: 0 20px 60px rgba(30,42,38,.12), 0 0 0 1px rgba(30,42,38,.04); }
+  .hud .nm { font: 600 18px var(--display); } .hud .md { display: flex; align-items: center; gap: 8px; color: var(--soft); font-size: 14px; margin-top: 2px; }
+  .hud .md i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #2FB67A; box-shadow: 0 0 0 4px rgba(47,182,122,.2); }
+  .hud .lb { margin-top: 10px; font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
+  .hud .big { font: 700 40px/1 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; } .hud .big small { font-size: 20px; font-weight: 600; color: var(--soft); margin-left: 6px; }
+  .tg { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); } .tg > span { display: block; font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: #B45F00; } .tg > b { display: block; font: 600 15.5px/1.25 var(--display); margin-top: 2px; }
+  .bar { height: 7px; border-radius: 99px; background: rgba(30,42,38,.08); margin-top: 4px; overflow: hidden; } .bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #F1C36A, #FF8A1F); transform-origin: left; transform: scaleX(.03); } .bar.st i { background: linear-gradient(90deg, #9CC3F0, #4084D6); }
+  .mus { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; } .mrow p { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; } .mrow b { font: 600 14px var(--display); margin: 0; } .mrow span { font-size: 12px; color: var(--soft); text-align: right; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .dia { display: block; width: 100%; height: auto; aspect-ratio: 116 / 86; margin: 8px 0 2px; border-radius: 12px; background: #F8FAF5; } .bone { stroke: #DAD3C0; stroke-width: 15; stroke-linecap: round; } .jt { fill: #B9B19A; } .jl { margin-top: 10px; font: 600 11px var(--text); color: var(--soft); letter-spacing: .08em; text-transform: uppercase; }
+  .leg { display: flex; align-items: center; gap: 7px; font-size: 12.5px; line-height: 1.3; color: var(--ink); } .leg i { flex: none; width: 9px; height: 9px; border-radius: 50%; }
+  .jts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .jts span { padding: 3px 10px; border-radius: 999px; background: #DDF3F1; color: #0B6F6B; font: 600 13px var(--display); font-variant-numeric: tabular-nums; } .jts b { font-weight: 600; opacity: .75; margin-right: 3px; }
+  .jline { font-size: 15px; color: #0B6F6B; } .jline b { font: 600 15px var(--display); }
+  .trains .mus { display: none; }
+  .trains { padding: 14px 16px; border-radius: 16px; background: #FFF1DC; } .trains h3 { color: #B45F00; } .trains b { font: 600 17px var(--display); }
+  .hud button { margin-top: 12px; border: 0; background: rgba(30,42,38,.07); padding: 7px 14px; border-radius: 999px; font: 600 13px var(--display); cursor: pointer; }
+  .hud .ex { margin-top: 10px; font-size: 12px; line-height: 1.35; color: var(--soft); }
+  .coach { position: absolute; right: calc(max(28px, env(safe-area-inset-right, 0px)) + 306px); bottom: 28px; display: flex; align-items: center; gap: 10px; padding: 10px 20px 10px 10px; border-radius: 999px; background: var(--card); box-shadow: 0 14px 40px rgba(30,42,38,.1); max-width: 34vw; }
+  .coach i { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--forest); display: grid; place-items: center; }
+  .coach i::before { content: ''; width: 14px; height: 7px; border: 3px solid #fff; border-top: 0; border-radius: 0 0 14px 14px; }
+  .coach span { font: 600 16px/1.25 var(--display); transition: opacity .25s; }
+
+  .prog { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: rgba(30,42,38,.06); } .prog i { display: block; height: 100%; background: linear-gradient(90deg, var(--leaf), var(--forest)); transform-origin: left; transform: scaleX(0); }
+  .cue { display: flex; align-items: center; gap: 10px; font: 600 15px var(--display); color: var(--forest); } .cue i { width: 22px; height: 34px; border: 2px solid var(--forest); border-radius: 12px; position: relative; } .cue i::after { content: ''; position: absolute; left: 50%; top: 6px; width: 4px; height: 8px; margin-left: -2px; border-radius: 2px; background: var(--forest); animation: cue 1.6s infinite; }
+  @keyframes cue { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(10px); opacity: 0; } 100% { transform: translateY(0); opacity: 0; } }
+  @media (min-width: 900px) { .panel.card { transition: opacity .5s var(--ease), transform .5s var(--ease), box-shadow .5s; } .ch:not(.on) .panel.card { opacity: .5; transform: scale(.975); transform-origin: left center; box-shadow: none; } }
+  .facts { display: grid; grid-template-columns: 78px 1fr; gap: 14px 16px; margin: 0; } .facts dt { padding-top: 4px; font: 600 12.5px var(--text); letter-spacing: .08em; text-transform: uppercase; color: var(--forest); } .facts dd { margin: 0; font-size: clamp(17px, 1.35vw, 20px); line-height: 1.35; } .facts .pill { font-size: 12.5px; padding: 3px 10px; margin-left: 4px; vertical-align: 2px; } .pill::first-letter { text-transform: uppercase; }
+  .aud { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; } .aud li { display: flex; flex-direction: column; gap: 2px; padding: 7px 0 7px 16px; border-left: 3px solid var(--leaf); } .aud b { font: 600 clamp(17px, 1.4vw, 20px)/1.25 var(--display); color: var(--ink); } .aud span { font-size: clamp(15px, 1.15vw, 17px); line-height: 1.35; color: var(--soft); }
+  @media (min-width: 900px) and (max-height: 800px) { #who .panel.card { gap: 16px; padding-block: 26px; } }
+  #who .what { font-size: clamp(17px, 1.3vw, 20px) !important; color: var(--forest); font-weight: 600; }
+  .flow { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; counter-reset: f; } .flow li { counter-increment: f; display: grid; grid-template-columns: 38px 1fr; column-gap: 14px; align-items: start; } .flow li::before { content: counter(f); grid-row: span 2; width: 38px; height: 38px; border-radius: 50%; background: var(--forest); color: #fff; font: 600 18px/38px var(--display); text-align: center; } .flow b { font: 600 clamp(17px, 1.4vw, 20px)/1.25 var(--display); color: var(--ink); } .flow span { font-size: clamp(15px, 1.15vw, 17px); line-height: 1.35; color: var(--soft); }
+  #path .what { font-size: clamp(17px, 1.3vw, 20px) !important; color: var(--forest); font-weight: 600; }
+  .flow li { align-items: center !important; } .flow b { font-size: clamp(18px, 1.5vw, 22px) !important; }
+  .bm { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; } .bm b { font-size: clamp(24px, 2.5vw, 36px) !important; } .bm li { font-size: clamp(15px, 1.15vw, 17px) !important; } .deck .cur .bm > div:nth-child(4) { --i: 3; } .bm > div { padding: 22px; border-radius: 24px; background: #fff; box-shadow: 0 0 0 1px rgba(30,42,38,.07), 0 14px 40px rgba(30,42,38,.06); } .bm .k { font: 600 13px var(--text); letter-spacing: .1em; text-transform: uppercase; color: var(--leaf); } .bm b { display: block; margin: 8px 0 14px; font: 700 clamp(30px, 3.2vw, 46px)/1.05 var(--display); color: var(--forest); } .bm ul { list-style: none; margin: 0; padding: 0; } .bm li { padding: 9px 0; border-top: 1px solid rgba(30,42,38,.12); font-size: clamp(16px, 1.3vw, 19px); line-height: 1.3; }
+  .deck .cur .bm > div { animation: rise .65s cubic-bezier(.22,.8,.2,1) both; animation-delay: calc(.6s + var(--i, 0) * .1s); } .deck .cur .bm > div:nth-child(2) { --i: 1; } .deck .cur .bm > div:nth-child(3) { --i: 2; }
+  @media (max-width: 899px) { .bm { grid-template-columns: 1fr; } }
+  .exl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; } .exl li { display: flex; align-items: baseline; gap: 12px; padding: 9px 14px; border-radius: 14px; transition: background .4s, transform .4s; } .exl b { flex: none; font: 600 clamp(16px, 1.3vw, 19px) var(--display); } .exl span { font-size: clamp(13.5px, 1.05vw, 15.5px); color: var(--soft); line-height: 1.3; } .exl li.on { background: var(--mint); transform: translateX(6px); } .exl li.on b { color: var(--forest); }
+  #product .what { font-size: clamp(16px, 1.25vw, 19px) !important; color: var(--forest); font-weight: 600; } #product .panel.card { gap: 20px; }
+  .phones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; } .phones figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; } .phones figcaption b { display: block; font: 600 21px var(--display); } .phones figcaption span { display: block; margin-top: 3px; font-size: 16px; color: #CFE3D6; }
+  .phone { width: 196px; height: 388px; padding: 8px; border-radius: 32px; background: #0F1B17; box-shadow: 0 30px 60px rgba(0,0,0,.35), inset 0 0 0 1.5px rgba(255,255,255,.12); }
+  .scr { position: relative; height: 100%; border-radius: 24px; background: #F6F8F3; color: #1E2A26; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding: 20px 12px 12px; font: 500 11.5px/1.3 var(--text); text-align: left; } .scr::before { content: ""; position: absolute; top: 7px; left: 50%; width: 48px; height: 5px; margin-left: -24px; border-radius: 9px; background: rgba(15,27,23,.22); } .scr p { margin: 0; }
+  .scr .hd { display: flex; align-items: center; gap: 6px; font: 700 14px var(--display); } .scr .hd em { margin-left: auto; font: 600 10px var(--text); font-style: normal; color: #5E6D66; } .scr .lg { width: 16px; height: 16px; border-radius: 5px; background: #064D3B; position: relative; } .scr .lg::after { content: ""; position: absolute; right: 3px; top: 3px; width: 4px; height: 4px; border-radius: 50%; background: #34D399; }
+  .cam { position: relative; flex: 1; border-radius: 16px; background: #1C2A25; display: grid; place-items: center; overflow: hidden; } .qr { width: 62%; } .qr svg { display: block; width: 100%; } .cam i { position: absolute; width: 18px; height: 18px; border: 3px solid #34D399; } .cam .c1 { left: 12px; top: 12px; border-right: 0; border-bottom: 0; border-radius: 6px 0 0 0; } .cam .c2 { right: 12px; top: 12px; border-left: 0; border-bottom: 0; border-radius: 0 6px 0 0; } .cam .c3 { left: 12px; bottom: 12px; border-right: 0; border-top: 0; border-radius: 0 0 0 6px; } .cam .c4 { right: 12px; bottom: 12px; border-left: 0; border-top: 0; border-radius: 0 0 6px 0; }
+  .beam { position: absolute; left: 14px; right: 14px; top: 16%; height: 2px; background: #34D399; box-shadow: 0 0 12px 2px rgba(52,211,153,.7); animation: beam 2.4s ease-in-out infinite alternate; } @keyframes beam { to { top: 84%; } } .still .beam { animation: none; top: 50%; }
+  .scr .ok { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #064D3B; } .scr i { font-style: normal; } .scr .ok i, .scr .row i, .scr .doc > i { flex: none; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: #34D399; color: #064D3B; font-size: 10px; font-weight: 700; }
+  .scr .btn { padding: 9px; border-radius: 999px; background: #064D3B; color: #fff; font: 600 12px var(--display); text-align: center; } .scr .btn.ghost { margin-top: auto; background: transparent; color: #064D3B; box-shadow: inset 0 0 0 1.5px #064D3B; }
+  .scr .tile { display: flex; flex-direction: column; padding: 10px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px rgba(30,42,38,.07); } .scr .tile small { font-size: 10px; color: #5E6D66; } .scr .tile b { font: 700 24px/1.1 var(--display); color: #064D3B; } .scr .tile u { text-decoration: none; font-weight: 600; font-size: 10.5px; color: #12845C; }
+  .chart { display: block; width: 100%; margin-top: 6px; } .chart .ar { fill: rgba(52,211,153,.2); } .chart .ln { fill: none; stroke: #12A873; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; } .chart circle { fill: #064D3B; }
+  .scr .row { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: 11px; background: #fff; box-shadow: 0 0 0 1px rgba(30,42,38,.06); } .scr .row em { margin-left: auto; font-style: normal; font-weight: 600; color: #5E6D66; } .scr .row em.up { color: #12845C; } .scr .row.todo i { background: transparent; box-shadow: inset 0 0 0 1.5px #B9C6BF; } .scr .row.todo { color: #5E6D66; }
+  .scr .doc { flex-direction: row; align-items: center; gap: 8px; background: #E3F7EE; box-shadow: none; } .scr .doc b { display: block; font: 700 12px/1.2 var(--display); } .scr .doc div { flex: 1; } .scr .av { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #064D3B; color: #fff; font: 700 17px var(--display); }
+  .deck .cur .phones figure { animation: rise .7s cubic-bezier(.22,.8,.2,1) both; animation-delay: calc(.55s + var(--i, 0) * .14s); } .deck .cur .phones figure:nth-child(2) { --i: 1; } .deck .cur .phones figure:nth-child(3) { --i: 2; } .deck .cur .phones figure:nth-child(4) { --i: 3; }
+  .deck .cur .chart .ln { stroke-dasharray: 1; animation: draw 1.4s 1.2s ease-out both; } @keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  #app .in { gap: 26px; } @media (max-width: 899px) { .phones { grid-template-columns: 1fr; } } @media (min-width: 900px) and (max-height: 760px) { .phone { width: 170px; height: 336px; } }
+  .nomus .hud, .arr .hud { display: none; }
+  .phones { perspective: 1600px; } .phone { position: relative; padding: 7px; border-radius: 34px; transform: rotateY(-17deg) rotateX(4deg); background: linear-gradient(135deg, #8A928F, #2B302E 22%, #151918 50%, #3A403D 78%, #8A928F);
+    box-shadow: 1px 0 0 #8C9491, 2px 1px 0 #6A726F, 3px 1px 0 #4B524F, 4px 2px 0 #333936, 5px 2px 0 #222725, 22px 30px 44px rgba(0,0,0,.38), inset 0 0 0 1px rgba(255,255,255,.2); }
+  .scr { border-radius: 27px; padding-top: 30px; } .scr::before { top: 8px; width: 56px; height: 16px; margin-left: -28px; border-radius: 12px; background: #050807; } .scr::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 60px; height: 3px; margin-left: -30px; border-radius: 3px; background: #17241F; opacity: .8; }
+  .scr .tabs { padding-bottom: 11px; }
+  .scr .wv { width: 17px; height: 14px; flex: none; } .scr .hd { color: #064D3B; } .scr .ey { font: 600 7.5px var(--text); letter-spacing: .08em; text-transform: uppercase; color: #5E6D66; margin-bottom: -6px; } .scr .h1 { font: 700 13.5px/1.15 var(--display); color: #17241F; }
+  .scr .ok { padding: 6px 8px; border-radius: 10px; background: #E0F5EA; color: #17241F; font-weight: 500; font-size: 10.5px; } .scr .cam { flex: 1; min-height: 0; }
+  .scr .cnt { text-align: center; font: 600 10px var(--display); color: #5E6D66; } .scr .cnt b { font: 700 26px/1 var(--display); color: #064D3B; margin-right: 3px; } .scr .pbar { height: 5px; border-radius: 5px; background: #DFE7E1; overflow: hidden; } .scr .pbar i { display: block; width: 58%; height: 100%; border-radius: 5px; background: #34D399; }
+  .scr .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .scr .two .btn { margin: 0; padding: 7px; font-size: 11px; } .scr .sw { width: 24px; height: 14px; border-radius: 14px; background: #12845C; position: relative; } .scr .sw::after { content: ""; position: absolute; right: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+  .scr .tabs { margin: auto -12px -12px !important; display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 4px 8px; background: #fff; box-shadow: 0 -1px 0 #DFE7E1; font: 600 7.5px var(--text); color: #5E6D66; text-align: center; } .scr .tabs span { display: flex; flex-direction: column; align-items: center; gap: 2px; } .scr .tabs i { width: 11px; height: 11px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px currentColor; background: none; } .scr .tabs .on { color: #064D3B; } .scr .tabs .on i { background: #064D3B; }
+  .scr .demo { padding: 2px 4px; } .demo svg { display: block; width: 100%; } .demo path { fill: none; stroke-linecap: round; stroke-linejoin: round; } .demo .fl { fill: #EEF2EC; } .demo .st { stroke: #D8C9AE; stroke-width: 3; } .demo .tb { fill: #F1F3F1; stroke: #C5CEC9; stroke-width: 1.2; } .demo .tg { fill: #064D3B; } .demo .rc { stroke: #C3CBD0; stroke-width: 7; } .demo .rb { stroke: #C3CBD0; stroke-width: 5.5; } .demo .jt { fill: #E4E8EA; stroke: #58D5E2; stroke-width: 1.4; } .demo .lg { stroke: #4E6F9E; stroke-width: 7; } .demo .sh { stroke: #F7F6F2; stroke-width: 4.5; filter: drop-shadow(0 0 .4px #8A948F); } .demo .tr { stroke: #E8705F; stroke-width: 11; } .demo .am { stroke: #F08A7A; stroke-width: 5.5; } .demo .sk { fill: #F3CDAE; } .demo .hr { fill: #E6E2DA; stroke: #CFC9BE; stroke-width: .6; } .demo .hn { fill: #D9483F; } .demo .gd { fill: none; stroke: #34D399; stroke-width: 1.4; stroke-dasharray: 2.5 2.5; } .demo .t1 { font: 700 9px var(--display); fill: #064D3B; } .demo .t2 { font: 500 6.5px var(--text); fill: #5E6D66; }
+  .fine a { color: inherit; } .refs a { color: inherit; } #basis .in { gap: 24px; } #basis .biz b { font-size: clamp(32px, 3.6vw, 52px); } #basis .biz span { font-size: clamp(15px, 1.15vw, 17px); line-height: 1.35; } #basis .biz > div { padding: 22px 24px; } #basis .why li { padding: 8px 0; font-size: clamp(15.5px, 1.2vw, 18px); }
+  .solid { pointer-events: auto; }
+  .steps.four { grid-template-columns: repeat(4, 1fr); }
+  .biz { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; } .biz > div { padding: 26px 28px; border-radius: 24px; background: #fff; box-shadow: 0 0 0 1px rgba(30,42,38,.07), 0 14px 40px rgba(30,42,38,.06); } .biz b { display: block; font: 700 clamp(34px, 4vw, 58px)/1 var(--display); color: var(--forest); white-space: nowrap; } .biz span { display: block; margin-top: 10px; font-size: clamp(16px, 1.3vw, 19px); color: var(--soft); }
+  .why { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 48px; } .why h3 { font: 600 22px var(--display); margin-bottom: 8px; } .why ul { list-style: none; margin: 0; padding: 0; } .why li { padding: 9px 0; border-top: 1px solid rgba(30,42,38,.12); font-size: clamp(16px, 1.3vw, 19px); }
+  .fine { font-size: 14.5px; color: var(--soft); }
+  #business .in { gap: 26px; }
+  .deck .cur :is(.flow li, .biz > div, .why li) { animation: rise .65s cubic-bezier(.22,.8,.2,1) both; animation-delay: calc(var(--b, .45s) + var(--i, 0) * .09s); } .deck .cur :is(.flow li, .biz > div, .why li, .steps > div):nth-child(2) { --i: 1; } .deck .cur :is(.flow li, .biz > div, .why li, .steps > div):nth-child(3) { --i: 2; } .deck .cur :is(.flow li, .steps > div):nth-child(4) { --i: 3; }
+  @media (max-width: 899px) { .biz, .why, .steps.four { grid-template-columns: 1fr; } }
+  @media (min-width: 900px) and (max-height: 800px) { #path .panel.card { gap: 16px; padding-block: 26px; } }
+  .slide { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; } .slide .in { width: 100%; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; } .steps b { font: 700 64px/1 var(--display); color: var(--sun); } .steps h3 { font: 600 26px var(--display); margin: 10px 0 6px; } .steps p { color: #CFE3D6; font-size: 18px; line-height: 1.4; }
+  .fbrows { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } .fbrows .fb h3 { font: 600 20px var(--display); letter-spacing: 0; text-transform: none; color: var(--ink); } .fbrows .q { font: 500 15.5px/1.35 var(--text); color: var(--soft); }
+  .pager { position: fixed; left: max(28px, env(safe-area-inset-left, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); z-index: 6; display: flex; align-items: center; gap: 2px; padding: 5px; border-radius: 999px; background: #fff; box-shadow: 0 10px 30px rgba(30,42,38,.16), 0 0 0 1px rgba(30,42,38,.05); }
+  .pager button { width: 38px; height: 38px; border: 0; border-radius: 50%; background: var(--forest); color: #fff; font: 600 22px/1 var(--display); cursor: pointer; padding-bottom: 3px; } .pager span { min-width: 64px; text-align: center; font: 600 14px var(--display); font-variant-numeric: tabular-nums; color: var(--ink); }
+  @media (min-width: 900px) {   .ch .trains { display: none; } .ch .what { font-size: clamp(20px, 1.7vw, 26px); line-height: 1.3; } .panel.card { gap: 26px; padding: 40px; } }
+  /* deck mode (desktop): one slide on screen at a time, like a presentation */
+  .deck, .deck body { overflow: hidden; height: 100%; scroll-snap-type: none; }
+  .deck .stage { position: fixed; inset: 0; height: auto; } .deck .scroll { margin: 0; position: static; }
+  .deck .ch, .deck .solid { position: fixed; inset: 0; min-height: 0; visibility: hidden; }
+  /* scene slides: the card leaves quickly, the next one arrives a beat later */
+  .deck .ch { z-index: 1; padding-block: 0; opacity: 0; transform: translateX(64px); transition: opacity .28s ease-in, transform .4s ease-in, visibility 0s .4s; }
+  .deck .ch.past { transform: translateX(-64px); }
+  .deck .ch.cur { opacity: 1; visibility: visible; transform: none; transition: opacity .6s cubic-bezier(.22,.8,.2,1) .16s, transform .8s cubic-bezier(.22,.8,.2,1) .16s, visibility 0s; }
+  /* full slides: a wipe across the screen, in the direction of travel */
+  .deck .solid { z-index: 4; overflow-y: auto; display: flex; flex-direction: column; padding-block: 72px 96px; clip-path: inset(0 0 0 100%); transition: clip-path .8s cubic-bezier(.7,0,.2,1), visibility 0s .8s; } .deck .solid > .in { width: 100%; margin-block: auto; }
+  .deck .solid.past { clip-path: inset(0 100% 0 0); }
+  .deck .solid.cur { clip-path: inset(0); visibility: visible; transition: clip-path .8s cubic-bezier(.7,0,.2,1), visibility 0s; }
+  .deck .ch:not(.on) .panel.card { opacity: 1; transform: none; box-shadow: 0 24px 60px rgba(30,42,38,.14); }
+  /* content builds in, piece by piece */
+  #vision .in { gap: 28px; } .vis { display: grid; grid-template-columns: 1.05fr 1fr; gap: 36px; align-items: center; }
+  .hz { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; } .hz li { display: grid; grid-template-columns: 92px 1fr; gap: 18px; padding: 16px 0; border-top: 1px solid var(--line); } .hz li > b { font: 600 15px var(--text); color: var(--leaf); padding-top: 6px; } .hz h3 { font: 600 clamp(21px, 1.8vw, 27px) var(--display); margin: 0 0 4px; color: var(--ink); } .hz p { margin: 0; color: var(--soft); font-size: clamp(15px, 1.15vw, 17.5px); line-height: 1.4; } .hz .far h3 { color: var(--forest); font-size: clamp(25px, 2.3vw, 34px); } .hz .far p { color: var(--ink); }
+  .vchart { margin: 0; padding: 22px 22px 16px; border-radius: 24px; background: #fff; box-shadow: 0 0 0 1px rgba(30,42,38,.07), 0 14px 40px rgba(30,42,38,.06); } .vchart svg { display: block; width: 100%; height: auto; } .vchart .gr { stroke: var(--line); fill: none; } .vchart text { font: 500 12px var(--text); fill: var(--soft); }
+  .vchart .cap { fill: none; stroke: #A9C9B5; stroke-width: 3; stroke-dasharray: .02 .015; } .vchart .fix { fill: none; stroke: var(--sun); stroke-width: 4; stroke-linejoin: round; } .vchart .vita { fill: none; stroke: var(--forest); stroke-width: 5; stroke-linecap: round; } .vchart .dot { fill: var(--forest); }
+  .vchart figcaption { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; font-size: 14px; color: var(--soft); } .vchart figcaption span { display: inline-flex; align-items: center; gap: 7px; } .vchart figcaption i { width: 18px; height: 4px; border-radius: 2px; } .vchart .k1 { background: repeating-linear-gradient(90deg, #A9C9B5 0 5px, transparent 5px 8px); } .vchart .k2 { background: var(--forest); } .vchart .k3 { background: var(--sun); }
+  .deck .cur .hz li { animation: rise .65s cubic-bezier(.22,.8,.2,1) both; animation-delay: calc(.55s + var(--i, 0) * .12s); } .deck .cur .hz li:nth-child(2) { --i: 1; } .deck .cur .hz li:nth-child(3) { --i: 2; }
+  .deck .cur .vchart .fix { stroke-dasharray: 1; animation: vdraw 1.6s .9s ease-out both; } .deck .cur .vchart .vita { stroke-dasharray: 1; animation: vdraw 2s 1.3s cubic-bezier(.4,0,.2,1) both; } .deck .cur .vchart .dot { animation: pop .4s 3.2s both; } @keyframes vdraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @media (max-width: 899px) { .vis { grid-template-columns: 1fr; } .hz li { grid-template-columns: 64px 1fr; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } } @keyframes pop { from { opacity: 0; transform: scale(.6); } } @keyframes swap { from { opacity: 0; transform: translateY(10px); } }
+  .deck .cur .panel > *, .deck .solid.cur .in > * { animation: rise .7s cubic-bezier(.22,.8,.2,1) both; animation-delay: calc(.22s + var(--k, 0) * .09s); } .deck .solid.cur .in > * { animation-delay: calc(.4s + var(--k, 0) * .09s); }
+  .deck .cur .panel > :nth-child(2), .deck .solid.cur .in > :nth-child(2) { --k: 1; } .deck .cur .panel > :nth-child(3), .deck .solid.cur .in > :nth-child(3) { --k: 2; } .deck .cur .panel > :nth-child(n+4), .deck .solid.cur .in > :nth-child(n+4) { --k: 3; }
+  .deck .cur :is(.aud li, .nums > div, .steps > div, .cols li, .facts > *, tbody tr, .fbrows > *) { animation: rise .65s cubic-bezier(.22,.8,.2,1) both; animation-delay: calc(var(--b, .45s) + var(--i, 0) * .08s); } .deck .solid.cur { --b: .6s; }
+  .deck .cur :is(.aud li, .nums > div, .steps > div, .cols li, tbody tr, .fbrows > *):nth-child(2), .deck .cur .facts > :nth-child(n+3) { --i: 1; } .deck .cur :is(.aud li, .nums > div, .steps > div, .cols li, tbody tr, .fbrows > *):nth-child(3), .deck .cur .facts > :nth-child(n+5) { --i: 2; }
+  .deck .cur :is(.aud li, tbody tr, .fbrows > *):nth-child(4) { --i: 3; } .deck .cur :is(.aud li, tbody tr, .fbrows > *):nth-child(5) { --i: 4; } .deck .cur :is(.aud li, tbody tr, .fbrows > *):nth-child(n+6) { --i: 5; }
+  .deck .cur .pill { animation: pop .5s cubic-bezier(.3,1.6,.5,1) both; animation-delay: .95s; } .deck .cur tbody .pill { animation-delay: calc(.9s + var(--i, 0) * .08s); }
+  .still .cur * { animation: none !important; }
+  /* the live panel only shows on exercise slides, and refreshes when the exercise changes */
+  .deck .hud, .deck .coach { transition: opacity .5s cubic-bezier(.22,.8,.2,1), transform .7s cubic-bezier(.22,.8,.2,1); } .deck.nohud .hud, .deck.nohud .coach { opacity: 0; transform: translateX(40px); pointer-events: none; }
+  .deck .hud.swap > * { animation: swap .5s cubic-bezier(.22,.8,.2,1) both; } .deck .hud.swap > :nth-child(n+4) { animation-delay: .08s; } .deck .hud.swap > :nth-child(n+7) { animation-delay: .16s; }
+  .deck .prog i { transition: transform .8s cubic-bezier(.22,.8,.2,1); } .deck .nav a { transition: background .4s, color .4s; }
+  .pager button { transition: transform .2s, background .2s, opacity .2s; } .pager button:hover { transform: scale(1.08); } .pager button:active { transform: scale(.94); } .pager button:disabled { opacity: .3; cursor: default; transform: none; } #count { transition: opacity .2s; }
+  @media (min-width: 900px) and (max-height: 800px) { .deck .ch { align-items: flex-start; padding-top: 78px; } }
+  @media (prefers-reduced-motion: reduce) { .deck .ch, .deck .solid, .deck .hud, .deck .coach { transition: none !important; transform: none; } .deck .cur *, .deck .hud.swap > * { animation: none !important; } }
+  .bare .panel, .bare .top, .bare .pager, .bare .prog, .bare .hud, .bare .coach { display: none !important; }
+  .pager .tm { width: auto; height: 30px; padding: 0 11px; margin: 0 2px 0 4px; border-radius: 999px; background: var(--mint, #DDEFE0); color: var(--forest); font: 600 13.5px var(--display); font-variant-numeric: tabular-nums; } .pager .tm.late { background: #FBE7B8; color: #6B4A00; } .pager .tm.over { background: var(--coral); color: #fff; } .pager span { min-width: 78px; }
+  .pager .fs { background: transparent; color: var(--forest); font-size: 17px; padding: 0; margin-left: 2px; }
+  .scroll { position: relative; z-index: 1; margin-top: -100vh; margin-top: -100dvh; pointer-events: none; }
+  .ch { min-height: 100vh; display: flex; align-items: center; padding-block: 13vh; padding-left: max(28px, env(safe-area-inset-left, 0px)); padding-right: max(28px, env(safe-area-inset-right, 0px)); }
+  .panel { pointer-events: auto; width: min(540px, 40vw); margin-left: clamp(0px, 3vw, 56px); display: flex; flex-direction: column; gap: 22px; }
+  .panel.card { background: var(--card); border-radius: 28px; padding: 34px; box-shadow: 0 20px 60px rgba(30,42,38,.1); }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--forest); }
+  h1 { font-size: clamp(40px, 5.4vw, 82px); line-height: .98; font-weight: 600; }
+  h2 { font-size: clamp(32px, 3.5vw, 54px); line-height: 1.03; font-weight: 600; }
+  .lead { font-size: clamp(18px, 1.5vw, 21px); line-height: 1.45; color: var(--soft); max-width: 34em; }
+  .headblock { display: flex; flex-direction: column; gap: 10px; }
+  .daily { color: var(--soft); } .daily b { color: var(--ink); font-weight: 600; }
+  .pill { align-self: flex-start; display: inline-block; padding: 5px 13px; border-radius: 999px; font: 600 14px var(--display); white-space: nowrap; }
+  .pill.strong { background: var(--strong-bg); color: var(--strong-fg); } .pill.mod { background: var(--mod-bg); color: var(--mod-fg); } .pill.early { background: var(--early-bg); color: var(--early-fg); } .pill.mixed { background: var(--mixed-bg); color: var(--mixed-fg); }
+  .blk { display: flex; flex-direction: column; gap: 6px; } .blk h3 { font: 600 13px var(--text); letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+  .who { display: flex; flex-wrap: wrap; gap: 6px; } .who li { padding: 5px 12px; border-radius: 999px; background: rgba(30,42,38,.06); font-size: 15px; }
+  .studies { display: flex; flex-direction: column; gap: 12px; } .studies li { padding-left: 14px; border-left: 3px solid var(--leaf); } .studies b { display: block; font: 600 15.5px var(--display); } .studies span { font-size: 15.5px; color: var(--soft); }
+  .care { padding: 14px 16px; border-radius: 16px; background: #FFF6DF; font-size: 15.5px; } .care b { color: #8A6A1E; }
+  .legend { display: flex; flex-direction: column; gap: 8px; font-size: 15.5px; color: var(--soft); } .legend div { display: flex; gap: 12px; align-items: baseline; } .legend .pill { flex: none; width: 96px; text-align: center; }
+  .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; } .nums b { display: block; font: 700 clamp(34px, 3.4vw, 50px)/1 var(--display); color: var(--forest); } .nums span { display: block; margin-top: 6px; font-size: 14.5px; line-height: 1.35; color: var(--soft); }
+  .draft { font-size: 14.5px; color: var(--soft); border-top: 1px solid var(--line); padding-top: 14px; }
+
+  .fb { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 20px; background: var(--mint); }
+  .fb h3 { font: 600 13px var(--text); letter-spacing: .08em; text-transform: uppercase; color: var(--strong-fg); } .fb .q { font: 600 17px/1.3 var(--display); }
+  .opts { display: flex; flex-wrap: wrap; gap: 6px; } .opts button { border: 1.5px solid rgba(46,107,79,.35); background: #fff; padding: 7px 14px; border-radius: 999px; font: 600 14.5px var(--display); cursor: pointer; }
+  .opts button[aria-pressed="true"] { background: var(--forest); border-color: var(--forest); color: #fff; }
+  textarea, input[type="text"] { width: 100%; border: 1.5px solid rgba(46,107,79,.3); border-radius: 14px; background: #fff; padding: 10px 12px; font-size: 16px; line-height: 1.4; resize: vertical; }
+  textarea { min-height: 76px; }
+
+  .solid { position: relative; z-index: 2; background: var(--paper); padding-block: clamp(56px, 8vw, 110px); padding-left: var(--gl); padding-right: var(--gr); }
+  .solid.green { background: var(--forest); color: #F6F4EC; } .solid.green .eyebrow { color: #A9D3B2; } .solid.green .lead { color: #CFE3D6; }
+  .in { max-width: 1080px; margin-inline: auto; display: flex; flex-direction: column; gap: 32px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px 48px; } .cols h3 { font: 600 24px var(--display); margin-bottom: 12px; }
+  .cols li { padding: 12px 0; border-top: 1px solid rgba(246,244,236,.2); font-size: clamp(18px, 1.5vw, 22px); }
+  .tablewrap { overflow-x: auto; border-radius: 20px; border: 1px solid var(--line); background: #fff; } table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 16px; }
+  th { text-align: left; font: 600 13px var(--text); letter-spacing: .07em; text-transform: uppercase; color: var(--soft); background: #EEF4EC; } th, td { padding: 14px 18px; vertical-align: top; } tr + tr td { border-top: 1px solid var(--line); } td b { font: 600 17px var(--display); }
+  .final { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } .final label { display: flex; flex-direction: column; gap: 6px; font: 600 16px var(--display); } .final .wide { grid-column: 1 / -1; }
+  .send { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; } .send button { border: 0; background: var(--forest); color: #fff; padding: 14px 24px; border-radius: 999px; font: 600 17px var(--display); cursor: pointer; } .send span { color: var(--soft); font-size: 15px; }
+  .refs { display: grid; grid-template-columns: 1fr 1fr; gap: 36px 48px; } .grp h3 { font: 600 22px var(--display); margin-bottom: 12px; } .grp ul { display: flex; flex-direction: column; gap: 12px; } .grp li { padding-left: 14px; border-left: 3px solid var(--leaf); scroll-margin-top: 24px; } .grp b { display: block; font: 600 15.5px var(--display); } .grp span { font-size: 15.5px; color: var(--soft); } .grp { scroll-margin-top: 24px; }
+  .what { font-size: clamp(18px, 1.45vw, 20px); line-height: 1.4; } .src { font-size: 14px; color: var(--soft); }
+  details.fb summary { cursor: pointer; font: 600 13px var(--text); letter-spacing: .08em; text-transform: uppercase; color: var(--strong-fg); } details.fb:not([open]) { padding-block: 12px; }
+
+  @media (max-width: 899px) {
+    body { font-size: 16px; }
+    .stage { top: env(safe-area-inset-top, 0px); height: 42vh; height: 42svh; z-index: 3; background: var(--bg); box-shadow: 0 10px 30px rgba(30,42,38,.12); }
+    .top { padding: 12px var(--gr) 0 var(--gl); } .nav { display: none; } .brand { font-size: 18px; }
+    .hud { right: var(--gr); top: 10px; bottom: auto; width: auto; padding: 8px 12px; border-radius: 14px; text-align: right; } .hud .nm, .hud .md, .hud button, .hud .ex, .tg > span, .hud .mus, .dia, .leg, .jl, .jts { display: none; } .tg { margin: 2px 0 0; padding: 0; border: 0; max-width: 150px; } .tg > b { font-size: 11.5px; color: #B45F00; } .trains .mus { display: flex; } .hud .lb { margin: 0; font-size: 10.5px; } .hud .big { font-size: 28px; } .hud .big small { font-size: 14px; margin-left: 3px; }
+    .coach { right: auto; left: 50%; transform: translateX(-50%); bottom: 10px; max-width: calc(100% - 32px); padding: 6px 14px 6px 6px; } .coach i { width: 26px; height: 26px; } .coach i::before { width: 11px; height: 5px; border-width: 2.5px; } .coach span { font-size: 13.5px; }
+    .scroll { margin-top: 0; } .ch { min-height: 0; padding-block: 14px; padding-left: var(--gl); padding-right: var(--gr); } .ch:first-child { padding-top: 24px; }
+    .panel { width: 100%; margin: 0; gap: 18px; } .panel.card { padding: 22px 18px; border-radius: 22px; }
+    .cols, .final, .refs, .steps, .fbrows { grid-template-columns: 1fr; } .pager { display: none; } .slide { min-height: 0; } .trains { padding: 12px 14px; } .nums { gap: 10px; }
+  }
+  @media (min-width: 900px) and (max-height: 820px) { .hud { bottom: 16px; padding-block: 12px; } .hud .ex, .hud .md, .hud button { display: none; } .hud .big { font-size: 32px; } .tg { margin-top: 8px; padding-top: 8px; } .mus { gap: 4px; } .coach { bottom: 16px; } }
+  @media (min-width: 900px) and (max-height: 700px) { .dia, .jl { display: none; } }
+  @media (min-width: 900px) and (max-width: 1399px) { .coach { bottom: auto; top: 84px; right: max(28px, env(safe-area-inset-right, 0px)); max-width: 290px; } .coach span { font-size: 14px; } }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .cue i::after { animation: none; } .panel.card { transition: none !important; } }
+  .still .cue i::after { animation: none; } .still .panel.card { transition: none; }
+</style>
+
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/environments/RoomEnvironment.js":"./vendor/RoomEnvironment.js","three/addons/geometries/RoundedBoxGeometry.js":"./vendor/RoundedBoxGeometry.js"}}</script>
+
+<div class="stage">
+  <canvas id="stage" aria-label="3D view of a patient exercising with the robot arm. The exercise changes as you scroll."></canvas>
+  <div class="prog"><i id="prog"></i></div>
+  <div class="top">
+    <div class="brand"><svg viewBox="0 0 76 64" aria-hidden="true"><path d="M9 24c10 0 13 31 26 31s17-33 30-41" fill="none" stroke="#34D399" stroke-width="8" stroke-linecap="round"/><circle cx="65" cy="13" r="8.5" fill="#064D3B"/></svg><span class="wm">vita</span><em>Rehab</em></div>
+    <nav class="nav" aria-label="Sections">
+      <a href="#basis" data-go="basis">Problem</a><a href="#path" data-go="path">Solution</a><a href="#product" data-go="product">Product</a><a href="#app" data-go="app">App</a><a href="#who" data-go="who">Market</a><a href="#business" data-go="business">Business</a><a href="#next" data-go="next">Next</a><a href="#vision" data-go="vision">Vision</a>
+    </nav>
+  </div>
+  <div class="hud">
+    <div class="nm" id="mName">Forward reach</div>
+    <div class="md"><i></i><span>Robot <span id="mode"></span></span></div>
+    <div class="lb" id="mLab">Reach</div>
+    <div class="big"><span id="mVal">0</span><small id="mUnit">cm</small></div>
+    <div class="tg"><span>Muscles at work</span><b id="tName"></b>
+      <svg class="dia" id="map" viewBox="-27 -134 116 86" aria-hidden="true"></svg>
+      <p class="jts" id="jts" aria-label="Joint angles"></p>
+      <div class="mus" id="musHud"></div>
+    </div>
+    <button type="button" id="pause">Pause</button>
+    <p class="ex">Illustration with example numbers. Muscle activity is not measured.</p>
+  </div>
+  <div class="coach"><i aria-hidden="true"></i><span id="say">Ready when you are, Anna.</span></div>
+</div>
+
+<main class="scroll">
+  <section class="ch" id="intro" data-ex="reach" data-view="wide">
+    <div class="panel">
+      <p class="eyebrow">Vita Rehab · the pitch</p>
+      <h1>More practice. Measured.</h1>
+      <p class="lead">A robot arm guides rehabilitation exercises and measures every repetition.</p>
+      <p class="cue" aria-hidden="true"><i></i>Press → for the next slide</p>
+    </div>
+  </section>
+
+  <section class="solid slide" id="basis">
+    <div class="in">
+      <div class="headblock"><p class="eyebrow">The problem</p><h2>Rehab is costly, and demand is outgrowing the therapists.</h2></div>
+      <div class="biz">
+        <div><b>1.7 billion</b><span>people live with muscle, bone or joint conditions. The biggest reason people need rehab.</span></div>
+        <div><b>1 in 6</b><span>people will be 60 or older by 2030. Ageing drives the need.</span></div>
+        <div><b>72%</b><span>of US physical therapists say they are at or over capacity.</span></div>
+      </div>
+      <div class="why">
+        <div><h3>How rehab is done today</h3><ul><li>One therapist, one patient, one session at a time</li><li>$75–150 per session without insurance (US)</li><li>About 32 arm movements per stroke session. Recovery needs hundreds.</li></ul></div>
+        <div><h3>Why it gets worse</h3><ul><li>A projected shortage of 11 million health workers by 2030</li><li>Dutch physiotherapists warn a third may quit within five years</li><li>Waiting lists of over a year at rehab centre Klimmendaal, where this work is fully manual</li></ul></div>
+      </div>
+      <p class="fine">Sources: WHO · Cieza et al., Lancet 2020 · APTA 2024 · Lang et al. 2009 · KNGF 2025.</p>
+    </div>
+  </section>
+  <section class="ch" id="who" data-ex="reach" data-view="wide">
+    <div class="panel card">
+      <div class="headblock"><p class="eyebrow">The market</p><h2>People who need to move again</h2></div>
+      <ul class="aud">
+        <li><b>After a stroke</b><span>A weak arm that needs many repetitions</span></li>
+        <li><b>After a fracture or surgery</b><span>A stiff shoulder or elbow</span></li>
+        <li><b>After a knee or hip replacement</b><span>A thigh muscle that has to regain strength</span></li>
+        <li><b>Older adults losing muscle</b><span>Strength to stand up and stay independent</span></li>
+        <li><b>Parkinson’s and multiple sclerosis</b><span>Larger, steadier movements</span></li>
+      </ul>
+      <p class="what">Close to home: gyms, care homes, pools, community centres. Anywhere with staff on site.</p>
+    </div>
+  </section>
+
+  <section class="ch" id="path" data-ex="reach" data-view="gym">
+    <div class="panel card">
+      <div class="headblock"><p class="eyebrow">The solution</p><h2>Rehab continues close to home</h2></div>
+      <ol class="flow">
+        <li><b>Discharge from hospital or rehab</b></li>
+        <li><b>Enrol at a nearby gym, care home or centre</b></li>
+        <li><b>Scan the station with the Vita app</b></li>
+        <li><b>Train, with staff keeping watch</b></li>
+      </ol>
+      <p class="what">Progress is measured and reported to their physiotherapist or rehabilitation centre.</p>
+    </div>
+  </section>
+
+  <section class="ch" id="product" data-ex="reach" data-cycle="1" data-fac="1" data-arrive="1">
+    <div class="panel card">
+      <div class="headblock"><p class="eyebrow">The product</p><h2>One station, six exercises</h2></div>
+      <ul class="exl" id="exl"></ul>
+      <p class="what">The robot guides, resists or measures. Every repetition is recorded.</p>
+      <p class="what" style="border-left:3px solid currentColor;padding-left:12px;font-weight:600">Exercises approved by Katja, rehabilitation specialist at Klimmendaal for over 10 years. Today this is done fully by hand, and her centre has a waiting list of over a year.</p>
+    </div>
+  </section>
+  <section class="ch" id="safety" data-ex="reach" data-view="stop" data-fac="1" data-stop="1">
+    <div class="panel card">
+      <div class="headblock"><p class="eyebrow">Safety</p><h2>One red button stops it</h2></div>
+      <ul class="exl">
+        <li><b>Programmed</b><span>Every exercise is set in advance, with limits on force and speed</span></li>
+        <li><b>No expert needed</b><span>Any staff member can keep an eye on the station</span></li>
+        <li><b>Emergency</b><span>They press the red button and the arm stops at once</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- the six exercise sections are written here from the data below -->
+</main>
+
+<section class="solid green slide" id="shift">
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">Why a station</p><h2>More practice between visits, for less.</h2></div>
+    <div class="cols">
+      <div><h3>Physiotherapy alone</h3><ul><li>$75–150 per session without insurance (US)</li><li>Practice mostly happens during visits, once or twice a week</li><li>Every extra hour of training needs a therapist</li></ul></div>
+      <div><h3>With a Vita station</h3><ul><li>A session costs a fraction of that, as part of a monthly subscription</li><li>Patients train between visits, several times a week, so they progress faster</li><li>Therapists spend their time where it is needed most, which takes pressure off care</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="solid green slide" id="app">
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">The Vita app</p><h2>Scan. Train. See your progress.</h2></div>
+    <div class="phones">
+      <figure><div class="phone"><div class="scr">
+        <p class="hd"><svg class="wv" viewBox="0 0 26 22" aria-hidden="true"><path d="M2 8c3 0 4 10 7 10S14 3 18 3" fill="none" stroke="#064D3B" stroke-width="3.2" stroke-linecap="round"/><circle cx="22.5" cy="4" r="2.6" fill="#34D399"/></svg>vita<em>Week 4 of 8</em></p>
+        <p class="ey">Scan</p><p class="h1">Point your phone at the code on the station.</p>
+        <div class="cam"><div class="qr" id="qr"></div><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><span class="beam"></span></div>
+        <p class="btn">Scan the code</p>
+        <p class="tabs"><span><i></i>Today</span><span class="on"><i></i>Scan</span><span><i></i>Progress</span><span><i></i>Report</span></p>
+      </div></div><figcaption><b>1 · Scan</b><span>Scan the station with your phone.</span></figcaption></figure>
+      <figure><div class="phone"><div class="scr">
+        <p class="hd"><svg class="wv" viewBox="0 0 26 22" aria-hidden="true"><path d="M2 8c3 0 4 10 7 10S14 3 18 3" fill="none" stroke="#064D3B" stroke-width="3.2" stroke-linecap="round"/><circle cx="22.5" cy="4" r="2.6" fill="#34D399"/></svg>vita<em>Week 4 of 8</em></p>
+        <p class="ey">Exercise 1 of 3</p><p class="h1">Your plan, set by your specialist</p>
+        <div class="tile demo"><svg viewBox="0 0 150 94" role="img" aria-label="Animated demonstration of the exercises">
+          <ellipse class="fl" cx="78" cy="88.5" rx="66" ry="3.5"/><path class="st" d="M33 36 L33 66 L62 66 M36 66 L36 87 M60 66 L60 87"/>
+          <rect class="tb" x="106" y="62" width="25" height="24" rx="4"/><rect class="tg" x="109" y="70" width="19" height="6" rx="2"/><path class="rc" d="M118 62 L118 47"/>
+          <g opacity="1"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" calcMode="discrete" values="1;0;0" keyTimes="0;.3333;.6667"/><text x="144" y="13" text-anchor="end" class="t1">Forward reach</text><circle class="gd" cx="81" cy="38.5" r="4.5"/><path class="lg" d="M47 61 L71 62"></path><path class="lg" d="M71 62 L71 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="sh" d="M71 84 L78 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="rb" d="M118 47 L91.8 30.4 L66 47.5"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M118 47 L91.8 30.4 L66 47.5;M118 47 L92.2 29.8 L66.6 47.2;M118 47 L93.4 28.1 L68.2 46.2;M118 47 L95.3 25.9 L70.6 44.7;M118 47 L97.7 23.6 L73.5 43;M118 47 L100.3 21.6 L76.4 41.3;M118 47 L102.7 20 L78.8 39.8;M118 47 L104.4 19.2 L80.4 38.8;M118 47 L105 18.9 L81 38.5;M118 47 L104.4 19.2 L80.4 38.8;M118 47 L102.7 20 L78.8 39.8;M118 47 L100.3 21.6 L76.4 41.3;M118 47 L97.7 23.6 L73.5 43;M118 47 L95.3 25.9 L70.6 44.7;M118 47 L93.4 28.1 L68.2 46.2;M118 47 L92.2 29.8 L66.6 47.2;M118 47 L91.8 30.4 L66 47.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="tr" d="M47 61 L49 34"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M47 61 L49 34;M47 61 L49.1 34;M47 61 L49.5 34.1;M47 61 L50.1 34.2;M47 61 L50.8 34.3;M47 61 L51.4 34.4;M47 61 L52 34.5;M47 61 L52.4 34.6;M47 61 L52.5 34.6;M47 61 L52.4 34.6;M47 61 L52 34.5;M47 61 L51.4 34.4;M47 61 L50.8 34.3;M47 61 L50.1 34.2;M47 61 L49.5 34.1;M47 61 L49.1 34;M47 61 L49 34" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="7" cx="50.5" cy="22"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="50.5;50.6;51;51.6;52.2;52.9;53.5;53.9;54;53.9;53.5;52.9;52.2;51.6;51;50.6;50.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="22;22;22.1;22.2;22.3;22.4;22.5;22.6;22.6;22.6;22.5;22.4;22.3;22.2;22.1;22;22" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hr" r="4" cx="45" cy="16.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="45;45.1;45.5;46.1;46.8;47.4;48;48.4;48.5;48.4;48;47.4;46.8;46.1;45.5;45.1;45" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="16.5;16.5;16.6;16.7;16.8;16.9;17;17.1;17.1;17.1;17;16.9;16.8;16.7;16.6;16.5;16.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><path class="am" d="M49 34 L49.5 48.5 L63 48"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M49 34 L49.5 48.5 L63 48;M49.1 34 L50.1 48.5 L63.6 47.7;M49.5 34.1 L51.8 48.4 L65.2 46.7;M50.1 34.2 L54.4 48 L67.6 45.2;M50.8 34.3 L57.5 47.1 L70.5 43.5;M51.4 34.4 L60.5 45.7 L73.4 41.8;M52 34.5 L62.8 44.1 L75.8 40.3;M52.4 34.6 L64.4 42.7 L77.4 39.3;M52.5 34.6 L64.9 42.2 L78 39;M52.4 34.6 L64.4 42.7 L77.4 39.3;M52 34.5 L62.8 44.1 L75.8 40.3;M51.4 34.4 L60.5 45.7 L73.4 41.8;M50.8 34.3 L57.5 47.1 L70.5 43.5;M50.1 34.2 L54.4 48 L67.6 45.2;M49.5 34.1 L51.8 48.4 L65.2 46.7;M49.1 34 L50.1 48.5 L63.6 47.7;M49 34 L49.5 48.5 L63 48" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="3.2" cx="63" cy="48"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="63;63.6;65.2;67.6;70.5;73.4;75.8;77.4;78;77.4;75.8;73.4;70.5;67.6;65.2;63.6;63" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="48;47.7;46.7;45.2;43.5;41.8;40.3;39.3;39;39.3;40.3;41.8;43.5;45.2;46.7;47.7;48" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hn" r="2.6" cx="66" cy="47.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="66;66.6;68.2;70.6;73.5;76.4;78.8;80.4;81;80.4;78.8;76.4;73.5;70.6;68.2;66.6;66" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="47.5;47.2;46.2;44.7;43;41.3;39.8;38.8;38.5;38.8;39.8;41.3;43;44.7;46.2;47.2;47.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle></g>
+          <g opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" calcMode="discrete" values="0;1;0" keyTimes="0;.3333;.6667"/><text x="144" y="13" text-anchor="end" class="t1">Shoulder circles</text><circle class="gd" cx="73" cy="42.5" r="6.5"/><path class="lg" d="M47 61 L71 62"></path><path class="lg" d="M71 62 L71 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="sh" d="M71 84 L78 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="rb" d="M118 47 L101.6 20.7 L79.5 42.5"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M118 47 L101.6 20.7 L79.5 42.5;M118 47 L99.7 21.9 L79 45;M118 47 L97.7 23.5 L77.6 47.1;M118 47 L95.9 25.2 L75.5 48.5;M118 47 L94.6 26.7 L73 49;M118 47 L93.6 27.8 L70.5 48.5;M118 47 L93.2 28.4 L68.4 47.1;M118 47 L93.2 28.4 L67 45;M118 47 L93.7 27.7 L66.5 42.5;M118 47 L94.8 26.4 L67 40;M118 47 L96.5 24.7 L68.4 37.9;M118 47 L98.4 23 L70.5 36.5;M118 47 L100.4 21.5 L73 36;M118 47 L102 20.4 L75.5 36.5;M118 47 L102.9 19.9 L77.6 37.9;M118 47 L102.7 20 L79 40;M118 47 L101.6 20.7 L79.5 42.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="tr" d="M47 61 L49 34"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="7" cx="50.5" cy="22"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="22;22;22;22;22;22;22;22;22;22;22;22;22;22;22;22;22" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hr" r="4" cx="45" cy="16.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="45;45;45;45;45;45;45;45;45;45;45;45;45;45;45;45;45" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><path class="am" d="M49 34 L62.7 38.9 L76.5 43"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M49 34 L62.7 38.9 L76.5 43;M49 34 L62.2 40 L76 45.5;M49 34 L61.6 41.1 L74.6 47.6;M49 34 L60.4 42.9 L72.5 49;M49 34 L56.9 46.1 L70 49.5;M49 34 L54.1 47.6 L67.5 49;M49 34 L51.9 48.2 L65.4 47.6;M49 34 L50.8 48.4 L64 45.5;M49 34 L51.1 48.3 L63.5 43;M49 34 L52.8 48 L64 40.5;M49 34 L55.1 47.1 L65.4 38.4;M49 34 L57.3 45.9 L67.5 37;M49 34 L59.1 44.4 L70 36.5;M49 34 L60.4 43 L72.5 37;M49 34 L61.4 41.4 L74.6 38.4;M49 34 L62.6 39.1 L76 40.5;M49 34 L62.7 38.9 L76.5 43" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="3.2" cx="76.5" cy="43"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="76.5;76;74.6;72.5;70;67.5;65.4;64;63.5;64;65.4;67.5;70;72.5;74.6;76;76.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="43;45.5;47.6;49;49.5;49;47.6;45.5;43;40.5;38.4;37;36.5;37;38.4;40.5;43" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hn" r="2.6" cx="79.5" cy="42.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="79.5;79;77.6;75.5;73;70.5;68.4;67;66.5;67;68.4;70.5;73;75.5;77.6;79;79.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="42.5;45;47.1;48.5;49;48.5;47.1;45;42.5;40;37.9;36.5;36;36.5;37.9;40;42.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle></g>
+          <g opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" calcMode="discrete" values="0;0;1" keyTimes="0;.3333;.6667"/><text x="144" y="13" text-anchor="end" class="t1">Knee extension</text><path class="lg" d="M47 61 L71 62"></path><path class="lg" d="M71 62 L71 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 62 L71 84;M71 62 L72 84;M71 62 L74.7 83.7;M71 62 L78.6 82.6;M71 62 L83 80.5;M71 62 L86.7 77.4;M71 62 L89.3 74.2;M71 62 L90.7 71.9;M71 62 L91.1 71;M71 62 L90.7 71.9;M71 62 L89.3 74.2;M71 62 L86.7 77.4;M71 62 L83 80.5;M71 62 L78.6 82.6;M71 62 L74.7 83.7;M71 62 L72 84;M71 62 L71 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="sh" d="M71 84 L78 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 84 L78 84;M72 84 L79 83.7;M74.7 83.7 L81.6 82.5;M78.6 82.6 L85.2 80.2;M83 80.5 L88.8 76.7;M86.7 77.4 L91.6 72.4;M89.3 74.2 L93.2 68.4;M90.7 71.9 L93.8 65.6;M91.1 71 L93.9 64.6;M90.7 71.9 L93.8 65.6;M89.3 74.2 L93.2 68.4;M86.7 77.4 L91.6 72.4;M83 80.5 L88.8 76.7;M78.6 82.6 L85.2 80.2;M74.7 83.7 L81.6 82.5;M72 84 L79 83.7;M71 84 L78 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="rb" d="M118 47 L87.2 50.7 L74.5 79"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M118 47 L87.2 50.7 L74.5 79;M118 47 L87.2 50.2 L75.2 78.8;M118 47 L87 48.7 L77.3 78.2;M118 47 L87 46.5 L80.2 76.7;M118 47 L87.2 43.6 L83.2 74.4;M118 47 L87.7 40.5 L85.6 71.4;M118 47 L88.5 37.6 L87.1 68.5;M118 47 L89.2 35.5 L87.8 66.5;M118 47 L89.5 34.8 L87.9 65.7;M118 47 L89.2 35.5 L87.8 66.5;M118 47 L88.5 37.6 L87.1 68.5;M118 47 L87.7 40.5 L85.6 71.4;M118 47 L87.2 43.6 L83.2 74.4;M118 47 L87 46.5 L80.2 76.7;M118 47 L87 48.7 L77.3 78.2;M118 47 L87.2 50.2 L75.2 78.8;M118 47 L87.2 50.7 L74.5 79" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="tr" d="M47 61 L49 34"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="7" cx="50.5" cy="22"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="22;22;22;22;22;22;22;22;22;22;22;22;22;22;22;22;22" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hr" r="4" cx="45" cy="16.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="45;45;45;45;45;45;45;45;45;45;45;45;45;45;45;45;45" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><path class="am" d="M49 34 L52.3 48.1 L62 57.5"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="3.2" cx="62" cy="57.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="62;62;62;62;62;62;62;62;62;62;62;62;62;62;62;62;62" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hn" r="2.6" cx="74.5" cy="79"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="74.5;75.2;77.3;80.2;83.2;85.6;87.1;87.8;87.9;87.8;87.1;85.6;83.2;80.2;77.3;75.2;74.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="79;78.8;78.2;76.7;74.4;71.4;68.5;66.5;65.7;66.5;68.5;71.4;74.4;76.7;78.2;78.8;79" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle></g>
+          <circle class="jt" cx="118" cy="47" r="4.2"/>
+        </svg></div>
+        <p class="cnt"><b>7</b> of 12 reps</p><p class="pbar"><i></i></p>
+        <p class="two"><span class="btn ghost">Pause</span><span class="btn">Finish</span></p>
+        <p class="tabs"><span class="on"><i></i>Today</span><span><i></i>Scan</span><span><i></i>Progress</span><span><i></i>Report</span></p>
+      </div></div><figcaption><b>2 · Your exercises</b><span>Shown as animations. Set by your specialist for your injury.</span></figcaption></figure>
+      <figure><div class="phone"><div class="scr">
+        <p class="hd"><svg class="wv" viewBox="0 0 26 22" aria-hidden="true"><path d="M2 8c3 0 4 10 7 10S14 3 18 3" fill="none" stroke="#064D3B" stroke-width="3.2" stroke-linecap="round"/><circle cx="22.5" cy="4" r="2.6" fill="#34D399"/></svg>vita<em>Week 4 of 8</em></p>
+        <p class="ey">Progress</p><p class="h1">You reach further every week.</p>
+        <div class="tile"><small>Forward reach</small><b>41 cm</b><u>+3 cm this week</u>
+          <svg class="chart" viewBox="0 0 150 54" aria-hidden="true"><path d="M4 6H146" stroke="#8A9A92" stroke-width="1" stroke-dasharray="3 3" fill="none"/><path class="ar" d="M4 46 24 37 44 26 64 19V54H4z"/><path class="ln" pathLength="1" d="M4 46 24 37 44 26 64 19"/><circle cx="64" cy="19" r="3.5"/></svg></div>
+        <p class="row"><span>Shoulder lift</span><em class="up">+9°</em></p>
+        <p class="row"><span>Leg strength</span><em class="up">+8%</em></p>
+        <p class="tabs"><span><i></i>Today</span><span><i></i>Scan</span><span class="on"><i></i>Progress</span><span><i></i>Report</span></p>
+      </div></div><figcaption><b>3 · Progress</b><span>Every repetition is measured.</span></figcaption></figure>
+      <figure><div class="phone"><div class="scr">
+        <p class="hd"><svg class="wv" viewBox="0 0 26 22" aria-hidden="true"><path d="M2 8c3 0 4 10 7 10S14 3 18 3" fill="none" stroke="#064D3B" stroke-width="3.2" stroke-linecap="round"/><circle cx="22.5" cy="4" r="2.6" fill="#34D399"/></svg>vita<em>Week 4 of 8</em></p>
+        <p class="ey">Report</p><p class="h1">Your weekly summary</p>
+        <p class="ok"><i>✓</i>Shared with your physio or rehab centre every Friday</p>
+        <p class="row"><span>Sessions</span><em>3 of 3</em></p>
+        <p class="row"><span>Forward reach</span><em class="up">+3 cm</em></p>
+        <p class="row"><span>Pain reported</span><em>None</em></p>
+        <p class="row"><span>Share with my care team</span><em class="sw"></em></p>
+        <p class="tabs"><span><i></i>Today</span><span><i></i>Scan</span><span><i></i>Progress</span><span class="on"><i></i>Report</span></p>
+      </div></div><figcaption><b>4 · Report</b><span>A summary goes to the physiotherapist or rehabilitation centre where they are enrolled.</span></figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="solid slide" id="business">
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">The business model</p><h2>A station that pays for itself</h2></div>
+    <div class="bm">
+      <div><p class="k">Where</p><b>Close to home</b><ul><li>Gyms, care homes, pools, community centres</li><li>Staff on site keep watch</li></ul></div>
+      <div><p class="k">How</p><b>The Vita app</b><ul><li>Shows each patient the plan their specialist set</li><li>No expert needed during the session</li></ul></div>
+      <div><p class="k">For the host</p><b>Buy or rent</b><ul><li>Buy outright for $25–35k, or rent per month</li><li>Runs all day. Bought, it is earned back in 3–11 months*</li></ul></div>
+      <div><p class="k">Who pays</p><b>Members</b><ul><li>A monthly Vita subscription on top of the membership</li><li>No insurer needed to start</li></ul></div>
+    </div>
+    <p class="fine">* Example: subscription income equal to $25 per 30-minute session, before running costs. A full 8-hour day earns it back in 3–4 months, 3–4 hours a day in 6–11 months. To be validated.</p>
+  </div>
+</section>
+
+<section class="solid green slide" id="next">
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">Next</p><h2>What we prove next</h2></div>
+    <div class="steps">
+      <div><b>1</b><h3>It is safe</h3><p>Force and speed limits, an emergency stop, tests on healthy volunteers.</p></div>
+      <div><b>2</b><h3>It measures correctly</h3><p>Robot readings compared with the tools therapists use today.</p></div>
+      <div><b>3</b><h3>Patients improve</h3><p>A pilot in one practice over six to eight weeks.</p></div>
+    </div>
+    <p class="lead">It is likely a medical device under EU rules, so the pilot and certification come first.</p>
+  </div>
+</section>
+
+<section class="solid slide" id="vision">
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">The long term</p><h2>Every rep at exactly the weight you can handle.</h2></div>
+    <div class="vis">
+      <ol class="hz">
+        <li><b>Now</b><div><h3>Rehabilitation and elderly care</h3><p>Patients keep training after hospital, close to home. Older people in care homes get the rehab they need to stay strong and independent.</p></div></li>
+        <li class="far"><b>Later</b><div><h3>Strength training for everyone</h3><p>As the station gets cheaper, it becomes the best way to train. The arm feels how much force you produce and sets the load to match, every rep, so you grow as fast as your body allows.</p></div></li>
+      </ol>
+      <figure class="vchart">
+        <svg viewBox="0 0 400 250" role="img" aria-label="Chart: your strength rises smoothly; fixed weights jump in steps and fall behind; the load Vita sets follows your strength.">
+          <path class="gr" d="M40 30H380M40 90H380M40 150H380M40 210H380"/>
+          <path class="cap" pathLength="1" d="M40 200 C120 175 200 120 380 48"/>
+          <path class="fix" pathLength="1" d="M40 210H120V180H220V140H310V100H380"/>
+          <path class="vita" pathLength="1" d="M40 207 C120 183 200 129 380 58"/>
+          <circle class="dot" cx="380" cy="58" r="6"/>
+          <text x="40" y="236">Week 1</text><text x="380" y="236" text-anchor="end">Week 12</text>
+        </svg>
+        <figcaption><span><i class="k1"></i>Your strength</span><span><i class="k2"></i>Load Vita sets</span><span><i class="k3"></i>Fixed weights</span></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="solid slide" id="overview" hidden>
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">The evidence</p><h2>The evidence at a glance</h2><p class="lead">The exercises are established therapy. What is unproven is a robot arm delivering them.</p></div>
+    <div class="tablewrap"><table><thead><tr><th>Exercise</th><th>Robot's role</th><th>Main effect on the body</th><th>Evidence</th></tr></thead><tbody id="tbody"></tbody></table></div>
+  </div>
+</section>
+
+<section class="solid green slide" id="limits" hidden>
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">Appendix · Limits</p><h2>What the station does not do</h2></div>
+    <div class="cols">
+      <div><h3>It does not treat</h3><ul><li>Walking and balance</li><li>Fine hand and finger function</li><li>Pain or the injury itself</li></ul></div>
+      <div><h3>It is not for</h3><ul><li>Unhealed fractures or fresh surgical repairs</li><li>Acute inflammation or severe pain</li><li>Patients who cannot say stop</li></ul></div>
+    </div>
+    <p class="lead">The therapist sets every limit. The robot never decides the treatment.</p>
+  </div>
+</section>
+
+<section class="solid" id="feedback" hidden>
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">For the therapist</p><h2>Your feedback</h2><p class="lead">Rate each exercise, add anything else, then copy everything and send it to us.</p></div>
+    <div class="fbrows" id="fbrows"></div>
+    <div class="final">
+      <label>Your name and profession<input type="text" id="fb-name" autocomplete="off" placeholder="For example: occupational therapist, 20 years in elderly care"></label>
+      <label>Which patients would you try this with first?<input type="text" id="fb-first" autocomplete="off"></label>
+      <label class="wide">What is missing, wrong or unsafe?<textarea id="fb-overall"></textarea></label>
+      <label class="wide">Which exercise from your own practice should we add?<textarea id="fb-add"></textarea></label>
+    </div>
+    <div class="send"><button type="button" id="copy">Copy all feedback</button><span id="status">Your notes are saved in this browser only. Nothing is sent until you copy and send it.</span></div>
+    <textarea id="out" hidden readonly aria-label="All feedback as text" style="min-height:220px"></textarea>
+  </div>
+</section>
+
+<section class="solid" id="sources" hidden>
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">Sources</p><h2>The studies behind each exercise</h2><p class="lead">The first group was checked online. The exercise studies below are cited from memory and still need checking against the original papers.</p></div>
+    <div class="refs" id="refs"></div>
+  </div>
+</section>
+
+<script>
+// The six exercises: what happens, why it should work, who it may help, what is measured, the studies, and a question for the therapist.
+const SCI = [
+  { id: 'reach', pT: 'Shoulder, triceps and trunk', pH: 'Stroke, arm fractures, bed rest', pP: 'Small gains after stroke. Equal to therapy at the same dose.', pW: 'Anna reaches to a target. The arm helps only when she slows.', jt: 'shoulder lifts, elbow straightens', tgt: 'Shoulder and upper arm (deltoid, triceps) and the trunk', tgtHow: 'They lift and straighten the arm on every reach, which rebuilds strength and timing.', sWhat: 'Anna reaches forward to a target. The arm helps only when she slows.', sWhy: 'Repeated, effortful reaching strengthens the nerve pathways that still work. Help given too early makes the patient passive.', sMeasure: 'Reach distance, and how much help was needed.', sProof: 'Robot arm training gives small gains after stroke and matches usual therapy at equal dose.', sCare: 'Never pull on a weak shoulder after stroke.', name: 'Forward reach', mode: 'Assist as needed', daily: 'reaching for a cup, a shelf, a door handle', level: 'mod', levelText: 'Evidence: moderate', effect: 'Relearning of arm movement through repetition',
+    what: 'Anna holds the handle and reaches forward to a target ring. The arm follows her and adds help only if she slows or stops short. Reaching past arm’s length also makes the trunk lean, which trains sitting balance.',
+    why: 'After a stroke or a long period of disuse, the brain’s map of the arm shrinks. Repeating a goal-directed movement with real effort strengthens the remaining nerve pathways. This is called use-dependent plasticity. Help that arrives too early lets the patient go passive, so the robot waits and gives the smallest push that completes the reach.',
+    who: ['Arm weakness after stroke', 'Shoulder or elbow after a fracture or weeks in a sling', 'Loss of condition after bed rest'],
+    measure: 'Reach distance in centimetres, and the share of the movement the robot had to help with. A related bedside measure is the Functional Reach Test.',
+    studies: [['French et al., Cochrane Review, 2016', 'Repetitive task training after stroke improves arm and leg function. The effect is modest and depends on the amount of practice.'], ['Mehrholz et al., Cochrane Review, 2018', 'Robot-assisted arm training after stroke gives small gains in arm function, strength and daily activities.'], ['Rodgers et al. (RATULS), The Lancet, 2019', 'In 770 patients, robot training did not improve arm function more than usual care, and daily activities did not improve.'], ['Dean and Shepherd, Stroke, 1997', 'Practising seated reaching beyond arm’s length improved sitting balance and reach distance after stroke.']],
+    care: 'A weak shoulder after stroke can partly slip out of its socket. The robot must never pull on the arm, and a painful shoulder needs a therapist’s check first.',
+    ask: 'Would you train forward reach in sitting this way, and what would you watch for at the shoulder?' },
+  { id: 'stretch', pT: 'Shoulder capsule and the muscles around it', pH: 'Frozen shoulder, stiffness after fracture or surgery', pP: 'Gentle movement inside the pain limit beats forceful stretching.', pW: 'The robot lifts a relaxed arm and stops at a set resistance.', jt: 'shoulder is lifted to its limit', tgt: 'Shoulder joint capsule and the muscles around it', tgtHow: 'The tissue is held at its limit, so it lengthens a little each session.', sWhat: 'The robot lifts a relaxed arm slowly and stops at a set resistance.', sWhy: 'A slow, low-force stretch lengthens a tight joint capsule. The force limit keeps it below the pain point.', sMeasure: 'Shoulder angle in degrees, and force at the end of the range.', sProof: 'Gentle movement inside the pain limit beat forceful stretching in frozen shoulder. Stretch alone does little after stroke.', sCare: 'Never past the pain limit or the surgeon’s protocol.', name: 'Assisted stretch', mode: 'Slow passive stretch', daily: 'getting an arm into a sleeve, reaching a high shelf, washing hair', level: 'mixed', levelText: 'Evidence: mixed', effect: 'Lengthening of a tight joint capsule and shortened muscle',
+    what: 'Anna lets her arm go loose. The robot lifts it slowly in front of her until it feels a set resistance, 9 newtons in this example. It holds for a few seconds and lowers the arm again.',
+    why: 'When a joint is not moved, the capsule around it tightens and the muscles shorten. A slow, low-force stretch lets this tissue lengthen gradually, an effect called creep. Repeated over weeks, the tissue remodels at the longer length. A fixed force limit keeps the stretch below the point where pain makes the muscles guard.',
+    who: ['Frozen shoulder', 'Stiffness after a shoulder or upper-arm fracture', 'After shoulder surgery, inside the surgeon’s allowed range'],
+    measure: 'Passive shoulder flexion in degrees, and the force at the end of the range. A therapist reads the same angle with a goniometer. The robot takes it in the same position every visit.',
+    studies: [['Diercks and Stevens, Journal of Shoulder and Elbow Surgery, 2004', 'In frozen shoulder, gentle movement inside the pain limit gave better results than intensive stretching past it. This supports a strict force limit.'], ['Page et al., Cochrane Review, 2014', 'For frozen shoulder, exercise and mobilisation help most when combined with other treatment such as a steroid injection. Alone, the benefit is uncertain.'], ['Harvey et al., Cochrane Review, 2017', 'In people with neurological conditions, stretching did not produce a clinically important gain in joint mobility. Stretch alone should not be offered as a treatment for contracture after stroke.']],
+    care: 'Never beyond the pain limit or the surgeon’s protocol. Not for fragile bones, an unstable shoulder or a fresh repair.',
+    ask: 'What force or pain limit would you accept for a stretch given by a machine?' },
+  { id: 'circle', pT: 'Rotator cuff and shoulder blade', pH: 'Stiff shoulders, stroke, Parkinson’s', pP: 'Arm support enlarges reach. Smoothness tracks recovery.', pW: 'Anna draws circles. The robot follows and can carry her arm.', jt: 'shoulder moves through its full circle', tgt: 'Rotator cuff and shoulder-blade muscles', tgtHow: 'They steer the arm through its full range, which keeps the joint supple and stable.', sWhat: 'Anna draws slow circles. The robot follows and can carry the weight of her arm.', sWhy: 'Moving through the full range keeps the shoulder supple. Taking weight off a weak arm enlarges the area the hand can reach.', sMeasure: 'Circle size and smoothness of the path.', sProof: 'Arm support increased reach after stroke, and smoother movement tracks recovery.', sCare: 'Stop where pain starts and make the circle smaller.', name: 'Shoulder circles', mode: 'Follows the hand, can carry the arm’s weight', daily: 'dressing, combing hair, wiping a table', level: 'early', levelText: 'Evidence: early', effect: 'Active range and control of the shoulder',
+    what: 'Anna draws slow circles with her hand. The robot follows without resisting. It can also carry part of the weight of her arm, so a weak shoulder can move through a larger range.',
+    why: 'Moving a joint through its range spreads joint fluid over the cartilage and keeps the shoulder blade and upper arm working together. After a stroke, lifting the arm against gravity often triggers unwanted bending of the elbow. Taking weight off the arm reduces this and enlarges the area the hand can reach. The smoothness of the circle shows how well the movement is controlled.',
+    who: ['Shoulder stiffness after immobilisation', 'Arm weakness after stroke', 'Parkinson’s disease, where movements become small'],
+    measure: 'Circle size and smoothness of the hand path. Smoothness is a research measure with no direct bedside equivalent.',
+    studies: [['Sukal, Ellis and Dewald, Experimental Brain Research, 2007', 'Supporting the weight of the arm increased the reaching area of people with stroke.'], ['Rohrer et al., Journal of Neuroscience, 2002', 'Hand movements of stroke patients became measurably smoother as they recovered, so smoothness tracks motor recovery.'], ['Ebersbach et al., Movement Disorders, 2010', 'In Parkinson’s disease, training large movements (LSVT BIG) improved motor scores more than general exercise.']],
+    care: 'If part of the circle hurts, stop there and make the circle smaller.',
+    ask: 'Would you rather train circles, or a real task such as combing hair or putting on a sleeve?' },
+  { id: 'follow', pT: 'Forearm, hand and movement control', pH: 'Stroke, multiple sclerosis, Parkinson’s', pP: 'Tracking training improved hand function after stroke.', pW: 'Anna follows a moving dot. The robot records the error.', jt: 'elbow and shoulder make small, quick changes', tgt: 'Forearm and hand, and the brain’s movement control', tgtHow: 'Constant small corrections train accuracy more than strength.', sWhat: 'Anna keeps her hand on a moving dot. The robot records the error.', sWhy: 'The brain corrects each movement from the error it sees. Instant feedback speeds up this learning.', sMeasure: 'Average distance from the dot.', sProof: 'Tracking training improved hand function after stroke, and robot measures predict clinical scores.', sCare: 'A better score must still be checked against a daily task.', name: 'Follow the dot', mode: 'Feather-light, records the error', daily: 'pouring, buttoning, writing', level: 'early', levelText: 'Evidence: early', effect: 'Coordination and accuracy through error-based learning',
+    what: 'A yellow dot moves along a figure of eight. Anna keeps her hand on it. The robot adds almost no force and records how far her hand is from the dot.',
+    why: 'Tracking a moving target is error-based learning. The brain compares where the hand is with where it should be and corrects the next movement, a process driven by the cerebellum. Seeing the error straight away speeds up the learning. A clear outside target also helps people with Parkinson’s disease, who find it hard to start and size movements on their own.',
+    who: ['Poor coordination after stroke', 'Tremor and unsteady movement in multiple sclerosis', 'Parkinson’s disease', 'Regaining control after an arm injury'],
+    measure: 'Average distance between hand and dot in centimetres, and where on the path control is weakest.',
+    studies: [['Carey et al., Brain, 2002', 'Finger-tracking training improved hand function in chronic stroke, and brain scans showed activity shifting back towards the damaged side.'], ['Bosecker et al., Neurorehabilitation and Neural Repair, 2010', 'Movement measures recorded by a robot predicted clinical scores such as the Fugl-Meyer Assessment.'], ['Lo et al., New England Journal of Medicine, 2010', 'Robot therapy built on reaching for targets matched intensive conventional therapy in chronic stroke.']],
+    care: 'A better tracking score does not show that daily tasks became easier. It has to be checked against a functional test.',
+    ask: 'Which everyday task should the path of the dot imitate?' },
+  { id: 'push', pT: 'Chest, shoulder and triceps', pH: 'Muscle-loss screening, comparing left and right', pP: 'Removes the tester error of hand-held strength tests.', pW: 'The handle locks. Anna pushes, and the robot reads the peak force.', jt: 'elbow and shoulder hold still under load', tgt: 'Chest, shoulder and triceps', tgtHow: 'They contract hard while the joint stays still, which builds strength and lets it be measured.', sWhat: 'The handle locks. Anna pushes for a few seconds and the robot reads the peak force.', sWhy: 'Pushing against a fixed point works the muscle without moving a painful joint. Low strength is the first sign of muscle loss with age.', sMeasure: 'Peak force in newtons, taken the same way every visit.', sProof: 'Hand-held strength testing is valid but depends on the tester. A fixed robot removes that error.', sCare: 'Breathe out while pushing. Heart patients need medical clearance.', name: 'Strength test', mode: 'Holds still, reads the force', daily: 'pushing up from a chair, opening a heavy door', level: 'strong', levelText: 'Evidence: strong for measuring', effect: 'Objective strength measurement, and isometric strengthening',
+    what: 'The handle locks in place. Anna pushes against it as hard as is comfortable for a few seconds. The robot reads the peak force.',
+    why: 'Pushing against something that does not move is an isometric contraction. The muscle works hard while the joint stays still, which suits a painful or stiff joint. In the first weeks of training, strength rises mainly because the nervous system recruits more muscle fibres. Muscle growth follows later. Low strength is the first sign used to diagnose sarcopenia, the loss of muscle with age.',
+    who: ['Screening older people for muscle loss', 'Comparing the injured side with the healthy side', 'Weakness after stroke', 'Joints that hurt when they move'],
+    measure: 'Peak force in newtons. Therapists measure this with a hand-held dynamometer, where the result depends on how strong and steady the tester is. A fixed robot removes that variation.',
+    studies: [['Stark et al., PM&R, 2011', 'Hand-held dynamometry agrees well with laboratory strength machines. The tester is the main source of error.'], ['Cruz-Jentoft et al. (EWGSOP2), Age and Ageing, 2019', 'European consensus: low muscle strength is the primary criterion for sarcopenia.'], ['Rantanen et al., JAMA, 1999', 'Grip strength in midlife predicted disability 25 years later.']],
+    care: 'Hard static pushing raises blood pressure. Patients should breathe out while pushing, and people with heart conditions need medical clearance.',
+    ask: 'Which strength measures do you record today, and would a force in newtons be useful in your reports?' },
+  { id: 'leg', pT: 'Thigh muscle (quadriceps)', pH: 'Knee or hip replacement, osteoarthritis, muscle loss', pP: 'Resistance training restores strength at any age.', pW: 'Anna straightens her knee against a set resistance.', jt: 'knee straightens from hanging to nearly level', tgt: 'Thigh muscle (quadriceps)', tgtHow: 'It lifts the lower leg against a load, the same work as standing up from a chair.', sWhat: 'Anna straightens her knee against a set resistance from the robot.', sWhy: 'The thigh muscle wastes fast after surgery and with knee pain. A load that rises each week rebuilds it.', sMeasure: 'Knee angle and force, left against right.', sProof: 'Resistance training restores strength at any age. Passive knee machines do not help.', sCare: 'Restricted after ligament surgery. Follow the surgeon’s protocol.', name: 'Knee extension', mode: 'Adds gentle resistance', daily: 'standing up, climbing stairs, steadier walking', level: 'strong', levelText: 'Evidence: strong', effect: 'Stronger thigh muscle through progressive resistance',
+    what: 'A cuff on the shin connects Anna’s lower leg to the robot. She straightens her knee against a set resistance, holds, and lowers slowly.',
+    why: 'The thigh muscle, the quadriceps, straightens the knee and carries the body when standing up and on stairs. It wastes quickly after surgery and with knee pain, partly because swelling and pain switch off its nerve drive. Working against a load that rises over the weeks restores the drive and rebuilds the muscle. This is progressive resistance training.',
+    who: ['After a knee or hip replacement', 'Knee osteoarthritis', 'Muscle loss with age and difficulty standing up'],
+    measure: 'Knee angle reached and force against the cuff, left compared with right. The laboratory equivalent is an isokinetic dynamometer.',
+    studies: [['Mizner et al., Journal of Bone and Joint Surgery, 2005', 'One month after knee replacement, thigh strength had fallen by more than half, mostly through loss of nerve drive.'], ['Fransen et al., Cochrane Review, 2015', 'Exercise reduces pain and improves function in knee osteoarthritis.'], ['Liu and Latham, Cochrane Review, 2009', 'Progressive resistance training improves strength and daily function in older adults.'], ['Fiatarone et al., JAMA, 1990', 'Frail people in their nineties gained substantial leg strength in eight weeks of resistance training.'], ['Harvey et al., Cochrane Review, 2014', 'Machines that bend the knee passively after replacement gave no meaningful benefit. The patient has to do the work.']],
+    care: 'After a ligament reconstruction this exercise is restricted for months. Follow the surgeon’s protocol, and stop if there is pain behind the kneecap.',
+    ask: 'Does this belong at an occupational therapy station, or should it stay with the physiotherapist?' },
+];
+const OPTS = ['Would use it', 'With changes', 'Would not use it'];
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+document.getElementById('exl').innerHTML = SCI.map((e) => `<li data-x="${e.id}"><b>${esc(e.name)}</b><span>${esc(e.pT)}</span></li>`).join('');
+addEventListener('exchange', (ev) => { document.querySelectorAll('#exl li').forEach((li) => li.classList.toggle('on', li.dataset.x === ev.detail)); const h = document.querySelector('.hud'); if (document.documentElement.classList.contains('deck') && document.querySelector('#product.cur')) { h.classList.remove('swap'); void h.offsetWidth; h.classList.add('swap'); } });
+{ const fin = (x, y) => { for (const [ox, oy] of [[0, 0], [14, 0], [0, 14]]) { const a = x - ox, b = y - oy; if (a >= 0 && a < 7 && b >= 0 && b < 7) return a === 0 || a === 6 || b === 0 || b === 6 || (a >= 2 && a <= 4 && b >= 2 && b <= 4); if (a >= -1 && a < 8 && b >= -1 && b < 8) return false; } return (x * 7 + y * 13 + x * y * 3) % 5 < 2; };
+  let r = ''; for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) if (fin(x, y)) r += `<rect x="${x}" y="${y}" width="1.02" height="1.02"/>`;      // a mock code for the picture, not a working one
+  document.getElementById('qr').innerHTML = `<svg viewBox="-1.5 -1.5 24 24" aria-hidden="true"><rect x="-1.5" y="-1.5" width="24" height="24" rx="2" fill="#fff"/><g fill="#0F1B17">${r}</g></svg>`; }
+document.querySelector('main').insertAdjacentHTML('beforeend', SCI.map((e, i) => `
+  <section class="ch" id="${e.id}" data-ex="${e.id}" data-fac="1" hidden>
+    <article class="panel card">
+      <div class="headblock"><p class="eyebrow">Appendix · Exercise ${i + 1} of 6</p><h2>${esc(e.name)}</h2></div>
+      <p class="what">${esc(e.pW)}</p>
+      <dl class="facts"><dt>Trains</dt><dd>${esc(e.pT)}</dd><dt>Helps</dt><dd>${esc(e.pH)}</dd><dt>Proof</dt><dd>${esc(e.pP)} <span class="pill ${e.level}">${esc(e.levelText.replace('Evidence: ', ''))}</span></dd></dl>
+      <div class="trains"><div class="mus" data-mus="${e.id}"></div></div>
+      <p class="src">Sources: ${e.studies.map((x) => esc(x[0].split(',')[0] + ' ' + x[0].slice(-4))).join(' · ')}. <a href="#src-${e.id}">Details</a></p>
+    </article>
+  </section>`).join(''));
+document.getElementById('fbrows').innerHTML = SCI.map((e) => `<fieldset class="fb"><h3>${esc(e.name)}</h3><p class="q">${esc(e.ask)}</p>
+  <div class="opts" role="group" aria-label="Your verdict on ${esc(e.name)}">${OPTS.map((o) => `<button type="button" data-fb="${e.id}" data-v="${o}" aria-pressed="false">${o}</button>`).join('')}</div>
+  <textarea id="fb-${e.id}" aria-label="Your notes on ${esc(e.name)}" placeholder="Your notes"></textarea></fieldset>`).join('');
+document.getElementById('tbody').innerHTML = SCI.map((e) => `<tr><td><b>${esc(e.name)}</b></td><td>${esc(e.mode)}</td><td>${esc(e.effect)}</td><td><span class="pill ${e.level}">${esc(e.levelText.replace('Evidence: ', ''))}</span></td></tr>`).join('');
+document.getElementById('refs').innerHTML = `<div class="grp" id="src-problem"><h3>The problem and the economics (checked online, November 2026)</h3><ul><li><b><a href="https://www.who.int/news-room/fact-sheets/detail/musculoskeletal-conditions" target="_blank" rel="noopener">WHO, Musculoskeletal health fact sheet; Cieza et al., The Lancet, 2020</a></b><span>About 1.71 billion people have musculoskeletal conditions, the largest share of the 2.41 billion who could benefit from rehabilitation. Includes about 528 million with osteoarthritis, 440 million with fractures and 222 million with neck pain. Low back pain is the most common single condition.</span></li><li><b><a href="https://www.who.int/news-room/fact-sheets/detail/ageing-and-health" target="_blank" rel="noopener">WHO, Ageing and health fact sheet</a></b><span>By 2030 one in six people will be 60 or older; by 2050 that is 2.1 billion people.</span></li><li><b><a href="https://www.who.int/teams/health-workforce/about/18" target="_blank" rel="noopener">WHO, Health workforce</a></b><span>A projected shortfall of about 11 million health workers by 2030, mostly in low- and lower-middle-income countries.</span></li><li><b><a href="https://www.apta.org/news/2025/03/04/workforce-forecast-2022-2037" target="_blank" rel="noopener">APTA, Workforce forecast 2022–2037 (2025)</a></b><span>US physical therapist shortfall of 5.2% in 2022, projected 3.3% in 2037. In APTA’s 2024 survey about 72% reported a capacity shortage or being at their limit.</span></li><li><b><a href="https://nos.nl/l/2543317" target="_blank" rel="noopener">KNGF, reported by NOS</a></b><span>The Dutch physiotherapy association warns that a third of physiotherapists could leave within five years without higher tariffs. An ABN AMRO sector report puts the average reimbursed session at €36.53.</span></li><li><b><a href="https://swordhealth.com/articles/physical-therapy-cost-with-or-without-insurance" target="_blank" rel="noopener">US session prices (consumer cost guides)</a></b><span>Roughly $75–150 per session at independent clinics without insurance, more in hospitals. Weak source: no primary price data found.</span></li><li><b><a href="https://pubmed.ncbi.nlm.nih.gov/19801058/" target="_blank" rel="noopener">Lang et al., Arch Phys Med Rehabil, 2009</a></b><span>312 observed therapy sessions: an average of 32 functional arm repetitions per session (95% CI 20–44).</span></li><li><b><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8154983" target="_blank" rel="noopener">RATULS economic evaluation, BMJ Open, 2021</a></b><span>One-to-one robot arm training cost more than usual care (£5,387 against £3,785 at six months) and was not cost-effective.</span></li><li><b><a href="https://www.frontiersin.org/journals/neurology/articles/10.3389/fneur.2022.770259/full" target="_blank" rel="noopener">Hesse et al., Clinical Rehabilitation, 2014</a></b><span>Robot-assisted group therapy run by an assistant therapist was as effective as one-to-one arm therapy, at about €4.15 against €10 per treatment. Figures are from a secondary review; check the original paper.</span></li></ul></div>` + `<div class="grp"><h3>The principle</h3><ul><li><b>Lang et al., Archives of Physical Medicine and Rehabilitation, 2009</b><span>About 32 arm repetitions were counted in a typical stroke therapy session.</span></li><li><b>Birkenmeier et al., Neurorehabilitation and Neural Repair, 2010</b><span>Around 300 repetitions per hour proved feasible in a structured session.</span></li></ul></div>` +
+  SCI.map((e) => `<div class="grp" id="src-${e.id}"><h3>${esc(e.name)}</h3><ul>${e.studies.map((x) => `<li><b>${esc(x[0])}</b><span>${esc(x[1])}</span></li>`).join('')}</ul></div>`).join('');
+
+// Feedback: kept in this browser, and turned into plain text to copy and send.
+const KEY = 'vitalis-science-feedback', FIELDS = ['name', 'first', 'overall', 'add', ...SCI.map((e) => e.id)];
+let fb = {}; try { fb = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { fb = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(fb)); } catch (e) {} };
+const paint = () => document.querySelectorAll('[data-fb]').forEach((b) => b.setAttribute('aria-pressed', fb['v-' + b.dataset.fb] === b.dataset.v));
+FIELDS.forEach((k) => { const f = document.getElementById('fb-' + k); if (fb[k]) f.value = fb[k]; f.addEventListener('input', () => { fb[k] = f.value; save(); }); });
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-fb]'); if (!b) return; const k = 'v-' + b.dataset.fb; fb[k] = fb[k] === b.dataset.v ? '' : b.dataset.v; save(); paint(); });
+paint();
+document.getElementById('copy').addEventListener('click', () => {
+  const lines = ['Feedback on Vita Rehab', fb.name ? 'From: ' + fb.name : '', ''];
+  SCI.forEach((e) => { lines.push(e.name + ': ' + (fb['v-' + e.id] || 'no verdict')); if (fb[e.id]) lines.push(fb[e.id]); lines.push(''); });
+  [['first', 'Patients to try first'], ['overall', 'Missing, wrong or unsafe'], ['add', 'Exercise to add']].forEach(([k, t]) => { if (fb[k]) lines.push(t + ': ' + fb[k], ''); });
+  const text = lines.join('\n').trim(), out = document.getElementById('out'), st = document.getElementById('status');
+  const manual = () => { out.hidden = false; out.value = text; out.focus(); out.select(); st.textContent = 'Select the text below, copy it and send it to us.'; };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => { st.textContent = 'Copied. Paste it into a message to us.'; }, manual); else manual();
+});
+</script>
+<div class="pager" aria-label="Slides"><button type="button" id="prev" aria-label="Previous slide">‹</button><span id="count">1 / 11</span><button type="button" class="tm" id="timer" title="Pitch timer: 4 minutes. Click to reset.">4:00</button><button type="button" id="nxt" aria-label="Next slide">›</button><button type="button" class="fs" id="fs" aria-label="Full screen" title="Full screen (F)">⛶</button></div>
+<script>
+// Deck: on desktop one slide is on screen at a time. Arrows, Space, Page Up/Down, the wheel and the buttons change slide. On phones the page scrolls normally.
+{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'who', 'business', 'next', 'vision'].map((id) => document.getElementById(id)).filter(Boolean), count = document.getElementById('count'), prog = document.getElementById('prog');
+  const wide = matchMedia('(min-width: 900px)'), plain = ['intro', 'basis', 'who', 'path'], hud = document.querySelector('.hud'), bPrev = document.getElementById('prev'), bNext = document.getElementById('nxt'); let n = 0, wheelAt = 0, lastEx = 'reach';
+  const deck = () => root.classList.contains('deck');
+  // the pitch itself ends at the long-term vision; everything after it is appendix for questions
+  const main = slides.indexOf(document.getElementById('vision')) + 1, label = () => n < main ? (n + 1) + ' / ' + main : 'Appendix ' + (n - main + 1);
+  // a four-minute pitch timer: starts when you leave the title slide, click it to reset
+  const tm = document.getElementById('timer'), LIMIT = 240; let t0 = 0;
+  const tick = () => { if (!t0) { tm.textContent = '4:00'; tm.classList.remove('over'); return; } const left = LIMIT - Math.floor((Date.now() - t0) / 1000), a = Math.abs(left); tm.textContent = (left < 0 ? '+' : '') + Math.floor(a / 60) + ':' + String(a % 60).padStart(2, '0'); tm.classList.toggle('over', left < 0); tm.classList.toggle('late', left >= 0 && left <= 30); };
+  setInterval(tick, 500); tm.addEventListener('click', () => { t0 = 0; tick(); });
+  const near = () => { let b = 0, bd = 1e9; slides.forEach((el, i) => { const d = Math.abs(el.getBoundingClientRect().top); if (d < bd) { bd = d; b = i; } }); return b; };
+  const paint = () => { slides.forEach((el, i) => { el.classList.toggle('cur', deck() && i === n); el.classList.toggle('past', deck() && i < n); });
+    count.textContent = label(); bPrev.disabled = n === 0; bNext.disabled = n === slides.length - 1; root.classList.toggle('nohud', deck() && plain.includes(slides[n].id)); root.classList.toggle('nomus', deck() && slides[n].id === 'safety'); const key = slides[n].dataset.ex || ''; if (deck() && key && key !== lastEx) { lastEx = key; hud.classList.remove('swap'); void hud.offsetWidth; hud.classList.add('swap'); } if (deck()) { prog.style.transform = 'scaleX(' + Math.min(1, n / (main - 1)).toFixed(4) + ')'; dispatchEvent(new Event('slidechange')); document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.go === slides[n].id)); } };
+  const go = (i, inner) => { n = Math.max(0, Math.min(slides.length - 1, i)); if (!t0 && n > 0) { t0 = Date.now(); tick(); }
+    if (deck()) { paint(); slides[n].scrollTop = 0; if (inner && inner !== slides[n]) inner.scrollIntoView({ block: 'start' }); try { history.replaceState(null, '', '#' + slides[n].id); } catch (e) {} }
+    else (inner || slides[n]).scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const mode = () => { const was = deck(); if (!was) n = near(); root.classList.toggle('deck', wide.matches); if (was && !wide.matches) { paint(); slides[n].scrollIntoView(); } else paint(); };
+  const q = new URLSearchParams(location.search).get('s'), start = document.getElementById(q || location.hash.slice(1));
+  if (start) { const sl = start.closest('.ch, .solid'); if (sl && slides.includes(sl)) n = slides.indexOf(sl); }
+  root.classList.toggle('deck', wide.matches); paint(); wide.addEventListener('change', mode);
+  addEventListener('scroll', () => { if (!deck()) { n = near(); count.textContent = label(); } }, { passive: true });
+  document.getElementById('prev').addEventListener('click', () => go(n - 1)); document.getElementById('nxt').addEventListener('click', () => go(n + 1));
+  const full = () => { try { const p = document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
+  document.getElementById('fs').addEventListener('click', full);
+  document.addEventListener('click', (e) => { const a = e.target.closest('a[href^="#"]'); if (!a) return; const t = document.getElementById(a.getAttribute('href').slice(1)); if (!t) return; const sl = t.closest('.ch, .solid'); if (!sl) return; e.preventDefault(); go(slides.indexOf(sl), t); });
+  addEventListener('keydown', (e) => { if (e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key;
+    if (k === ' ' && e.target.closest('button, a')) return;
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(k)) { e.preventDefault(); go(n + 1); } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(k)) { e.preventDefault(); go(n - 1); }
+    else if (k === 'Home') { e.preventDefault(); go(0); } else if (k === 'End') { e.preventDefault(); go(slides.length - 1); } else if (k === 'f' || k === 'F') full(); });
+  addEventListener('wheel', (e) => { if (!deck() || Math.abs(e.deltaY) < 24) return; const sl = slides[n];
+    if (sl.scrollHeight > sl.clientHeight + 4) { const atEnd = sl.scrollTop + sl.clientHeight >= sl.scrollHeight - 2, atTop = sl.scrollTop <= 0; if (!(e.deltaY > 0 ? atEnd : atTop)) { wheelAt = e.timeStamp; return; } }
+    if (e.timeStamp - wheelAt < 900) return; wheelAt = e.timeStamp; go(n + (e.deltaY > 0 ? 1 : -1)); }, { passive: true }); }
+</script>
+<script type="module" src="assets/science.js?v=27"></script>
