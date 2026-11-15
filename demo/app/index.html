@@ -182,7 +182,7 @@
   .fig path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
   @media (prefers-reduced-motion: reduce) { .cam.on .beam { animation: none; top: 50%; } .bar i { transition: none; } }
   /* the four resistance levels of Push on the arm */
-  .lvs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .lvs .btn { padding: 10px 2px; font-size: 14px; white-space: nowrap; }
+  .lvs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .lvs .btn { display: flex; flex-direction: column; align-items: center; padding: 7px 2px; line-height: 1.15; white-space: nowrap; } .lvs .btn b { font: 700 20px var(--display); } .lvs .btn small { font: 500 12px var(--text); }
 </style>
 
 <div class="phone3d" id="phone"><span class="keys"></span>
@@ -453,13 +453,16 @@ const PLANS = [
 PLANS.push({ id: 'robot', who: 'Maria', name: 'Arm recovery (robot)', ctx: 'After a stroke · live on the Vita arm', thumb: 'reach', ex: ['reach', 'push', 'armtest'], h1: 'Your arm reaches further every week.', metric: 'Forward reach', unit: 'cm', weeks: [18, 22, 25, 29], axis: [15, 25, 35], rows: [['Help from the arm', '−15%'], ['Smooth movement', '+12%']] });
 // ---------- the robot arm: server/ on the station laptop. Only used when that laptop serves this page at /app/ (same address, so no https-to-http block) ----------
 // Push (robot): one Push card with four fixed resistance levels, offered when the station lists push_1 to push_4. In the app it stays the exercise 'push'; only the id sent to the station changes with the level.
-const PUSHPLAN = { id: 'pushrobot', who: 'Maria', name: 'Push (robot)', ctx: 'Four resistance levels · live on the Vita arm', thumb: 'push', ex: ['push'], h1: 'You get stronger every week.', metric: 'Push strength', unit: 'N', weeks: [48, 53, 57, 62], axis: [40, 55, 70], rows: [['Peak force', '+5 N'], ['Range of the push', '+3 cm']] };
+const PUSHPLAN = { id: 'pushrobot', who: 'Maria', name: 'Push (robot)', ctx: 'Four resistance levels · live on the Vita arm', thumb: 'push', ex: ['push'], h1: 'You get stronger every week.', metric: 'Push strength', unit: 'N', weeks: [48, 53, 57, 62], axis: [40, 55, 70], rows: [] };
 const LVL = { sel: 1, n: [10, 15, 20, 28], id: [null, null, null, null], busy: false, msg: '', at: 0 }; let WANTPLAN = '';
 const isPushN = (id) => /^push_[1-4]$/.test(id || '');
 const lvOn = (id) => id === 'push' && !!(ROBOT.ids && ROBOT.lv) && (PL.id === 'pushrobot' || !ROBOT.ids.has('push'));   // this Push runs as push_1 to push_4
-const lvId = () => LVL.id[LVL.sel - 1] || 'push_' + LVL.sel, lvText = (n) => n + ' · ' + LVL.n[n - 1] + ' N';
-const lvRow = (on) => !on ? '' : `<div class="lvs" role="group" aria-label="Resistance level">${[1, 2, 3, 4].map((n) => `<button type="button" class="btn${n === LVL.sel ? '' : ' ghost'}" data-level="${n}" aria-pressed="${n === LVL.sel}">${lvText(n)}</button>`).join('')}</div><p class="scanmsg" id="lvmsg" aria-live="polite">${esc(LVL.msg)}</p>`;
-function lvPaint() { document.querySelectorAll('[data-level]').forEach((b) => { const n = +b.dataset.level, on = n === LVL.sel; b.classList.toggle('ghost', !on); b.setAttribute('aria-pressed', on); b.textContent = lvText(n); }); const m = $('#lvmsg'); if (m) m.textContent = LVL.msg; }
+const lvId = () => LVL.id[LVL.sel - 1] || 'push_' + LVL.sel, LVNAME = ['Light', 'Medium', 'Firm', 'Strong'];   // the person sees the level and a word, never newtons
+const lvRow = (on) => !on ? '' : `<div class="lvs" role="group" aria-label="Resistance level">${[1, 2, 3, 4].map((n) => `<button type="button" class="btn${n === LVL.sel ? '' : ' ghost'}" data-level="${n}" aria-pressed="${n === LVL.sel}"><b>${n}</b><small>${LVNAME[n - 1]}</small></button>`).join('')}</div><p class="scanmsg" id="lvmsg" aria-live="polite">${esc(LVL.msg)}</p>`;
+function lvPaint() { document.querySelectorAll('[data-level]').forEach((b) => { const on = +b.dataset.level === LVL.sel; b.classList.toggle('ghost', !on); b.setAttribute('aria-pressed', on); }); const m = $('#lvmsg'); if (m) m.textContent = LVL.msg; }
+// a set of Push at a level is shown as "Level 2 · 10 reps": the level it ended on and the reps that were counted. Kept on this phone only
+const noN = () => PL === PUSHPLAN, lvLine = (v) => 'Level ' + v.level + ' · ' + v.reps + (v.reps === 1 ? ' rep' : ' reps'), lvLast = () => S.lvres ? lvLine(S.lvres) : 'No set yet';
+function lvKeep(v) { S.lvres = v; try { if (v) localStorage.setItem('vita-lv', JSON.stringify(v)); else localStorage.removeItem('vita-lv'); } catch (e) {} }
 const detailOf = (d, fb) => typeof d.detail === 'string' ? d.detail : d.detail && typeof d.detail.message === 'string' ? d.detail.message : fb;
 // before a session a tap only chooses the level; during one it asks the station, and the old level stays if the station says no
 async function setLevel(n) { const r = S.run; if (n === LVL.sel || LVL.busy) return;
@@ -570,14 +573,14 @@ function robotMsg(r, x) { const e = EX[r.id], R = r.robot; if (x.simulated && !R
   if (x.type === 'rep') { if (x.session_id && x.session_id !== R.sid) return; R.best = Math.max(R.best, x.rom_m || 0); R.peak = Math.max(R.peak, x.peak_force_n || 0); liveRep(R.live, x); return; }
   if (x.type !== 'sample') return; r.phase = x.phase; r.mode = x.arm_mode; liveSample(r, x); robotCal(r, x); r.say = sayOf(x);
   if (r.lv && Number.isInteger(x.level) && x.level >= 1 && x.level <= 4 && x.level !== LVL.sel && !LVL.busy && performance.now() - LVL.at > 1000) { LVL.sel = x.level; lvPaint(); }      // the level was changed somewhere else: follow the station
-  const f = Math.hypot(...(x.force || [0])), bar = $('#fbar'), fl = $('#fn'); if (bar) bar.style.width = Math.min(1, f / CAP_N) * 100 + '%'; if (fl) fl.textContent = newton(f);
+  const f = Math.hypot(...(x.force || [0])), bar = $('#fbar'), fl = $('#fn'); if (bar) bar.style.width = Math.min(1, f / (r.lv ? 40 : CAP_N)) * 100 + '%';      // Push with levels: full at 40 N, so level 4 sits at about 80% if (fl) fl.textContent = newton(f);
   if (x.rep_count > r.n) { r.n = x.rep_count; const n = $('#n'), rg = $('#ring'); if (n) { n.textContent = r.n; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); } if (rg) rg.setAttribute('stroke-dashoffset', 100 - Math.min(1, r.n / e.reps) * 100); if (r.n >= e.reps) finish(); } }
 const robotTip = (r, e) => r.robot === 'starting' ? r.say || 'Starting the arm…' : r.robot.off ? 'No signal from the arm. The picture is paused.' : r.mode === 'fault' ? 'The arm has stopped. Please tell staff.' : r.say ? r.say : r.mode === 'hold' ? 'The arm is holding still.' : !r.lv && (r.phase === 'calibrate' || (!r.phase && ROBOT.cal.has(r.id)) || (r.robot.cal && (r.robot.cal.status === 'waiting' || r.robot.cal.status === 'pushing'))) ? CALMSG : r.robot.calAt && performance.now() - r.robot.calAt < 3000 ? calDone(r.robot) : r.n === e.reps - 1 && r.phase !== 'idle' ? 'Last one. Almost there.' : r.phase === 'back' ? e.tips[2] : r.phase === 'out' || !r.n ? e.tips[0] : 'Rest a moment, then the next one.';
 // ---------- the comfortable push: before the first rep of a resisted exercise the patient pushes once and the arm sets its resistance from it (server/API.md section 7) ----------
 const CALMSG = 'Push once at a level that feels comfortable', resN = (n) => (Math.round(n * 10) / 10) + ' N';
 const calDone = (R) => R.res != null ? 'Resistance set: ' + resN(R.res) : 'Resistance not set: ' + ((R.cal && R.cal.reason) || 'the push was skipped') + '.';
 const resLine = (R) => !R || !R.sid ? '' : R.res != null ? 'Resistance set: ' + resN(R.res) + ' · adjusts to you' : R.cal && R.cal.status === 'skipped' ? calDone(R) : '';
-function robotCal(r, x) { const R = r.robot, c = r.lv ? null : x.calibration || null, a = x.arming;      // Push with levels has no comfortable push if (x.force_cap_n > 0) CAP_N = x.force_cap_n;
+function robotCal(r, x) { const R = r.robot, c = r.lv ? null : x.calibration || null, a = x.arming; if (x.force_cap_n > 0) CAP_N = x.force_cap_n;      // Push with levels has no comfortable push
   r.arming = a && a.reason && x.phase === 'idle' && !x.done ? String(a.reason) : '';      // why the next rep has not started yet: a small hint
   const was = R.cal && R.cal.status; R.cal = c;
   if (c && c.status !== was) { if (c.status === 'done' && c.resistance_n != null) { R.res = c.resistance_n; R.calAt = performance.now(); } else if (c.status === 'skipped') R.calAt = performance.now();
@@ -585,9 +588,10 @@ function robotCal(r, x) { const R = r.robot, c = r.lv ? null : x.calibration || 
   const h = $('#armhint'); if (h && h.textContent !== r.arming) h.textContent = r.arming; }
 const resCard = () => { const R = hist().resist || {}, k = Object.keys(R).filter((id) => EX[id]); return k.length ? `<div class="card">${k.map((id) => `<div class="kv"><span>Resistance, ${esc(EX[id].name.toLowerCase())}</span><b>${resN(R[id].n)}${R[id].sim ? ' (SIMULATED)' : ''}</b></div>`).join('')}<div class="kv"><span>Set from one comfortable push</span><b>adjusts to you</b></div></div>` : ''; };
 const robotTag = (r) => armOn(r) ? `<span id="rtag" class="rtag ${r.robot.off ? 'off' : r.robot.sim ? 'sim' : 'on'}">${rtagText(r.robot)}</span>` : ROBOT.ids && !onRobot(r.id) ? '<span class="rtag">Demo animation</span>' : !ROBOT.ids && (r.id === 'push' || r.id === 'pull') ? '<span class="rtag">Demo · not connected to a station</span>' : '';
-const robotPanel = (r) => r.err ? `<div class="robot" role="alert"><b>The arm did not start.</b><span>${esc(r.err)}</span></div>` : armOn(r) ? `<div class="robot"><div class="fl"><span>Your force</span><span id="fn">0 N</span></div><div class="fbar"><i id="fbar"></i></div><span class="resn" id="resn">${esc(resLine(r.robot))}</span><span class="hint" id="armhint">${esc(r.arming || '')}</span></div>` : '';
+const robotPanel = (r) => r.err ? `<div class="robot" role="alert"><b>The arm did not start.</b><span>${esc(r.err)}</span></div>` : armOn(r) ? `<div class="robot"><div class="fl"><span>Your force</span>${r.lv ? '' : '<span id="fn">0 N</span>'}</div><div class="fbar"><i id="fbar"></i></div><span class="resn" id="resn">${esc(resLine(r.robot))}</span><span class="hint" id="armhint">${esc(r.arming || '')}</span></div>` : '';
 function robotStop() { if (S.run && S.run.robot) clearTimeout(S.run.robot.retry); if (ROBOT.ws) { ROBOT.ws.onmessage = null; ROBOT.ws.close(); ROBOT.ws = null; } if (!ROBOT.stop) ROBOT.stop = robotQ(() => robotFetch('/api/session/stop', {}).catch(() => {})).finally(() => { ROBOT.stop = null; }); }   // never a second stop while one is pending; the next start waits for it
 function robotResult(r) { const R = r.robot, sim = R && R.sim ? ' (SIMULATED)' : ''; if (!armOn(r)) return undefined;   // undefined: not a robot run, null: the arm measured nothing
+  if (r.lv) return ['Push', lvLine({ level: LVL.sel, reps: r.n }), 'counted by the arm' + sim];
   if (r.id === 'reach') return R.best ? ['Forward reach', Math.round(R.best * 100) + ' cm', 'measured by the arm' + sim] : null;
   return R.peak ? [r.id === 'armtest' ? 'Push strength' : 'Peak force', newton(R.peak), (r.id === 'armtest' ? 'best of ' + r.n + ' tries, ' : '') + 'measured by the arm' + sim] : null; }
 const fmt = (v, u) => v + (u === '°' ? '°' : ' ' + u);
@@ -596,6 +600,7 @@ let S = { tab: 'today', scanned: false, done: {}, share: true, run: null, pre: n
 const REST = 180;
 const DAY = new Date().toDateString();      // what you did today is remembered until tomorrow
 try { const o = JSON.parse(localStorage.getItem(KEY)); if (o) { S.share = o.share !== false; if (o.hist && typeof o.hist === 'object') S.hist = o.hist; S.remind = o.remind !== false; S.big = !!o.big; S.flat = !!o.flat; if (PLANS.some((p) => p.id === o.plan)) S.plan = o.plan; WANTPLAN = o.plan || ''; if (o.day === DAY) { S.done = o.done || {}; S.scanned = !!o.scanned; if (o.station) S.station = o.station; } } } catch (e) {}
+try { const v = JSON.parse(localStorage.getItem('vita-lv')); if (v && Number.isInteger(v.level) && Number.isInteger(v.reps)) S.lvres = { level: v.level, reps: v.reps }; } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ hist: S.hist, share: S.share, remind: S.remind, big: S.big, flat: S.flat, done: S.done, scanned: S.scanned, station: S.station, plan: S.plan, day: DAY })); } catch (e) {} };
 const $ = (s, r = document) => r.querySelector(s), main = $('#main'), esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let PL = PLANS.find((p) => p.id === S.plan), PLAN = PL.ex.map((id) => EX[id]);
@@ -758,7 +763,9 @@ const VIEWS = {
       <div class="stagebox" id="fig">${figure(e.id, 0)}</div>
       <div class="meter"><div class="ringc"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="trk" cx="32" cy="32" r="28"/><circle class="arc" id="ring" cx="32" cy="32" r="28" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - S.run.n / e.reps * 100}"/></svg><span id="n">${S.run.n}</span></div><div class="mtxt"><b>of ${e.reps} ${e.unit}</b><p class="coach" id="coach" aria-live="polite">${esc(S.run.robot ? robotTip(S.run, e) : e.tips[0])}</p></div></div>
       ${robotPanel(S.run)}${lvRow(S.run.lv)}<div class="push row2">${S.run.err ? `<button type="button" class="btn ghost" data-back>Back</button><button type="button" class="btn" data-begin="${e.id}">Try again</button>` : `${S.run.robot ? '' : `<button type="button" class="btn ghost" data-pause>${S.run.paused ? 'Continue' : 'Pause'}</button>`}<button type="button" class="btn" data-skip>Finish</button>`}</div></div>`; },
-  progress: () => { const H = hist(), u = PL.unit, all = H.pts, pts = all.slice(-12), cur = all[all.length - 1], first = all[0], gain = cur - first, n = pts.length, goal = PL.axis[2];
+  progress: () => { if (noN()) return `<div class="view"><h1 class="ph">Your progress</h1><div class="hero"><p class="hl">Push, your last set</p><p class="hv">${S.lvres ? 'Level ' + S.lvres.level : 'No set yet'}</p><p class="hd">${S.lvres ? S.lvres.reps + (S.lvres.reps === 1 ? ' rep' : ' reps') + ' counted' : 'Your last set shows here.'}</p></div>
+      <p class="fine">${hist().ses} sessions<br><button type="button" class="lnk${S.arm ? ' warnl' : ''}" data-resetp>${S.arm ? 'Tap again to reset' : 'Reset progress'}</button></p></div>`;
+    const H = hist(), u = PL.unit, all = H.pts, pts = all.slice(-12), cur = all[all.length - 1], first = all[0], gain = cur - first, n = pts.length, goal = PL.axis[2];
     const lo = Math.min(PL.axis[0], ...pts), hi = Math.max(goal, ...pts), W = 300, x = (i) => (n < 2 ? W / 2 : i * W / (n - 1)), y = (v) => 26 + (hi - v) * 92 / (hi - lo || 1), P = pts.map((v, i) => [x(i), y(v)]), d = 'M' + P.map((q) => q.map((k) => k.toFixed(1)).join(' ')).join(' L');
     const total = Object.values(H.reps).reduce((a2, b2) => a2 + b2, 0), half = Math.round(first + (goal - first) / 2), togo = (t) => fmt(Math.max(0, Math.round((t - cur) * 10) / 10), u) + ' to go';
     const ms = [[`Started at ${fmt(first, u)}`, 'Your first measurement', true], ['Halfway to your goal', cur >= half ? 'Reached' : togo(half), cur >= half], [`Goal: ${fmt(goal, u)}`, cur >= goal ? 'Reached' : togo(goal), cur >= goal]];
@@ -773,7 +780,7 @@ const VIEWS = {
       ${resCard()}<p class="fine">${H.ses} sessions · ${total} repetitions · ${H.sim ? 'includes SIMULATED robot data' : 'example figures'}<br><button type="button" class="lnk${S.arm ? ' warnl' : ''}" data-resetp>${S.arm ? 'Tap again to reset' : 'Reset progress'}</button></p></div>`; },
   report: () => `<div class="view"><div><p class="eyebrow">Report</p><h1>Your weekly summary</h1></div>
       <div class="note"><span class="tick">${S.share ? '✓' : '–'}</span><span>${S.share ? 'Shared with your physiotherapist or rehab centre every Friday' : 'Not shared. Only you can see this.'}</span></div>
-      <div class="card"><div class="kv"><span>Sessions completed</span><b>${hist().ses}</b></div><div class="kv"><span>${esc(PL.metric)}</span><b class="upv">${(() => { const p = hist().pts; return fmt(p[p.length - 1], PL.unit) + (p[p.length - 1] > p[0] ? ' (+' + fmt(p[p.length - 1] - p[0], PL.unit) + ')' : ''); })()}</b></div>${PL.rows.map((r) => `<div class="kv"><span>${esc(r[0])}</span><b class="upv">${esc(r[1])}</b></div>`).join('')}<div class="kv"><span>Pain reported</span><b>None</b></div></div>${resCard()}
+      <div class="card"><div class="kv"><span>Sessions completed</span><b>${hist().ses}</b></div>${noN() ? `<div class="kv"><span>Push, last set</span><b>${esc(lvLast())}</b></div>` : `<div class="kv"><span>${esc(PL.metric)}</span><b class="upv">${(() => { const p = hist().pts; return fmt(p[p.length - 1], PL.unit) + (p[p.length - 1] > p[0] ? ' (+' + fmt(p[p.length - 1] - p[0], PL.unit) + ')' : ''); })()}</b></div>`}${PL.rows.map((r) => `<div class="kv"><span>${esc(r[0])}</span><b class="upv">${esc(r[1])}</b></div>`).join('')}<div class="kv"><span>Pain reported</span><b>None</b></div></div>${resCard()}
       <div class="card"><button type="button" class="sw" role="switch" aria-checked="${S.share}" data-share><span><b style="font:600 16px var(--display)">Share with my care team</b><br><span class="sub" style="font-size:14px">You decide. You can turn this off at any time.</span></span><span class="tr"></span></button></div>
       <p class="fine">${hist().sim ? 'Includes SIMULATED robot data. ' : ''}Example figures for this demo. <button type="button" class="lnk" data-reset>Start the demo again</button></p></div>`,
   preview: () => { const e = PLAN.find((x) => x.id === S.pre), done = S.done[e.id]; return `<div class="view fit">
@@ -805,8 +812,8 @@ const VIEWS = {
       <p class="mehelp">If something hurts, stop and tell the staff. The red button on the station stops the arm at once.</p>
       <div class="melinks">${live() ? '<button type="button" class="lnk" data-go="plans">Change my plan</button>' : ''}<button type="button" class="lnk" data-signout>${live() ? 'Log out' : 'Sign out'}</button></div>
       <p class="fine">Version 0.1 · <button type="button" class="lnk" data-reset>Start the demo again</button></p></div>`; },
-  done: () => `<div class="view"><div style="text-align:center;margin-top:28px"><span class="tick" style="width:72px;height:72px;font-size:38px;margin:0 auto 16px">✓</span><h1>Session complete</h1><p class="sub" style="margin-top:8px">${exs(PLAN.length)}, ${PLAN.reduce((a, e) => a + e.reps, 0)} repetitions. Well done, ${esc(who())}.</p></div>
-      <div class="card">${(() => { const p = hist().pts, c = p[p.length - 1]; return `<div class="kv"><span>${esc(PL.metric)} today</span><b>${fmt(c, PL.unit)}</b></div><div class="kv"><span>Since the start</span><b class="upv">+${fmt(c - p[0], PL.unit)}</b></div>`; })()}${PLAN.filter((e) => e.result).map((e) => `<div class="kv"><span>${esc(e.result[0])}, measured today</span><b>${esc(e.result[1])}</b></div>`).join('')}</div>
+  done: () => `<div class="view"><div style="text-align:center;margin-top:28px"><span class="tick" style="width:72px;height:72px;font-size:38px;margin:0 auto 16px">✓</span><h1>Session complete</h1><p class="sub" style="margin-top:8px">${exs(PLAN.length)}, ${noN() && S.lvres ? S.lvres.reps : PLAN.reduce((a, e) => a + e.reps, 0)} repetitions. Well done, ${esc(who())}.</p></div>
+      <div class="card">${(() => { if (noN()) return `<div class="kv"><span>Push today</span><b>${esc(lvLast())}</b></div>`; const p = hist().pts, c = p[p.length - 1]; return `<div class="kv"><span>${esc(PL.metric)} today</span><b>${fmt(c, PL.unit)}</b></div><div class="kv"><span>Since the start</span><b class="upv">+${fmt(c - p[0], PL.unit)}</b></div>`; })()}${PLAN.filter((e) => e.result).map((e) => `<div class="kv"><span>${esc(e.result[0])}, measured today</span><b>${esc(e.result[1])}</b></div>`).join('')}</div>
       <div class="push"><button type="button" class="btn" data-go="progress">See my progress</button><button type="button" class="btn ghost" data-again>Do another session</button></div></div>`,
 };
 
@@ -814,7 +821,7 @@ function render() { const g = authView(), v = g || (S.run ? 'run' : S.pre ? 'pre
   document.querySelectorAll('nav button').forEach((b) => { if (b.dataset.tab === S.tab && !S.run && !S.pre) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }); }
 function go(tab) { if (armOn(S.run)) robotStop(); S.arm = false; if (tab !== 'scan') camOff(); if (tab === 'progress' || tab === 'report') setTimeout(pullHist, 0); S.run = null; S.pre = null; S.tab = tab; render(); }
 function start(id) { const e = PLAN.find((x) => x.id === id) || nextEx(); if (!e) return; S.pre = null; S.rest = null; S.run = { id: e.id, n: 0, t: 0, paused: false, tip: 0, at: performance.now(), lv: lvOn(e.id) }; if (onRobot(e.id)) { S.run.robot = 'starting'; robotStart(S.run, e); } render(); }
-function finish() { if (armOn(S.run)) robotStop(); S.done[S.run.id] = true; S.last = S.run.id; S.res = robotResult(S.run); S.resist = armOn(S.run) && S.run.robot.res != null ? { n: S.run.robot.res, sim: !!S.run.robot.sim } : null; if (S.resist) { const H = hist(); (H.resist = H.resist || {})[S.run.id] = S.resist; } record(EX[S.run.id], S.run.robot); if (allDone()) hist().ses++; pushHist(); S.run = null; save(); if (allDone()) { S.tab = 'done'; render(); } else { S.rest = { left: REST }; S.tab = 'rest'; render(); } }
+function finish() { if (armOn(S.run)) robotStop(); S.done[S.run.id] = true; S.last = S.run.id; S.res = robotResult(S.run); S.resist = armOn(S.run) && S.run.robot.res != null ? { n: S.run.robot.res, sim: !!S.run.robot.sim } : null; if (S.resist) { const H = hist(); (H.resist = H.resist || {})[S.run.id] = S.resist; } if (S.run.lv) lvKeep({ level: LVL.sel, reps: S.run.n }); record(EX[S.run.id], S.run.robot); if (allDone()) hist().ses++; pushHist(); S.run = null; save(); if (allDone()) { S.tab = 'done'; render(); } else { S.rest = { left: REST }; S.tab = 'rest'; render(); } }
 
 // if the page is refreshed in place, the old copy of this script must stop listening, or one tap would count several times
 if (window.__vita) window.__vita.abort(); const AC = window.__vita = new AbortController();
@@ -830,14 +837,14 @@ document.addEventListener('click', (ev) => { const b = ev.target.closest('button
   else if ('scan' in d) { camOff(); const cam = $('#cam'); if (cam) cam.classList.add('on'); b.disabled = true; b.textContent = 'Scanning…'; setTimeout(() => { if (S.tab !== 'scan' || S.run) { S.scanned = true; save(); return; } connect(S.station || 2); }, 1500); }
   else if ('camon' in d) camOn(); else if ('camoff' in d) { camOff(); render(); }
   else if ('unscan' in d) { S.scanned = false; save(); render(); }
-  else if ('reset' in d) { S.scanned = false; S.done = {}; S.rest = null; S.last = null; S.out = false; S.hist = {}; save(); go('today'); }
+  else if ('reset' in d) { S.scanned = false; S.done = {}; S.rest = null; S.last = null; S.out = false; S.hist = {}; lvKeep(null); save(); go('today'); }
   else if ('start' in d) start();
   else if (d.ex) { S.pre = d.ex; S.pt = 0; render(); }
   else if ('back' in d) go('today'); else if (d.begin) start(d.begin);
   else if ('pause' in d) { S.run.paused = !S.run.paused; b.textContent = S.run.paused ? 'Continue' : 'Pause'; }
   else if ('skip' in d) { if (performance.now() - S.run.at > 600) finish(); }
   else if ('share' in d) { S.share = !S.share; save(); pushSettings(); render(); }
-  else if ('resetp' in d) { if (!S.arm) { S.arm = true; render(); setTimeout(() => { if (S.arm) { S.arm = false; if (S.tab === 'progress') render(); } }, 3000); } else { S.arm = false; S.hist[PL.id] = { pts: [PL.weeks[0]], reps: {}, ex: 0, ses: 0 }; S.done = {}; S.rest = null; S.last = null; save(); pushHist(); render(); } }
+  else if ('resetp' in d) { if (!S.arm) { S.arm = true; render(); setTimeout(() => { if (S.arm) { S.arm = false; if (S.tab === 'progress') render(); } }, 3000); } else { S.arm = false; S.hist[PL.id] = { pts: [PL.weeks[0]], reps: {}, ex: 0, ses: 0 }; S.done = {}; S.rest = null; S.last = null; if (noN()) lvKeep(null); save(); pushHist(); render(); } }
   else if ('again' in d) { S.done = {}; S.rest = null; S.last = null; save(); go('today'); }
   else if (d.toggle) { const k = d.toggle; S[k] = !S[k]; save(); pushSettings(); render(); }
   else if ('saveapi' in d) { const u = ($('#apiurl').value || '').trim().replace(/\/+$/, ''), k = ($('#apikey').value || '').trim(); API.base = u; API.key = k; try { localStorage.setItem('vita-api', JSON.stringify(API)); } catch (e) {} S.online = null; S.demo = false; render(); if (u) { pullHist(); checkServer(); } }

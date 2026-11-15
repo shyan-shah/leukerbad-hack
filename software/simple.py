@@ -18,11 +18,12 @@ Smooth by design
 
 A released handle
 A band stretched 5 cm holds enough energy to throw an empty handle back faster than the arm's
-0.40 m/s speed trip. There is no hand detection, so the law itself is gentle on the way back:
-the 5 cm lead shrinks with the handle's speed TOWARDS the start (full lead while it moves out
-or is still, none at ``V_REL`` 0.10 m/s). It drops at once and is rebuilt through a short
-filter. An empty handle comes back at well under 0.10 m/s; a hand that returns slowly feels a
-little less than the level force on the way back and the full force on the way out.
+0.40 m/s speed trip. There is no hand detection by force, so the law itself is gentle on the
+way back: the band's anchor follows the hand outward at once but moves back towards the start
+at ``V_RETURN`` (0.05 m/s) at most, and a handle that speeds up towards the start past
+``V_SNAP`` (0.10 m/s) gets the anchor put onto it at once. An empty handle is then led back at
+one steady 0.05 m/s. A hand that returns slower than that feels the full level force both
+ways; one that returns faster feels less on the way back.
 
 Reps come from the handle position only: "out" once it has passed 0.20 m, counted when it is
 back within 0.05 m of the start. One RepResult per counted rep (mode "resist", completed True).
@@ -70,15 +71,16 @@ BACK_M = 0.05                # m: ... and is counted when it is back within this
 TURN_BACK_M = 0.27           # m: "Turn back" from here
 OVER_M = 0.31                # m: over_travel flag from here (the box trips at 0.37)
 TARGET_FILTER_HZ = 10.0      # low-pass on the hand position the target follows
-V_DEAD = 0.02                # m/s towards the start below which the lead is untouched
-V_REL = 0.07                 # m/s towards the start at which the lead is zero
-LEAD_REBUILD_S = 0.20        # s, time constant with which the lead comes back
+V_RETURN = 0.05              # m/s: the band's anchor moves back towards the start no faster than this
+V_SNAP = 0.10                # m/s towards the start: faster than this is a let-go, the anchor goes onto the handle
 LEVEL_RAMP_S = 0.5           # s, stiffness ramp on a level change
 RAMP_STEPS = 5               # ... in this many equal steps
 COUNTDOWN_S = 3.0            # s, "hands off" countdowns
 NEAR_START_M = 0.02          # m from the start pose: zero here, otherwise move there first
 GATE_SPEED = 0.02            # m/s: the handle counts as held or moving above this
 GATE_FORCE_N = 6.0           # N (baseline-relative): the handle counts as held above this
+RETURN_WAIT_S = 10.0         # s the return to the start waits for the handle to be let go before giving up
+GATE_TICKS = 10              # readings in a row (0.1 s) over a gate before the handle counts as held
 HOME_ABORT_N = 10.0          # N: a reading that changes by more than this during a move to the start holds the arm
 BASELINE_N = 30              # readings averaged for the empty-handle baseline
 MAX_BASELINE_N = 6.0         # N: a larger empty reading right after zeroing means a hand is on it
@@ -172,7 +174,7 @@ class BandEngine:
         self._start = np.zeros(3)
         self.force_baseline = np.zeros(3)
         self._s_filt = 0.0
-        self._lead = LEAD_M
+        self._anchor = 0.0                   # m along the reach: where the band pulls to
         self._v_prev = 0.0
         self._last_t: float | None = None
         self._phase = "idle"
@@ -432,7 +434,8 @@ class BandEngine:
         if hasattr(self.arm, "patient") and hasattr(self.arm, "cue"):
             self.arm.reach_origin = _tup3(self._start)
             self.arm.cue("rest")
-        self._s_filt, self._lead, self._last_t = 0.0, LEAD_M, None
+        s0 = self.sign * float(np.asarray(self.arm.get_state().pos, dtype=float)[self.axis] - self._start[self.axis])
+        self._s_filt, self._anchor, self._last_t = s0, max(0.0, s0), None      # the anchor starts on the handle
         self._phase, self._rep, self._rest_since = "idle", None, None
         self._send_k(self._k_now)
         self._stage = "band"
@@ -546,19 +549,26 @@ class BandEngine:
             if step >= RAMP_STEPS:
                 self._ramp = None
 
-        # the band: lead shrinks with speed towards the start (at once), comes back through a filter
         # one tick of look-ahead on a handle that is speeding up towards the start (a let-go)
         v_eff = v_back + max(0.0, v_back - self._v_prev)
         self._v_prev = v_back
-        want = LEAD_M * float(np.clip(1.0 - max(0.0, v_eff - V_DEAD) / (V_REL - V_DEAD), 0.0, 1.0))
-        if want < self._lead:
-            self._lead = want
-        else:
-            self._lead += (want - self._lead) * min(1.0, dt / LEAD_REBUILD_S)
+        # The band's anchor (where the spring pulls to). Out: it follows 5 cm behind the hand at once.
+        # Back: it moves towards the start at V_RETURN at most, so a hand coming back slowly keeps the full
+        # pull, and a handle that is let go is led back at one steady speed (15 Nov on the arm: a lead that
+        # shrank with speed and came back made the empty handle go, stop, go, about once a second).
+        # A let-go (speeding up towards the start past V_SNAP) puts the anchor on the handle at once.
         tau = 1.0 / (2.0 * math.pi * TARGET_FILTER_HZ)
         self._s_filt += (s - self._s_filt) * min(1.0, dt / (tau + dt))
+        want = self._s_filt - LEAD_M
+        if want >= self._anchor:
+            self._anchor = want
+        else:
+            self._anchor = max(want, self._anchor - V_RETURN * dt)
+        if v_eff > V_SNAP:
+            self._anchor = max(self._anchor, s)
         # never ahead of the hand (the band only pulls back), never beyond the start
-        target_s = max(0.0, min(s, self._s_filt - self._lead))
+        self._anchor = max(0.0, min(self._anchor, max(s, 0.0)))
+        target_s = self._anchor
         target = self._start.copy()
         target[a] += self.sign * target_s
         self.arm.set_target(_tup3(target))
@@ -641,14 +651,22 @@ class BandEngine:
         if st.mode == "fault":
             return self._say("Not returned to the start: the arm reports a fault.")
         end = float(st.t) + COUNTDOWN_S
+        give_up = float(st.t) + RETURN_WAIT_S
+        held = 0                 # consecutive readings that say "held": one noisy sample is not a hand
         while True:
             st = self.arm.get_state()
             force = np.asarray(st.force, dtype=float) - self.force_baseline
-            if float(np.linalg.norm(st.vel)) > GATE_SPEED or float(np.linalg.norm(force)) > GATE_FORCE_N:
+            speed, f = float(np.linalg.norm(st.vel)), float(np.linalg.norm(force))
+            held = held + 1 if (speed > GATE_SPEED or f > GATE_FORCE_N) else 0
+            if held >= GATE_TICKS and float(st.t) < give_up:
+                # still settling after the hold, or a hand on it: wait, and count down again from 3
+                end, held = float(st.t) + COUNTDOWN_S, 0
+            if held >= GATE_TICKS:
                 self._emit(st, st.pos, "idle", -1, force)
                 with self._lock:
                     self._countdown = None
-                return self._say("Not returned to the start: the handle is being held. Let go, then press Home.")
+                return self._say("Not returned to the start: the handle is being held "
+                                 f"(it reads {f:.0f} N, moving {speed * 100:.0f} cm/s). Let go, then press Home.")
             left = end - float(st.t)
             with self._lock:
                 self._countdown = round(max(0.0, left), 1)

@@ -168,3 +168,11 @@ def test_calibration_wording_on_screens(no_site):
     for name in ("patient.html", "operator.html", "operator.js", "physio.html", "physio.js", "index.html"):
         text = no_site.get(f"/screens/{name}").text
         assert not re.search(r"\bAI\b", text) and "machine learning" not in text.lower(), name
+
+
+def test_big_screen_shows_levels_in_words_and_no_newton_number(no_site):
+    page = no_site.get("/screens/patient.html").text
+    for word in ("Light", "Medium", "Firm", "Strong"):
+        assert word in page
+    assert 'textContent = fmt.N(f)' not in page.split("calforce")[0].split("LEVEL_WORD")[-1]   # no number by the bar
+    assert "level_force_n" not in page and "forcebar" in page                # the bar stays, the newtons do not

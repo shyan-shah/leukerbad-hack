@@ -129,7 +129,8 @@ import { connectLive, api, simBanner, modeOf, fmt } from "./common.js";
 import { Track } from "./track.js";
 
 const $ = id => document.getElementById(id);
-const FORCE_MAX_N = 40;          // bar full scale
+const FORCE_MAX_N = 40;          // bar full scale: pushing at level 4 reads about 32 N, about 80% of the bar
+const LEVEL_WORD = { 1: "Light", 2: "Medium", 3: "Firm", 4: "Strong" };   // no newtons on this screen
 const STALE_MS = 2000;           // no samples this long: session has ended
 const MODE_WORD = { assist: "HELPING", free: "FREE", resist: "CHALLENGING" };
 const CAL_PROMPT = "Push once at a level that feels comfortable";
@@ -163,7 +164,7 @@ function draw() {
   const band = typeof m.level === "number";          // Push at a fixed level (push_1 .. push_4)
   $("exname").textContent = band ? "Push" : EX_NAMES[ex] || ex;
   $("mode").textContent = test ? "STRENGTH TEST"
-    : band ? `LEVEL ${m.level} · ${Number(m.level_force_n).toFixed(0)} N` : MODE_WORD[mode];
+    : band ? `LEVEL ${m.level} · ${(LEVEL_WORD[m.level] || "").toUpperCase()}` : MODE_WORD[mode];
   $("mode").className = `mode-${mode}`;
   const cal = m.calibration, calibrating = m.phase === "calibrate";
   const calDone = !!cal && cal.status === "done" && typeof cal.resistance_n === "number";
@@ -180,7 +181,7 @@ function draw() {
   const arming = m.arming;
   $("hint").textContent = !calibrating && m.phase === "idle" && !m.done && arming && arming.reason
     ? `Not started yet: ${arming.reason}` : calDone && !showSet ? setText : "";
-  $("contribLabel").textContent = test ? "Best try" : "You did (last rep)";
+  $("contribLabel").textContent = test ? "Best try" : band ? "Reach (last rep)" : "You did (last rep)";
   $("holding").classList.toggle("on", m.arm_mode === "hold" || m.arm_mode === "fault");
 
   const { s, targetS } = track.update(m);
@@ -193,7 +194,7 @@ function draw() {
   if (targetS !== null) { tgt.style.left = pct(targetS); tgt.style.borderColor = `var(--${mode})`; }
 
   const f = Math.hypot(...(m.force || [0, 0, 0]));
-  $("force").textContent = fmt.N(f);
+  $("force").textContent = "";            // the bar only: no newton number in front of the patient
   $("forcebar").style.width = `${Math.min(100, (f / FORCE_MAX_N) * 100)}%`;
   $("calforce").textContent = fmt.N(f);
   $("calbar").style.width = `${Math.min(100, (f / FORCE_MAX_N) * 100)}%`;
@@ -215,8 +216,8 @@ function onRep(r) {
     $("last").textContent = `Try ${r.idx + 1}: peak ${fmt.N(r.peak_force_n)} · best ${fmt.N(bestTry)}`;
     return;
   }
-  $("contrib").textContent = fmt.pct(r.contribution);
-  const bits = [`Rep ${r.idx + 1}: ${fmt.cm(r.rom_m)} reach`, `peak ${fmt.N(r.peak_force_n)}`, fmt.s(r.duration_s)];
+  $("contrib").textContent = /^push_[1-4]$/.test(r.exercise || "") ? fmt.cm(r.rom_m) : fmt.pct(r.contribution);
+  const bits = [`Rep ${r.idx + 1}: ${fmt.cm(r.rom_m)} reach`, fmt.s(r.duration_s)];   // no newtons here
   if (r.rescued) bits.push("arm helped finish");
   $("last").textContent = bits.join(" · ");
 }

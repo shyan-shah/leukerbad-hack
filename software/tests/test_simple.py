@@ -294,9 +294,9 @@ def test_let_go_with_slow_stiffness_latency_does_not_chatter():
     hand.release(arm._t, over_s=0.1)
     v = np.array(back_speeds(eng, arm, 8.0))
     assert arm.get_state().mode == "compliant" and v.max() < 0.15
-    moving = v[40:600]
-    assert moving.min() > 0.005 and 0.03 < moving.mean() < 0.08    # one glide (it ripples at level 4), never stop-and-go
-    assert np.abs(np.diff(moving)).max() < 0.03
+    moving = v[120:800]                          # from 0.6 s after the let-go, for 3.4 s of the way back
+    assert moving.min() > 0.02                   # one steady glide: never stop-and-go
+    assert 0.04 < moving.mean() < 0.06 and moving.max() < 0.08
 
 
 # --------------------------------------------------------------------------- end of travel and trips
@@ -402,8 +402,10 @@ def test_stop_does_not_move_a_held_handle_and_survives_an_interrupted_home():
     eng, arm, hand, samples, reps = make(2, plan, return_home=True)
     eng.run_for(4.0)
     here = arm.get_state().pos
+    t_before = arm._t
     s = eng.stop()                               # the hand is still pushing on it
     assert s.session_id == "sess-b" and "being held" in eng.snapshot()["message"]
+    assert 9.5 < arm._t - t_before < 11.5        # it waited 10 s for the hand to let go, then gave up
     assert np.allclose(arm.get_state().pos, here, atol=0.03)
 
     eng, arm, hand, samples, reps = make(2, plan, return_home=True)
@@ -498,3 +500,56 @@ def test_start_countdown_waits_while_the_handle_is_pressed_before_a_move_to_the_
     arm.force_offset = np.zeros(3)                                            # hands off
     eng.run_for(3.4)
     assert eng.stage == "band" and np.allclose(arm.get_state().pos, START, atol=1e-3)
+
+
+@pytest.mark.parametrize("level", [1, 2, 3, 4])
+def test_a_released_handle_is_led_back_at_one_steady_speed(level):
+    """15 Nov on the arm: the empty handle came back go, stop, go (0 to 0.09 m/s, once a second). Now the
+    band.s anchor walks back at 0.05 m/s: from 1.5 s after the let-go until the handle is within 6 cm of the
+    start the speed never drops below 0.02 m/s and never exceeds 0.08 m/s."""
+    eng, arm, hand, samples = hold_at_full_travel(level)
+    hand.release(arm._t, over_s=0.1)
+    v, s = [], []
+    for _ in range(int(9.0 / DT)):
+        eng.tick()
+        arm.step(DT)
+        v.append(float(np.linalg.norm(arm._vel)))
+        s.append(prog(arm._pos))
+    glide = [x for x, p in zip(v[150:], s[150:]) if p > 0.06]      # from 1.5 s after the let-go
+    assert len(glide) > 250 and min(glide) > 0.02 and max(glide) < 0.08, (min(glide), max(glide))
+    assert s[-1] < 0.05 and arm.get_state().mode == "compliant"
+
+
+def test_a_slow_return_keeps_the_full_pull():
+    """Coming back slower than the anchor walks (0.05 m/s), the hand feels the level force both ways."""
+    plan = cycle(out_s=4.0, dwell_s=1.0, back_s=14.0)         # back at 0.02 m/s on average, 0.0375 at most
+    eng, arm, hand, samples, reps = make(2, plan)
+    back = []
+    for _ in range(int(19.5 / DT)):
+        eng.tick()
+        if eng.phase == "back" and 0.10 <= prog(arm._pos) <= 0.20 and -0.045 < arm._vel[0] < -0.005:
+            back.append(spring_force(arm))
+        arm.step(DT)
+    assert len(back) > 50 and min(back) > LEVELS[2] - 2.0 and max(back) < LEVELS[2] + 1.0
+
+
+def test_stop_waits_for_the_hand_to_let_go_then_returns():
+    plan = cycle(out_s=3.0, dwell_s=60.0)
+    eng, arm, hand, samples, reps = make(1, plan, return_home=True)
+    eng.run_for(4.0)
+    hand.release(arm._t + 4.0, over_s=0.01)      # the hand lets go 4 s after Stop was pressed
+    orig = hand.effort
+
+    def effort(t, pos, vel, goal):
+        if hand.fade and t < hand.fade[0]:
+            saved, hand.fade = hand.fade, None
+            try:
+                return orig(t, pos, vel, goal)
+            finally:
+                hand.fade = saved
+        return orig(t, pos, vel, goal)
+    hand.effort = effort
+    t_before = arm._t
+    s = eng.stop()
+    assert eng.snapshot()["message"] == "Back at the start." and np.allclose(arm.get_state().pos, START, atol=1e-6)
+    assert 6.5 < arm._t - t_before < 9.0         # 4 s held, then a fresh 3 s countdown

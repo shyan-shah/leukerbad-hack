@@ -135,7 +135,7 @@ def test_band_engine_through_the_api_on_simarm(tmp_path):
         assert "constant resistance of 15 N (level 2 of 4)" in note and "resistance level 2 (15 N constant band)" in note
         assert c.get("/api/health").json()["session"] is False
     # the simulated hand keeps holding the handle, so the arm must NOT have been driven home under it
-    assert time.time() - t0 < 10
+    assert time.time() - t0 < 16         # it waits 10 s for the hand to let go, then gives up
 
 
 def test_note_for_a_band_session():
