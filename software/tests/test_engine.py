@@ -124,13 +124,13 @@ def test_strong_patient_auto_dial_falls_below_0_3_within_8_reps():
 
 
 def test_strong_patient_full_resistance_completes_with_peak_force_near_15n():
-    eng, arm, samples, reps = make(cued(1.0), dial=-1.0, auto=False)
+    eng, arm, samples, reps = make(cued(1.0), dial=-0.5, auto=False)
     eng.run_until_reps(3, max_s=120)
     assert len(reps) == 3
     for r in reps:
         assert r.mode == "resist"
         assert r.completed
-        # K_RESIST * MAX_LEAD = 15 N along the reach; the magnitude also includes the
+        # 0.5 * K_RESIST * MAX_LEAD = 15 N along the reach; the magnitude also includes the
         # simulated 8 N limb load, so the band is wide on the upper side.
         assert 12.0 <= r.peak_force_n <= 22.0
     assert arm.get_state().fault is None
@@ -182,7 +182,7 @@ def test_letting_go_mid_reach_stops_target_advance_within_0_5s():
 
 
 def test_contribution_uses_out_phase_only():
-    eng, arm, samples, reps = make(cued(1.0), dial=-1.0, auto=False)
+    eng, arm, samples, reps = make(cued(1.0), dial=-0.5, auto=False)
     eng.run_until_reps(1, max_s=60)
     rep = reps[0]
     out = [s for s in samples if s.rep_idx == 0 and s.phase == "out"]
@@ -407,7 +407,7 @@ def test_stock_patient_strong_auto_dial_falls_below_0_3_within_8_reps():
 
 
 def test_stock_patient_strong_full_resistance_completes_without_trip():
-    eng, arm, samples, reps = make(SimPatient(strength=1.0), dial=-1.0, auto=False)
+    eng, arm, samples, reps = make(SimPatient(strength=1.0), dial=-0.5, auto=False)
     eng.run_until_reps(3, max_s=120)
     assert len(reps) == 3
     assert all(r.completed and not r.rescued for r in reps)
@@ -470,9 +470,9 @@ def test_contribution_includes_commanded_spring_force():
 # --------------------------------------------------------------------------- resist rescue ramp
 
 def test_resist_rescue_ramps_to_transparent_without_lurch():
-    # strong patient aiming exactly at the end: against full resistance it stalls at about
+    # strong patient aiming exactly at the end: against 15 N (dial -0.5) it stalls at about
     # 2/3 of the reach while pushing about 15 N (the case that tripped with a one-step drop)
-    eng, arm, samples, reps = make(cued(1.0, overshoot=0.0), dial=-1.0, auto=False, spy=True)
+    eng, arm, samples, reps = make(cued(1.0, overshoot=0.0), dial=-0.5, auto=False, spy=True)
     eng.run_until_reps(1, max_s=40)
     assert reps[0].rescued is True
     assert arm.get_state().fault is None
@@ -492,6 +492,6 @@ def test_resist_rescue_ramps_to_transparent_without_lurch():
 def test_resist_rescue_one_step_drop_would_trip(monkeypatch):
     # guards the test above: with no ramp the same patient trips the speed limit
     monkeypatch.setattr(engine_mod, "RESIST_RAMP_S", 1e-6)
-    eng, arm, samples, reps = make(cued(1.0, overshoot=0.0), dial=-1.0, auto=False)
+    eng, arm, samples, reps = make(cued(1.0, overshoot=0.0), dial=-0.5, auto=False)
     eng.run_until_reps(1, max_s=40)
     assert arm.get_state().fault is not None and "speed" in arm.get_state().fault

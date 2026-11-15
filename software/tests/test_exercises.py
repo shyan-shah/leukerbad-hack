@@ -53,9 +53,9 @@ def test_registry_ids_and_values():
     assert (r.kind, r.reach_m, r.direction, r.start_at, r.dial, r.auto, r.default_reps) == \
         ("assist", 0.30, 1, "start", 1.0, True, 10)
     assert (p.kind, p.reach_m, p.direction, p.start_at, p.dial, p.auto, p.default_reps) == \
-        ("resist", 0.28, 1, "start", -0.6, False, 10)
+        ("resist", 0.28, 1, "start", -0.3, False, 10)
     assert (q.kind, q.reach_m, q.direction, q.start_at, q.dial, q.auto, q.default_reps) == \
-        ("resist", 0.28, -1, "far", -0.6, False, 10)
+        ("resist", 0.28, -1, "far", -0.3, False, 10)
     assert (a.kind, a.default_reps, a.push_s, a.rest_s) == ("test", 3, 3.0, 5.0)
     assert (c.kind, c.radius_m, c.period_s, c.default_reps, c.stiffness) == ("guided", 0.08, 6.0, 8, 300.0)
     assert get("push") is p
@@ -76,7 +76,7 @@ def test_preset_dial_and_auto_rules():
     e = Engine(arm, "s", "p", True, dial=0.4, auto=False)             # reach keeps the caller's dial
     assert (e.dial, e.auto) == (0.4, False)
     e = Engine(arm, "s", "p", True, dial=1.0, auto=True, exercise="push")   # the server's defaults
-    assert (e.dial, e.auto, e.reach_m) == (-0.6, False, 0.28)
+    assert (e.dial, e.auto, e.reach_m) == (-0.3, False, 0.28)
     e = Engine(arm, "s", "p", True, dial=-0.3, exercise="pull")       # a resist dial is honoured
     assert (e.dial, e.reach_sign) == (-0.3, -1)
     e = Engine(arm, "s", "p", True, exercise="push", reach_m=0.10, reps=4)
@@ -117,10 +117,10 @@ def test_push_resists_and_strong_patient_completes():
     eng.run_until_reps(3, max_s=90.0)
     assert len(reps) == 3 and arm.get_state().fault is None
     for r in reps:
-        assert r.mode == "resist" and r.dial == -0.6 and r.completed
+        assert r.mode == "resist" and r.dial == -0.3 and r.completed
         assert r.rom_m >= 0.9 * 0.28 - 0.01
         assert 5.0 < r.peak_force_n < 30.0
-    assert eng.dial == -0.6 and eng.auto is False                    # no auto dial
+    assert eng.dial == -0.3 and eng.auto is False                    # no auto dial
     out = [s for s in samples if s.phase == "out" and x(s.pos) > 0.06]
     assert out and all(s.target[0] < s.pos[0] - 0.03 for s in out)   # band pulls back to the start
     assert max(x(s.pos) for s in samples) < 0.28 + 0.12
@@ -146,7 +146,7 @@ def test_pull_setup_then_resisted_reps_towards_the_patient():
     eng.run_until_reps(2, max_s=90.0)
     assert len(reps) == 2 and arm.get_state().fault is None
     for r in reps:
-        assert r.mode == "resist" and r.dial == -0.6 and r.completed
+        assert r.mode == "resist" and r.dial == -0.3 and r.completed
         assert r.rom_m >= 0.9 * 0.28 - 0.01
     out = [s for s in samples[n_setup:] if s.phase == "out"]
     assert out[0].pos[0] > out[-1].pos[0] + 0.2                       # "out" moves towards the patient
@@ -357,7 +357,7 @@ def test_let_go_ramps_reach_stiffness_down_in_steps_then_walks_back():
     for _ in range(100):
         eng.run_for(DT)
         ks.append(float(arm._k[0]))
-    assert ks[0] <= 0.6 * controller.K_RESIST + 1e-9 and ks[-1] <= 0.1 * 0.6 * controller.K_RESIST + 1e-9
+    assert ks[0] <= 0.3 * controller.K_RESIST + 1e-9 and ks[-1] <= 0.1 * 0.3 * controller.K_RESIST + 1e-9
     assert all(b <= a + 1e-9 for a, b in zip(ks, ks[1:]))            # only ever down
     assert 8 <= len(set(round(k, 6) for k in ks)) <= 11               # about ten 0.1 s steps
     assert float(arm._k[1]) == controller.K_WALL                      # walls stay on during the ramp
@@ -370,7 +370,7 @@ def test_let_go_ramps_reach_stiffness_down_in_steps_then_walks_back():
 
 
 def test_let_go_on_the_resist_side_of_reach_too():
-    eng, arm, samples, reps = make("reach", strength=1.0, dial=-0.6, auto=False)
+    eng, arm, samples, reps = make("reach", strength=1.0, dial=-0.3, auto=False)
     run_until_phase(eng, "out")
     eng.run_for(1.5)
     arm.patient.present = False

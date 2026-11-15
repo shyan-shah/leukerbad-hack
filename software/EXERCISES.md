@@ -21,7 +21,7 @@ eng.start(); ...; eng.stop()
 
 - **`exercise`** unknown id: `ValueError` listing the known ids. Default `"reach"` is today's behaviour, unchanged.
 - **`reach_m`** given: overrides the preset's length (for a short test run). Not given: the preset's.
-- **`dial`, `auto`**: for `reach` they are the caller's, as before. For every other preset `auto` is the preset's, and `dial` is used only if it is on the preset's side (`push`/`pull` accept a negative dial, anything else falls back to -0.6). So the server can keep sending its default `dial 1.0, auto true`.
+- **`dial`, `auto`**: for `reach` they are the caller's, as before. For every other preset `auto` is the preset's, and `dial` is used only if it is on the preset's side (`push`/`pull` accept a negative dial, anything else falls back to -0.3). So the server can keep sending its default `dial 1.0, auto true`.
 - **`reach_sign`** is always the configured reach direction; the preset's `direction` is applied on top (`pull` reverses it).
 - **Reps.** `reps=N`: no new rep is armed after N. `reps=None`: `reach`, `push` and `pull` keep running until `stop()` (as today) and the preset's `default_reps` is only reported; `armtest` and `circle` always stop after their own count.
 - **`snapshot()`** adds `exercise`, `kind`, `reps_target`, `done` (`rep_count >= reps_target`).
@@ -33,8 +33,8 @@ eng.start(); ...; eng.stop()
 | id | kind | line | dial | auto | default reps | notes |
 |---|---|---|---|---|---|---|
 | `reach` | assist | 0.30 m from the start pose, configured direction | +1.0 | yes | 10 | today's engine |
-| `push` | resist | 0.28 m, same line | -0.6 | no | 10 | band pulls back to the start |
-| `pull` | resist | 0.28 m, reversed: starts at the far end, "out" is towards the patient | -0.6 | no | 10 | setup phase first |
+| `push` | resist | 0.28 m, same line | -0.3 | no | 10 | band pulls back to the start |
+| `pull` | resist | 0.28 m, reversed: starts at the far end, "out" is towards the patient | -0.3 | no | 10 | setup phase first |
 | `armtest` | test | none (handle held at the start pose) | 0 | no | 3 tries | 3 s push, 5 s rest |
 | `circle` | guided | circle radius 0.08 m, plane of the reach axis and world z | 0 | no | 8 circles | 6 s per circle, 300 N/m on all axes, not live |
 
@@ -42,7 +42,7 @@ eng.start(); ...; eng.stop()
 Section 4.2 of the master plan, unchanged: idle (soft hold) → out → back, hands-off rule, stall rescue, auto dial. Measured per rep on the out phase: duration, ROM, path error, SPARC, peak and mean force, contribution.
 
 ### push
-Same state machine and metrics on the resist side: the target sits 5 cm behind the hand towards the start, along-path stiffness `0.6 * K_RESIST` = 180 N/m (about 9 N of band). No auto dial. Sim, strong patient: 3 of 3 reps completed, peak force 12.6 N, ROM 0.253 m.
+Same state machine and metrics on the resist side: the target sits 5 cm behind the hand towards the start, along-path stiffness `0.3 * K_RESIST` = 180 N/m (about 9 N of band; `K_RESIST` is 600 N/m since 15 Nov evening, so the calibrated resistance can reach 30 N). No auto dial. Sim, strong patient: 3 of 3 reps completed, peak force 12.6 N, ROM 0.253 m.
 
 ### pull
 The line is the push line run backwards: path start = start pose + 0.28 m along the configured reach (the far end), path end = the start pose.
@@ -79,7 +79,7 @@ Robot-led: after the usual 1 s with a hand on the handle at the start, the targe
 
 ### Release: letting go of a loaded spring (resist side and armtest)
 
-The band (up to 15 N) and the test hold (up to 30 N) are stretched springs. Before 15 Nov a let-go threw the empty handle back at 0.40 to 0.46 m/s in the sim and the speed trip ended the session. Now:
+The band (up to 30 N since 15 Nov evening) and the test hold (up to 30 N) are stretched springs. Before 15 Nov a let-go threw the empty handle back at 0.40 to 0.46 m/s in the sim and the speed trip ended the session. Now:
 
 1. **Detect.** Let go = the handle is unoccupied (the usual 0.5 s rule), or, on a single tick, the force on the handle is under `F_PRESENT` (1.5 N) while the commanded spring pull along the reach axis is over 1 N. The second test acts within one 10 ms tick; waiting 0.5 s would be too late. A person still holding on, even one moving back with the band, is not a let-go.
 2. **Target on the hand at once** (the exact hand position, so the wall springs let go of the limb's weight too): no spring force from that tick.

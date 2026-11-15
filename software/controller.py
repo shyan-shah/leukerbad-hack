@@ -47,7 +47,7 @@ __all__ = [
 # --- Tunable constants (section 4.2 start values) ---------------------------
 K_WALL = 500.0       # N/m, across-path stiffness on the two non-reach axes
 K_ASSIST = 400.0     # N/m at D = +1, max assist pull = 400 * 0.05 = 20 N
-K_RESIST = 300.0     # N/m at D = -1, max resistance = 300 * 0.05 = 15 N
+K_RESIST = 600.0     # N/m at D = -1, max resistance = 600 * 0.05 = 30 N (arm.py default k_max; 300 = 15 N until 15 Nov evening)
 MAX_LEAD = 0.05      # m, furthest the target may sit from the hand along the path
 REACH_M = 0.30       # m, reach length (used by the engine to build the path)
 T_OUT_S = 4.0        # s, min-jerk reference time for the out phase

@@ -126,7 +126,7 @@ def test_resist_target_max_lead_behind_hand(phase):
     target, k = command(-1.0, phase, s_hand, 2.0, pos, PATH, False)
     assert along(PATH, target, pos) == pytest.approx(-0.05)
     assert k == (K_RESIST, K_WALL, K_WALL)
-    assert k[0] == 300.0
+    assert k[0] == 600.0
 
 
 def test_resist_never_beyond_start():

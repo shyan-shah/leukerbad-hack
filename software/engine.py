@@ -396,7 +396,7 @@ class Engine:
                 "resistance_n": resistance, "fraction": fraction, "reason": reason}
 
     def _max_resistance_n(self) -> float:
-        """The most the band can pull with the DEFAULT arm limits (15 N)."""
+        """The most the band can pull with the DEFAULT arm limits (30 N)."""
         lim = self._default_limits
         return float(min(controller.K_RESIST, lim.k_max) * min(controller.MAX_LEAD, lim.max_lead_m))
 

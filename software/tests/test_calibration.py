@@ -47,7 +47,7 @@ def test_weak_medium_strong_patients_get_clearly_different_resistances(exercise)
         assert set(c) == KEYS and c["status"] == "done" and c["progress"] == 1.0 and c["reason"] is None
         assert {"waiting", "pushing", "done"} <= seen
         assert c["fraction"] == 0.5 and c["resistance_n"] == pytest.approx(0.5 * c["comfort_force_n"], abs=0.02)
-        assert eng.dial == pytest.approx(-c["resistance_n"] / 15.0, abs=0.01)
+        assert eng.dial == pytest.approx(-c["resistance_n"] / 30.0, abs=0.01)
         n_cal = sum(s.phase == "calibrate" for s in samples)
         assert 300 <= n_cal <= 400                                    # 3 s push plus the short wait for it
         assert all(s.rep_idx == -1 and s.dial == 0.0 for s in samples if s.phase == "calibrate")
@@ -62,7 +62,7 @@ def test_weak_medium_strong_patients_get_clearly_different_resistances(exercise)
         eng.stop()
         json.dumps(eng.calibration_state_after)
     # measured (push / pull, friction on): about 6.0 / 4.6, 9.8 / 8.4, 14.8 / 13.4 N
-    assert got[0] >= 3.0 and got[1] > got[0] + 2.0 and got[2] > got[1] + 2.0 and got[2] <= 15.0
+    assert got[0] >= 3.0 and got[1] > got[0] + 2.0 and got[2] > got[1] + 2.0 and got[2] <= 30.0
 
 
 def test_easy_set_raises_the_next_fraction_and_a_hard_one_lowers_it():
@@ -91,7 +91,7 @@ def test_empty_handle_times_out_with_the_lightest_resistance_and_a_reason():
     eng.run_for(11.0)
     c = cal(eng)
     assert c["status"] == "skipped" and c["resistance_n"] == 3.0 and c["comfort_force_n"] is None and "no push" in c["reason"]
-    assert eng.dial == pytest.approx(-0.2) and eng.phase == "idle" and eng.rep_count == 0
+    assert eng.dial == pytest.approx(-0.1) and eng.phase == "idle" and eng.rep_count == 0
     assert not getattr(arm, "test_limits_on", False) and arm.get_state().fault is None
 
 
@@ -100,7 +100,7 @@ def test_push_under_5n_gives_the_lightest_resistance_with_a_reason():
     run_until(eng, lambda: cal(eng)["status"] in ("done", "skipped"))
     c = cal(eng)
     assert c["status"] == "skipped" and c["resistance_n"] == 3.0 and "under 5 N" in c["reason"]
-    assert 2.0 < c["comfort_force_n"] < 5.0 and eng.dial == pytest.approx(-0.2)
+    assert 2.0 < c["comfort_force_n"] < 5.0 and eng.dial == pytest.approx(-0.1)
 
 
 def test_let_go_during_the_push_gives_the_lightest_resistance_no_trip():
@@ -118,13 +118,13 @@ def test_let_go_during_the_push_gives_the_lightest_resistance_no_trip():
 
 def test_calibrate_false_set_dial_and_stop_during_the_push():
     eng, arm, samples, reps = make("push", 1.0, calibrate=False, reps=1)
-    assert cal(eng)["status"] == "skipped" and cal(eng)["resistance_n"] is None and eng.dial == -0.6
+    assert cal(eng)["status"] == "skipped" and cal(eng)["resistance_n"] is None and eng.dial == -0.3
     eng.run_until_reps(1, max_s=40.0)
-    assert all(s.phase != "calibrate" for s in samples) and reps[0].dial == -0.6
+    assert all(s.phase != "calibrate" for s in samples) and reps[0].dial == -0.3
     eng, arm, samples, reps = make("push", 1.0)
-    eng.set_dial(-0.3)                                                # set_dial still overrides
+    eng.set_dial(-0.4)                                                # set_dial still overrides
     run_until(eng, lambda: cal(eng)["status"] == "done")
-    assert eng.dial == -0.3
+    assert eng.dial == -0.4
     eng, arm, samples, reps = make("push", 1.0)
     run_until(eng, lambda: cal(eng)["status"] == "pushing")
     eng.stop()
@@ -141,3 +141,61 @@ def test_reach_and_armtest_have_no_calibration(exercise):
     assert eng.rep_count >= 2 and arm.get_state().fault is None
     eng.stop()
     assert eng.calibration_state_after == strength_model.new_state()
+
+
+# --------------------------------------------------------------------------- 30 N range (15 Nov evening)
+
+def test_comfort_pushes_of_10_20_40_55n_give_increasing_resistances_up_to_30n_and_ten_counted_reps():
+    """K_RESIST 600 N/m * 5 cm = 30 N inside the default arm limits (was 300 N/m = 15 N, which capped
+    every comfortable push over 30 N at the same resistance). Friction 4.5 N on."""
+    got = []
+    for strength, comfort in ((0.25, 10.0), (0.62, 20.0), (1.4, 40.0), (2.0, 55.0)):
+        eng, arm, samples, reps = make("push", strength, reps=10)
+        run_until(eng, lambda: cal(eng)["status"] in ("done", "skipped"))
+        c = cal(eng)
+        assert c["status"] == "done" and c["comfort_force_n"] == pytest.approx(comfort, abs=1.0)
+        assert c["resistance_n"] == pytest.approx(0.5 * c["comfort_force_n"], abs=0.02)
+        assert eng.dial == pytest.approx(-c["resistance_n"] / 30.0, abs=0.001)
+        assert not getattr(arm, "test_limits_on", False)              # reps run inside the default limits
+        eng.run_until_reps(10, max_s=300.0)
+        assert eng.rep_count == 10 and len(reps) == 10 and all(r.completed for r in reps)
+        assert arm.get_state().fault is None
+        if comfort >= 20.0:                                           # the 10 N sim patient (6 N of effort) needs the stall rescue
+            assert not any(r.rescued for r in reps)
+        got.append(c["resistance_n"])
+        eng.stop()
+    # measured: 5.0, 10.1, 19.9, 27.4 N
+    assert got == sorted(got) and all(b > a + 4.0 for a, b in zip(got, got[1:]))
+    assert 4.5 <= got[0] <= 6.0 and 26.0 <= got[-1] <= 30.0
+
+
+def test_comfort_push_over_60n_is_capped_at_30n_and_fraction_cannot_exceed_it():
+    r = strength_model.resistance_for(55.0, {"fraction": 0.8}, 30.0)
+    assert r["resistance_n"] == 30.0 and r["dial"] == -1.0
+    eng, arm, samples, reps = make("push", 1.0)
+    assert eng._max_resistance_n() == pytest.approx(30.0)
+    eng.stop()
+
+
+def test_let_go_and_stall_at_the_top_resistance_do_not_trip():
+    eng, arm, samples, reps = make("push", 2.0, reps=3)               # about 27 N of band
+    run_until(eng, lambda: cal(eng)["status"] == "done")
+    assert cal(eng)["resistance_n"] > 26.0
+    run_until(eng, lambda: eng.phase == "out")
+    eng.run_for(1.5)
+    n = len(samples)
+    arm.patient.present = False                                       # let go of a 27 N spring mid-rep
+    eng.run_for(6.0)
+    assert arm.get_state().fault is None
+    assert max(abs(s.vel[0]) for s in samples[n:]) < 0.40
+    eng.stop()
+    eng, arm, samples, reps = make("push", 2.0, reps=3)
+    run_until(eng, lambda: cal(eng)["status"] == "done")
+    run_until(eng, lambda: eng.phase == "out")
+    eng.run_for(1.0)
+    arm.patient.strength = 1.5                                        # tires a little: stalls against 27 N, rescue ramp
+    # (a sudden drop to 1.0 or less trips the speed limit, as a drop from 1.0 to 0.5 does at 15 N: see LOG 15 Nov)
+    eng.run_for(12.0)
+    assert arm.get_state().fault is None and any(r.rescued for r in reps)
+    assert max(float(sum(v * v for v in s.vel)) ** 0.5 for s in samples) < 0.40
+    eng.stop()
