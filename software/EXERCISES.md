@@ -209,3 +209,15 @@ Sim only (`software/tests/test_arming.py`); not run on the real arm.
 - **`Engine.resume()`:** after a trip, home and prepare: compliance restarts and the session keeps its reps. **`stop()`** records a rep in progress as not completed.
 - **Calibration:** `software/strength_model.py` exists (fraction 0.5, bounds 0.3 to 0.8, step 0.05 per set; resistance = fraction x comfort force, 3 N to the maximum). The engine's calibrate phase does not: `snapshot()["calibration"]["status"]` is always "skipped" and push and pull use the preset dial.
 - Measured: grips of 6, 10 and 18 N arm in 0.74 to 1.00 s and complete the first rep; an empty handle did not arm in 20 s; after go() an empty handle moved under 8 cm. Limit: a hand pushing about 15 N or more while the hold is still stiffening after a rep slides past 5 cm and has to come back.
+
+## Update 15 Nov, 19:00 (supersedes the lines above where they differ)
+
+Sim only: `test_arming.py`, `test_calibration.py`, `test_rep_audit.py`.
+
+- **Firm hold:** entered whenever the idle target is on the start and the handle is within 7 cm (was 3 cm); given up only beyond 7 cm. Arming still needs 5 cm, 4.5 to 25 N, under 0.05 m/s, 0.6 s. armtest always stiffens over 1.5 s first.
+- **At arming:** for 0.25 s the target stays on the hand along the reach, and for 0.5 s the one-tick let-go test is off.
+- **Let-go of a loaded idle hold:** pull over 10 N with under half of it read back (friction and a moving handle's reading allowed for): target onto the hand at once, then the 2 cm/s walk back.
+- **Calibration (push, pull; `calibrate=False` skips it):** after setup, `Sample.phase == "calibrate"`, dial reported 0, `rep_idx` -1. The handle is held where it is at the arm's `k_max` (1500 N/m with `set_test_limits`, else 600). `snapshot()["calibration"]`: `waiting` until 2 N along the push direction, `pushing` for 3 s with `progress`, then `done` with `comfort_force_n` (mean over the steadiest 1 s), `resistance_n` (fraction x comfort, 3 to 15 N) and `fraction`. `skipped` with `resistance_n` 3 N and a `reason` for a push under 5 N, a let-go, 20 s without a push, or an arm stop. `null` for reach and armtest. `set_dial()` still overrides. After the push the target goes onto the hand and the usual idle hold takes over; `arming.reason` is "calibrating" during the phase.
+- **`calibration_state_after`:** after a push or pull set with at least one rep, the fraction moves 0.05 up (all reps completed, none rescued, none slower than 6 s) or down, within 0.3 to 0.8.
+- **Reps:** every start of a rep, try or circle gives exactly one `RepResult`, also when it ends on its first tick (zero metrics, not completed), at `stop()` or at `resume()`.
+- **Measured:** 10 of 10 reps at grips of 6, 10 and 18 N with a 1 cm wobble (reach and push). Resistances for sim strengths 0.3 / 0.6 / 1.0: push 6.0 / 9.8 / 14.8 N, pull 4.6 / 8.4 / 13.4 N. A 40 N shove in idle trips the arm itself; after home and `resume()` the session finishes.

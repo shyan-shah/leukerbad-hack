@@ -518,6 +518,11 @@ class Engine:
             self._resume_req = False
             if not self._started:
                 raise RuntimeError("resume() before start()")
+            if self._phase in ("out", "back"):
+                self._abort_rep(self._dial)      # resume() in the middle of a rep: it is recorded, not lost
+            if self._phase == "calibrate":
+                self._test_limits = bool(getattr(self.arm, "test_limits_on", False))
+                self._end_calibration(None, "interrupted by resume, lightest resistance set")
             if self.arm.get_state().mode != "compliant":
                 self.arm.start_compliance()
             count, reps = self.rep_count, self.reps
@@ -1154,10 +1159,13 @@ class Engine:
         t = np.asarray(self._out_t)
         pos = np.asarray(self._out_pos)
         force = np.asarray(self._out_force)
-        rep_dial, rep_t0 = self._rep_dial, self._rep_t0
+        rep_dial, rep_t0, was_open = self._rep_dial, self._rep_t0, self._rep_idx >= 0
         self._clear_rep()
         self._sim_cue("rest")
-        if len(t) < 2:
+        if not was_open:
+            return                          # no try in progress (rest between tries): nothing to record
+        if len(t) < 2:                      # ended on its first tick: still one RepResult
+            self._record(self._empty_rep("isometric", rep_dial, rep_t0))
             return
         start, end = self.path.start, self.path.end
         along_f = force[:, self.reach_axis] * self.reach_sign          # N, + = pushing along the reach
@@ -1251,9 +1259,12 @@ class Engine:
         pos = np.asarray(self._out_pos)
         force = np.asarray(self._out_force)
         robot = np.asarray(self._out_robot)
-        rep_dial, rep_t0 = self._rep_dial, self._rep_t0
+        rep_dial, rep_t0, was_open = self._rep_dial, self._rep_t0, self._rep_idx >= 0
         self._clear_rep()
+        if not was_open:
+            return
         if len(t) < 2:
+            self._record(self._empty_rep("guided", rep_dial, rep_t0))
             return
         r = self.preset.radius_m
         a = self.reach_axis
@@ -1349,6 +1360,14 @@ class Engine:
                                              dt=float(np.median(np.diff(t))), robot_force=robot),
             }
 
+    def _empty_rep(self, mode: str, rep_dial: float, rep_t0: float) -> RepResult:
+        """A rep, try or circle that ended before two samples were taken: not completed, all zeros."""
+        return RepResult(
+            session_id=self.session_id, idx=self.rep_count, mode=mode, dial=float(rep_dial),
+            t_start=float(rep_t0), duration_s=0.0, rom_m=0.0, path_err_mean_m=0.0, path_err_max_m=0.0,
+            sparc=0.0, peak_force_n=0.0, mean_force_n=0.0, contribution=0.0, completed=False,
+            simulated=self.simulated, rescued=False)
+
     def _finish_rep(self, dial_now: float, aborted: bool) -> None:
         """Close the current rep: RepResult, on_rep, auto dial. Aborted reps are not completed."""
         m = self._out_metrics()
@@ -1356,9 +1375,14 @@ class Engine:
         rescued = self._rescued
         rep_dial = self._rep_dial
         rep_t0 = self._rep_t0
+        was_open = self._rep_idx >= 0
         self._clear_rep()
+        if not was_open:
+            return  # no rep in progress: nothing to record (each rep is recorded exactly once)
         if m is None:
-            return  # too short to measure (aborted right at the start): no rep recorded
+            # ended on its first tick (too short to measure): still exactly one RepResult
+            self._record(self._empty_rep(mode_of(rep_dial), rep_dial, rep_t0))
+            return
         rep = RepResult(
             session_id=self.session_id, idx=self.rep_count, mode=mode_of(rep_dial),
             dial=float(rep_dial), t_start=float(rep_t0), completed=bool(completed),
