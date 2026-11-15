@@ -37,6 +37,7 @@ E-stop location: TODO(confirm on arm). Write it here before the first session an
 - RDK: `flexivrdk==1.7.0` (never a plain `pip install flexivrdk`; 1.9.x and 2.x do not match this robot). Python 3.12.
 - Arm laptop: Shyan's. Venv `C:\venvs\flexiv17`. Ethernet static `192.168.2.110`, mask `255.255.255.0`, no gateway. Controller `192.168.2.100`.
 - `K_x_nom = [10000, 10000, 10000, 1500, 1500, 1500]`.
+- **Stiffness is in the tool frame.** `SetCartesianImpedance` applies the three translational stiffness values along the TOOL (TCP) axes, not the base axes (measured 15 Nov, section 5). At the start pose the flange points down and tool y lies 11 degrees from base x (the reach axis), so the SECOND value of `Arm.set_stiffness(a, b, c)` is the one along the reach. Three equal values (hold, home) are the same in any frame. For different values along and across the reach: `arm.set_stiffness(*arm.reach_stiffness(k_reach, k_across).k)`. This depends on the orientation: a new start pose or a mounted handle that turns the flange changes which value is which; `reach_stiffness()` reads the orientation and reports the angle.
 - **No wrist force/torque sensor.** Force is estimated from the joint torques, so it is only right when the active tool's mass and centre of mass are right. Tool for sessions: `RehabHandle` (`robot/tool_handle.md`). With nothing mounted the tool must be `Flange`.
 - Elements Studio 3.9.3 on the arm laptop: double-click **`Start Flexiv Studio.bat`** on the desktop, then REFRESH, then Connect. Decline every "update robot" prompt.
 - **Motion Bar switch: up = Auto (Remote), down = Manual.** Our code only works in Auto (Remote).
@@ -123,6 +124,24 @@ Confirmed 14-15 Nov: serial, robot software and RDK version; Remote Mode = Ether
 reboot; the arm can be enabled at power-on; RDK getters used by `recover.py` exist in 1.7.0;
 `SwitchMode` to Cartesian mode holds the pose (0.15 mm drift in 5 s); nominal stiffness is
 restored by `close()` and the robot ends in IDLE without a fault; the loose-cable message.
+
+Confirmed 15 Nov (evening, Shyan's first hand-on Push, tool `Flange`): **stiffness acts along the tool axes.**
+(200, 500, 500) was commanded for a 10 N band along base x. Measured along the push from 12 held points:
+480 to 500 N/m (11.5 N at 2.4 cm, 15.7 N at 3.1 cm, 18.4 N at 3.8 cm). The tool-frame arithmetic for the
+start-pose orientation gives 489 N/m along base x and 211 N/m across it. So the band pulled about 25 N
+instead of 10 N, and a faster push tripped the arm at 40.1 N. What follows from it:
+
+- `software/simple.py` (the Push engine for the film) corrects for it itself: level 1 commands (500, 189, 500).
+- `robot/arm.py` has the same correction as a helper, `Arm.reach_stiffness()`; `set_stiffness()` itself is
+  unchanged and passes tool-axis values through.
+- **The old engine (`software/engine.py`: reach, push, pull, armtest behind `--exercises`) still passes
+  (reach value, wall, wall) as if they were base axes.** On the real arm at this start pose its reach
+  stiffness lands across the reach and its 500 N/m wall lands along it: assist pulls too weakly along the
+  reach, resistance is about 490 N/m (about 25 N at full lead) whatever the dial says, a "free" reach axis
+  is not free, and the side wall is soft. Do not put a person on it on the real arm until it uses the helper.
+- `robot/safety_check.py` checks 8, 10, 11 and 13 set different stiffness per axis the same way and have the
+  same fault on the real arm (`robot/SAFETY.md`). Not changed tonight.
+- Not yet tried on the arm: the corrected values with a hand on the handle.
 
 Still open:
 

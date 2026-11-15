@@ -534,3 +534,87 @@ def test_default_force_trip_still_40_n_without_the_test_profile(arm):
     a.start_compliance()
     robot.wrench = [45.0, 0, 0, 0, 0, 0]
     assert a.get_state().mode == "hold"
+
+
+# --------------------------------------------------------------------------- stiffness is applied in the tool frame
+
+def _start_quat():
+    return load_config().start_tcp_pose[3:7]      # the real start pose (15 Nov, flange down)
+
+
+def test_tool_frame_reproduces_the_489_measured_on_the_arm():
+    """15 Nov, first hand-on Push: (200, 500, 500) commanded, 480 to 500 N/m measured along base x."""
+    from robot.arm import base_stiffness
+    kb = base_stiffness((200.0, 500.0, 500.0), _start_quat())
+    assert kb[0] == pytest.approx(489.0, abs=1.0)      # along the reach: almost the "wall" value
+    assert kb[1] == pytest.approx(211.0, abs=1.0)      # and the 200 landed across it
+    assert kb[2] == pytest.approx(500.0, abs=0.5)
+
+
+def test_tool_stiffness_for_reach_puts_the_value_on_tool_y_with_the_angle_correction():
+    from robot.arm import base_stiffness, tool_stiffness_for_reach
+    r = tool_stiffness_for_reach(200.0, 500.0, _start_quat(), 0)
+    assert r.tool_axis == 1 and r.angle_deg == pytest.approx(11.0, abs=0.5)
+    assert r.k[0] == 500.0 and r.k[2] == 500.0
+    assert r.k[1] == pytest.approx(189.0, abs=1.0)     # what software/simple.py commands for level 1
+    assert r.k_reach == pytest.approx(200.0, abs=1e-6) and not r.clipped
+    assert r.k_base == pytest.approx(base_stiffness(r.k, _start_quat()))
+    assert r.k_base[1] == pytest.approx(489.0, abs=1.0)        # across the reach: nearly the wall
+    for k_reach in (200.0, 300.0, 400.0, 560.0):               # the four Push levels
+        assert tool_stiffness_for_reach(k_reach, 500.0, _start_quat(), 0).k_reach == pytest.approx(k_reach, abs=1e-6)
+
+
+def test_tool_stiffness_matches_shyans_engine_rule():
+    """Same numbers as software/simple.py BandEngine._k_vector, written out here so robot/ imports nothing
+    from software/: w = R[axis, :] ** 2, i = argmax, k[i] = clip((k_reach - K_WALL * (1 - w[i])) / w[i], 20, 600)."""
+    from robot.arm import _rotation, tool_stiffness_for_reach
+    q = _start_quat()
+    R = _rotation(q)
+    for axis in (0, 1):
+        w = [R[axis][j] ** 2 for j in range(3)]
+        i = max(range(3), key=lambda j: w[j])
+        for k_reach in (0.0, 100.0, 200.0, 560.0, 600.0):
+            want = [500.0] * 3
+            want[i] = min(max((k_reach - 500.0 * (1 - w[i])) / w[i], 20.0), 600.0)
+            assert tool_stiffness_for_reach(k_reach, 500.0, q, axis).k == pytest.approx(want)
+
+
+def test_tool_stiffness_reports_a_clipped_value_and_a_bad_angle():
+    from robot.arm import tool_stiffness_for_reach
+    q = _start_quat()
+    low = tool_stiffness_for_reach(0.0, 500.0, q, 0)           # a free reach axis cannot be had exactly
+    assert low.clipped and low.k[1] == 20.0 and low.k_reach == pytest.approx(37.5, abs=1.0)
+    high = tool_stiffness_for_reach(600.0, 500.0, q, 0)        # never above k_max
+    assert high.clipped and max(high.k) == 600.0 and high.k_reach < 600.0
+    s = 2 ** -0.5
+    r45 = tool_stiffness_for_reach(200.0, 500.0, (math.cos(math.pi / 8), 0.0, 0.0, math.sin(math.pi / 8)), 0)
+    assert r45.angle_deg == pytest.approx(45.0, abs=1e-6) and r45.clipped and r45.k_reach > 250.0
+    ident = tool_stiffness_for_reach(200.0, 500.0, (1.0, 0.0, 0.0, 0.0), 1)
+    assert ident.k == (500.0, 200.0, 500.0) and ident.angle_deg == pytest.approx(0.0, abs=1e-6)
+    assert s > 0
+    with pytest.raises(ValueError):
+        tool_stiffness_for_reach(float("nan"), 500.0, q, 0)
+
+
+def test_arm_reach_stiffness_uses_the_held_orientation_and_sends_nothing(arm):
+    a, robot = arm
+    robot.quat = list(_start_quat())
+    assert a.stiffness_frame == "tool"
+    a.start_compliance()
+    n = robot.count("SetCartesianImpedance")
+    r = a.reach_stiffness(200.0, 500.0)
+    assert r.tool_axis == 1 and r.k[1] == pytest.approx(189.0, abs=1.0) and r.angle_deg == pytest.approx(11.0, abs=0.5)
+    assert robot.count("SetCartesianImpedance") == n
+    a.set_stiffness(*r.k)
+    time.sleep(0.2)
+    assert robot.last("SetCartesianImpedance")[0][:3] == pytest.approx(list(r.k))
+
+
+def test_set_stiffness_still_passes_its_values_through_unchanged(arm):
+    """Existing callers get what they got before: no remapping inside set_stiffness."""
+    a, robot = arm
+    robot.quat = list(_start_quat())
+    a.start_compliance()
+    a.set_stiffness(200.0, 500.0, 500.0)
+    time.sleep(0.2)
+    assert robot.last("SetCartesianImpedance")[0][:3] == [200.0, 500.0, 500.0]

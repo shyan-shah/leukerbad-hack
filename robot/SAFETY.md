@@ -57,11 +57,14 @@ Peak forces to copy from the run (for the pitch; nobody says a force limit on st
 
 ## Test-limits profile (`set_test_limits`): staged test on the real arm
 
-**Status: RUN on the arm on 15 Nov, 18:24 to 18:34. a, b, c PASS. d: every line passed except one check
-that was wrong in the script (now fixed); its saved file still has to be re-checked, see below.** The values
-here are as reported by Kian from the run; the result files (`robot/results/test_limits*arm.json`) were not
-in the repo when this was written and must be committed. The calibrate phase and the strength test must not
-use the profile on the arm (`server.run --robot --calibrate`) until all four rows have an on-arm PASS.
+**Status: RUN on the arm on 15 Nov, 18:24 to 18:34 (tool `Flange`). a PASS, b PASS, c PASS. d: steady 50 to
+54 N for 8 s, 62 N reached twice, no arm fault, highest joint load 46 %; the one line the script printed as
+failing was a release-timing artefact of its own check (fixed since).** Recorded as Kian reported it from the
+run; the result files (`robot/results/test_limits*arm.json`) are on the arm laptop and were not in the repo
+when this was written. **The profile is not used in what is filmed** (Push at 4 levels runs at the default
+limits and never calls `set_test_limits`). Before anything does use it on the arm with a person (calibrate
+phase, strength test), re-check the saved stage d file as described below and repeat the stages with the
+handle mounted.
 
 The profile (`robot/arm.py`, only while `set_test_limits(True)` is on): stiffness cap 1500 N/m, robot contact
 limit 65 N, force trip 75 N. Everything else as in "Limits in force" below.
@@ -87,7 +90,7 @@ IDLE, e-stop holder in place, one stage per run:
 | a | nobody touches; the profile goes on (1500 N/m) and off 3 times, 3 s each | handle moves under 2 mm at each of the 6 switches; no trip, no fault; limits restored | PASS | see the result file |
 | b | gentle push along the reach, about 10 N, held 5 s | reading 5 to 25 N; handle gives under 2 cm; no trip, no fault; limits restored | PASS on the third run | see the result files (two earlier runs did not pass) |
 | c | push of 30 to 40 N | reading passes 30 N; handle gives under 3 cm for readings up to 40 N while the push rises or is held; no trip, no fault; limits restored | PASS on the second run | see the result files (one earlier run did not pass) |
-| d | push towards 60 N | reading passes 50 N; under 3 cm for readings up to 40 N while the push rises or is held, and never 5 cm; the script did not have to stop at 65 N; no trip, no fault; limits restored | FAIL printed, by the faulty 3 cm check only; re-check the saved file | steady 50 to 54 N for 8 s, clean release, no trip; 62 N reached twice, no arm fault, the 65 N stop did not fire; highest joint load 46 % of its limit (J3); the failing sample: release, reading already under 40 N, handle still 31 mm out, returning at 0.22 m/s |
+| d | push towards 60 N | reading passes 50 N; under 3 cm for readings up to 40 N while the push rises or is held, and never 5 cm; the script did not have to stop at 65 N; no trip, no fault; limits restored | all lines ok except one, a release-timing artefact of the check (fixed); saved file not yet re-checked | steady 50 to 54 N for 8 s, clean release, no trip; 62 N reached twice, no arm fault, the 65 N stop did not fire; highest joint load 46 % of its limit (J3); the failing sample: release, reading already under 40 N, handle still 31 mm out, returning at 0.22 m/s |
 
 Stage d cannot keep "under 3 cm" at 60 N: 60 N / 1500 N/m is 4 cm by arithmetic. So the 3 cm criterion is
 judged on readings up to 40 N in c and d, and the 5 cm stop covers the rest. The 65 N stop is a guard, not
@@ -113,6 +116,34 @@ What the arm run on 15 Nov showed:
 Dry run on the simulated arm (15 Nov, `--sim`, not evidence about the robot): a 0.0 mm; b 10.0 N, 6.8 mm;
 c 36.0 N, 24.2 mm; d 58.0 N, 38.9 mm (26.6 mm up to 40 N); all PASS. A simulated 70 N push in d and a 30 N
 push in b are stopped by the script at the ceiling.
+
+## What will be filmed: Push at 4 levels (`software/simple.py`, default limits)
+
+**Status: NOT signed off. No row has an on-arm PASS with a hand on the handle at the corrected stiffness.**
+Run each row with the technician or a healthy team member, e-stop holder in place, and fill in the result.
+Rule until every row is PASS: hands off whenever the screen says the arm is moving.
+
+What has run on the arm so far (15 Nov evening, Shyan, tool `Flange`): the empty handle, 10 s per level, all
+four levels (settled within 2.35, 0.12, 0.51, 0.12 mm, no creep, 0 reps). Then one hand-on set at level 1,
+which found the two faults in "Safety events" below. Both are fixed in code; neither fix has been tried with a
+hand.
+
+| # | Filmed item | What to do | Pass criterion | Result | Measured |
+|---|---|---|---|---|---|
+| F1 | Push, level 1 (10 N, 200 N/m along the reach) | 10 pushes out and back at normal speed, then one fast | stiffness along the reach from held points within 15 % of 200 N/m; reading while pushing out near 10 N plus friction, not 25 N; 10 of 10 reps counted; no trip | not run at the corrected stiffness (first try: 489 N/m, 27.3 N mean, trip at 40.1 N) | |
+| F2 | Push, level 2 (15 N, 300 N/m) | as F1 | within 15 % of 300 N/m; 10 of 10; no trip | not run | |
+| F3 | Push, level 3 (20 N, 400 N/m) | as F1 | within 15 % of 400 N/m; 10 of 10; no trip | not run | |
+| F4 | Push, level 4 (28 N, 560 N/m) | as F1; watch the peak reading | within 15 % of 560 N/m; 10 of 10; peak reading stays under the 40 N trip at filming speed (sim: up to 35.4 N); no trip | not run | |
+| F5 | Level change during a set | tap another level while holding the handle mid-push | the pull changes over about 0.5 s with no jerk; no trip | not run | |
+| F6 | Letting go at full travel, each level | open the hand at the far end | the handle comes back by itself under 0.30 m/s and stops at the start; no trip | not run | |
+| F7 | Automatic return to the start: waits for a free handle | leave the handle away from the start, keep a hand pressing on it (over 6 N), start a set | the countdown waits and the arm does not move while the handle reads over 6 N; it moves only after the hand is off | not run | |
+| F8 | Automatic return to the start: holds on contact | during the move to the start (at start and at stop), press on the handle | the arm holds at once when the reading changes by more than 10 N; the reading never climbs as it did on 15 Nov (61 N) | not run | |
+| F9 | Hands-off zeroing | start a set with nobody touching; then start one with a hand resting on the handle | nobody touching: zeroes and starts, empty reading under 6 N; hand on it: refuses with "Hands off" and does not start | not run | |
+| F10 | Empty handle at every level | nobody touching, 20 s per level | stays within 2 mm of the start, 0 reps counted | PASS on 15 Nov BEFORE the stiffness fix (2.35, 0.12, 0.51, 0.12 mm); repeat with the fix | |
+
+F1 to F4 depend on the tool-frame correction (see "Limits in force"): if the measured stiffness is not near the
+level's value, stop and check `arm.reach_stiffness()` for the orientation in use, above all after the handle is
+mounted.
 
 ## Dry run on the simulated arm (15 Nov, not evidence about the robot)
 
@@ -152,6 +183,12 @@ reproducible in the sim.
   those commands. They do not prove the engine's own hands-off rule or its `pull` and `armtest`
   presets (Shyan's E1): **one engine run per exercise with a deliberate let-go is still needed**
   and is not covered by this sheet.
+- **Checks 8, 10, 11 and 13 set a different stiffness along and across the reach, and on the real arm those
+  values act along the TOOL axes** (found 15 Nov, see `robot/RUNBOOK.md` section 5). At the start pose the
+  value meant for the reach lands across it and the 500 N/m wall lands along it. So on the real arm these
+  four checks do not test what their titles say until `robot/safety_check.py` uses `Arm.reach_stiffness()`.
+  Checks 3, 7, 9, 12, 14 use one value on all axes and are not affected. The sim applies base axes and does
+  not show this.
 - Check 10 depends on the empty handle reading under 1.5 N above its start-pose baseline all
   along the reach. On 14 Nov the empty reading moved 0.7 to 3.2 N with pose (tool `Flange`).
   If that is still true with the handle, check 10 FAILS with "the handle never read empty",
@@ -192,6 +229,11 @@ In code (`robot/arm.py` `Limits`; callers cannot override them, and this sheet i
 | Watchdog | 0.2 s without a target |
 | Workspace box | ±0.35 m along the reach, ±0.10 m across, ±0.10 m up/down from the start pose; trip 2 cm outside |
 
+Stiffness values act along the tool axes, not the base axes (measured 15 Nov). `k_max` caps each value, so
+no direction can be stiffer than `k_max` whatever the orientation; the frame changes WHERE a stiffness acts,
+not how large it can be. What it does change: a band meant to pull 10 N pulled 25 N. Per-direction values
+must come from `Arm.reach_stiffness()` (or the same rule in `software/simple.py`).
+
 In Flexiv Elements (set by the technician only; not reachable from our code):
 
 | Elements limit | Value set | Set by | Date |
@@ -230,3 +272,5 @@ happened, what was done.
 |---|---|---|
 | 14 Nov | "Robot and Control Box are disconnected" in Elements | loose arm cable: power off, reseat both ends, power on (`robot/RUNBOOK.md`) |
 | 14 Nov | Wrong tool selected (`Seat_Assembly_tool`, not mounted): 12.6 N false force on an empty flange | switched to `Flange`; our handle gets its own tool `RehabHandle` |
+| 15 Nov | First hand-on Push, level 1: the band pulled about 25 N instead of 10 N (stiffness applied along the tool axes: 489 N/m along the push, not 200); a faster push tripped the arm at 40.1 N after 1 rep. The trip worked as designed | `software/simple.py` puts the level's stiffness on the tool axis along the reach with the angle correction; `robot/arm.py` documents the frame and has `reach_stiffness()`. Not yet re-tried with a hand |
+| 15 Nov | After that trip the handle stood 10 cm out with a hand still on it; the next start homed at nominal stiffness against the hand: reading 61 N in 0.6 s, `home()` ended 20.6 cm from the start | `software/simple.py`: the countdown waits while the handle reads over 6 N, and a move to the start holds on a 10 N change. Not yet tried on the arm. Hands off whenever the screen says the arm is moving |

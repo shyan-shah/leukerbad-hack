@@ -41,6 +41,34 @@ Consequences:
   out at dial -1, and 15 - 4.5 = 10 N pulling them back.
 - The 1.5 cm path-error success limit and the 2 cm start window are close to the dead bands.
 
+## 2b. Found on the arm, 15 Nov: stiffness values act along the tool axes
+
+`SetCartesianImpedance` applies the three translational stiffness values along the TOOL (TCP) axes, not the base axes.
+Every per-axis number in this file was written as if they were base axes.
+
+| | Along the reach (base x) | Across (base y) | Up (base z) |
+|---|---|---|---|
+| Commanded as (200, 500, 500), meant as | 200 | 500 | 500 |
+| What the arm had, by tool-frame arithmetic at the start pose | 489 | 211 | 500 |
+| Measured along the push, 12 held points | 480 to 500 | not measured | not measured |
+| With the helper: `arm.reach_stiffness(200, 500).k` = (500, 189, 500) | 200 | 489 | 500 |
+
+- The start-pose orientation puts tool y 11 degrees from base x. The helper puts the reach value on that tool
+  axis and corrects it for the angle: (k_reach - k_across x (1 - w)) / w, with w = cos² of the angle (0.965),
+  clipped to 20 to 600 N/m. It is the rule `software/simple.py` uses, and it reports the angle.
+- With the correction the wall across the reach is 489 N/m, not 500 (the 11 degrees again), and a push along
+  the reach is answered with a small sideways force as well (cross term, about 6 % of the difference).
+- A reach axis cannot be made fully free while the walls are on: the lowest it gets at this pose is about
+  37 N/m (the 20 N/m floor plus 3.5 % of the wall). Over 30 cm that is 11 N. For `pull`'s set-up phase the
+  handle has to be turned square to the reach, or the walls lowered.
+- **Until `software/engine.py` uses the helper, its reach and wall stiffness are on the wrong axes on the real
+  arm:** `K_ASSIST`, `K_RESIST` and the dial act across the reach, and `K_WALL` (500) acts along it. The
+  recommendations in section 3 describe what was intended, not what that engine does on the arm today.
+- Also seen in the same set (band at about 490 N/m): the reading rose with hand speed, 26.9 N under 0.10 m/s
+  and 38.1 N at 0.10 to 0.15 m/s (7 samples). Whether that stays at the right stiffness is not known.
+- Mounting the handle or changing the start pose changes the orientation: check `reach_stiffness().angle_deg`
+  again. Above about 20 degrees the single-axis correction is poor (it clips at 45).
+
 ## 3. Recommended values
 
 Hard limits in `robot/arm.py` are not changed (and never loosened). Engine constants live in
@@ -90,6 +118,7 @@ Not measured yet. Fill in from `robot/results/tune_<date>_arm.json`.
 
 | # | Measurement | Result | Date, who |
 |---|---|---|---|
+| 0 | Stiffness frame: (200, 500, 500) commanded, stiffness along base x from 12 held points | 480 to 500 N/m (489 by tool-frame arithmetic): the values act along the tool axes | 15 Nov, Shyan (hand-on Push, tool `Flange`) |
 | 1 | Stiffness-call latency (median / max of 50) | | |
 | 2 | Empty force at 0 / 10 / 20 / 28 cm along the reach | | |
 | 3 | Free-axis drag at about 0.1 / 0.2 m/s | | |

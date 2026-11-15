@@ -10,6 +10,12 @@ Every safety clamp lives in the pure helpers at the top of this file
 `flexivrdk` is imported lazily inside Arm.connect(), so importing this module and
 running robot/tests/test_arm_offline.py works on any machine.
 
+STIFFNESS FRAME (measured on the arm, 15 Nov): the robot applies the three translational stiffness
+values of SetCartesianImpedance along the TOOL (TCP) axes, not the base axes. set_stiffness() passes
+its three values through unchanged, so they are tool-axis values. A caller that wants one stiffness
+along the reach and another across it must use Arm.reach_stiffness() / tool_stiffness_for_reach().
+Targets, positions, forces, the workspace box and every clamp are in the base frame as before.
+
 Robot-specific values (serial, force sign, start pose, reach axis) come from
 robot/config.json. Until K0/K4 are done they are PLACEHOLDERS listed in the
 config's "placeholders" key; connect() refuses the placeholder serial and home()
@@ -204,6 +210,71 @@ def check_trip(pos: Sequence[float], vel: Sequence[float], force: Sequence[float
     return None
 
 
+# --------------------------------------------------------------------------- stiffness frame (tool axes)
+
+K_TOOL_MIN = 20.0   # N/m: floor for the corrected tool-axis value (same floor as software/simple.py)
+
+
+@dataclass(frozen=True)
+class ToolStiffness:
+    """Result of tool_stiffness_for_reach()."""
+    k: tuple[float, float, float]           # what to pass to set_stiffness(): N/m along tool x, y, z
+    tool_axis: int                          # 0, 1 or 2: the tool axis that lies closest to the reach axis
+    angle_deg: float                        # angle between that tool axis and the reach axis
+    k_base: tuple[float, float, float]      # stiffness that results along base x, y, z (diagonal terms)
+    k_reach: float                          # stiffness that results along the reach axis
+    clipped: bool                           # True: the corrected value hit a bound, k_reach is not what was asked
+
+
+def _rotation(quat: Sequence[float]) -> list[list[float]]:
+    """Rotation matrix of a quaternion (qw, qx, qy, qz): column j is tool axis j in the base frame."""
+    w, x, y, z = _normalize(quat)
+    return [[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+            [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]]
+
+
+def base_stiffness(k_tool: Sequence[float], quat: Sequence[float]) -> Vec3:
+    """Stiffness along base x, y, z that results from three tool-axis values at orientation `quat`
+    (the diagonal of R diag(k) R^T). With a tilted tool there are also cross terms between base axes:
+    a push along one base axis is answered with a small sideways force as well."""
+    R = _rotation(quat)
+    return tuple(sum(R[i][j] ** 2 * float(k_tool[j]) for j in range(3)) for i in range(3))  # type: ignore[return-value]
+
+
+def tool_stiffness_for_reach(k_reach: float, k_across: float, quat: Sequence[float], reach_axis: int,
+                             k_max: float = Limits().k_max, k_min: float = K_TOOL_MIN) -> ToolStiffness:
+    """Tool-axis stiffness values that give `k_reach` along base axis `reach_axis` and `k_across` on the
+    other two tool axes, at orientation `quat` (qw, qx, qy, qz).
+
+    Same rule as software/simple.py BandEngine._k_vector (which was tried on the arm): w[j] is the share of
+    tool axis j along the reach (the squared component, the three sum to 1). The tool axis with the largest
+    share gets (k_reach - k_across * (1 - w)) / w, so that the stiffness along the reach comes out as
+    k_reach; the other two get k_across. The corrected value is clipped to [k_min, k_max]; if it was,
+    `clipped` is True and `k_reach` in the result is what the reach axis really gets.
+
+    Meant for a tool axis within a few degrees of the reach axis (11 degrees at the 15 Nov start pose).
+    At large angles (45 degrees is the worst case) no single tool axis lies along the reach, the correction
+    clips, and the across directions get a mix: read `angle_deg` and `k_base` before trusting the result.
+    """
+    if reach_axis not in (0, 1, 2):
+        raise ValueError(f"reach_axis must be 0, 1 or 2, got {reach_axis}")
+    k_reach, k_across = float(k_reach), float(k_across)
+    if not (math.isfinite(k_reach) and math.isfinite(k_across)) or k_reach < 0 or k_across < 0:
+        raise ValueError(f"stiffness must be finite and not negative, got {k_reach}, {k_across}")
+    R = _rotation(quat)
+    w = [R[reach_axis][j] ** 2 for j in range(3)]
+    i = max(range(3), key=lambda j: w[j])
+    want = (k_reach - k_across * (1.0 - w[i])) / w[i]
+    got = min(max(want, k_min), k_max)
+    k = [k_across] * 3
+    k[i] = got
+    k_base = base_stiffness(k, quat)
+    return ToolStiffness(k=tuple(k), tool_axis=i,  # type: ignore[arg-type]
+                         angle_deg=math.degrees(math.acos(min(1.0, math.sqrt(w[i])))),
+                         k_base=k_base, k_reach=k_base[reach_axis], clipped=abs(got - want) > 1e-9)
+
+
 # --------------------------------------------------------------------------- Arm
 
 class HomeInterrupted(RuntimeError):
@@ -214,6 +285,7 @@ class Arm:
     """Real Flexiv Rizon 4 behind the section 4.3 interface. See the module docstring."""
 
     start_pos: tuple[float, float, float]     # set by home() or start_compliance()
+    stiffness_frame = "tool"                  # set_stiffness() values act along the tool axes (software.sim_arm: base)
 
     def __init__(self, serial: str, limits: Limits = Limits(),
                  config_path: str | Path | None = None) -> None:
@@ -508,14 +580,32 @@ class Arm:
         return self._mode == "compliant"
 
     def set_stiffness(self, kx: float, ky: float, kz: float) -> None:
-        """N/m per base axis, each clamped to [0, k_max]. Returns immediately; a worker
-        applies the latest value (the RDK call blocks). Ignored unless compliant."""
+        """N/m along the TOOL (TCP) x, y, z axes, NOT the base axes, each clamped to [0, k_max].
+        Returns immediately; a worker applies the latest value (the RDK call blocks). Ignored unless compliant.
+
+        Measured on the arm on 15 Nov: with (200, 500, 500) at the start pose (flange down, tool y about
+        11 degrees from base -x) the push direction along base x had 480 to 500 N/m, not 200. Three equal
+        values are the same in any frame. For different values along and across the reach use
+        `set_stiffness(*arm.reach_stiffness(k_reach, k_across).k)`. The parameter names are kept for the
+        callers that pass them by keyword; read them as tool x, y, z."""
         if not self._check_commandable("set_stiffness"):
             return
         k = clamp_stiffness((kx, ky, kz), self.limits, self._k_nom)
         with self._stiff_cv:
             self._stiff_pending = (k, self._gen)
             self._stiff_cv.notify()
+
+    def reach_stiffness(self, k_reach: float, k_across: float) -> ToolStiffness:
+        """What to pass to set_stiffness() for `k_reach` N/m along the configured reach axis (base frame) and
+        `k_across` across it, at the orientation the arm holds (start_quat; the current orientation before
+        start_compliance()). Sends nothing. The result carries the angle between the reach axis and the
+        tool axis used, and the stiffness each base axis ends up with. See tool_stiffness_for_reach()."""
+        quat = self.start_quat
+        if quat is None:
+            self._require_connected()
+            with self._lock:
+                _, quat, *_ = self._read()
+        return tool_stiffness_for_reach(k_reach, k_across, quat, self.reach_axis, k_max=self.limits.k_max)
 
     def set_target(self, pos: tuple[float, float, float]) -> None:
         """Clamped to the workspace box, then to max_lead_m from the current hand position.
