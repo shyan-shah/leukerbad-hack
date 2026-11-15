@@ -23,7 +23,25 @@ the real arm read about (4.5, -2.5, 11.9) N un-zeroed with nothing touching it),
 (N, standard deviation of white noise per axis, seeded by ``seed``) and
 ``stiffness_latency_s`` (default ``STIFFNESS_LATENCY_S``; the real arm is 50 to 200 ms).
 Only ``get_state().force`` carries the errors (so the trip check sees them, as on the real
-arm); the physics always uses the true person force. ``zero_force()`` behaves like the
+arm); the physics always uses the true person force.
+
+Real-arm effects seen on 14 Nov (context/MOTION_TEST.md, robot/TUNING.md), also off by default:
+
+- ``empty_force_pose_n_per_m`` (N per metre, per axis): the reading with nothing on the handle
+  changes with pose. It is this vector times the hand's distance from the start pose along
+  the reach axis (signed). ``(10, 0, 0)`` is 3 N across a 0.30 m reach.
+- ``empty_force_moving_n = (low, high)`` (N): extra reading while the handle moves, ``low``
+  just above standstill rising to ``high`` at ``EMPTY_FORCE_REF_SPEED`` (the real flange read
+  3 to 7 N). ``empty_force_moving_dir`` says where it points: ``"against"`` the motion (the
+  default: joint friction looks like someone holding the handle back), ``"with"`` it, or a
+  fixed base-frame direction ``(x, y, z)``. Its real direction has not been measured.
+- ``friction_n`` (N): Coulomb friction on the handle, in the physics. The handle does not
+  move until the net force exceeds it, so a spring of stiffness K stops ``friction_n / K``
+  short of its target (4.5 N: 1.5 cm at 300 N/m, 1.1 cm at 400 N/m). It does not appear in
+  the reported force by itself; use ``empty_force_moving_n`` for that.
+
+The two reading effects are present with or without a hand on the handle and are removed at
+the current pose and speed by ``zero_force()`` like any other sensor error. ``zero_force()`` behaves like the
 real ZeroFTSensor: whatever the sensor reads at that moment (sensor error AND any load
 on the handle) becomes the new zero, so zeroing with a hand on the handle is wrong here too.
 
@@ -84,6 +102,8 @@ __all__ = ["SimArm"]
 TICK_S = 0.01                    # realtime thread period, 100 Hz
 MAX_SUBSTEP_S = 0.005            # integration substep
 STIFFNESS_LATENCY_S = 0.05       # set_stiffness takes effect after this (real arm: about 100 ms max)
+EMPTY_FORCE_REF_SPEED = 0.10     # m/s at which the moving empty-handle reading reaches its high value
+EMPTY_FORCE_ONSET_SPEED = 0.005  # m/s below which the moving reading fades linearly to zero
 
 PASSIVE_LOAD_N = 8.0             # limb weight on the handle, downward (-z), while present
 PASSIVE_DRAG_NS_M = 5.0          # limb drag against motion, while present
@@ -95,6 +115,8 @@ PATIENT_PHASE_TIMEOUT_S = 10.0   # give up waiting for the hand and move on
 PATIENT_END_PROGRESS = 0.90      # hand progress counted as "arrived" (= engine's OUT_DONE)
 PATIENT_NEAR_START_M = 0.02      # distance along the reach counted as "back at the start"
 PATIENT_OVERSHOOT = 1.3          # the reach aims this far along the line (1.0 = the end)
+PATIENT_FRICTION_ERR_M = 0.005   # goal error over which the patient's push through friction fades in
+PATIENT_FRICTION_STRENGTH = 0.3  # patients at least this strong push through all of the friction
 
 DEFAULT_QUAT = (0.0, 0.0, 1.0, 0.0)   # matches the robot/config.json start orientation
 ZERO_Q = (0.0,) * 7
@@ -110,8 +132,28 @@ class SimArm:
                  start_pos=(0.45, 0.0, 0.30), realtime: bool = True, *,
                  force_offset=(0.0, 0.0, 0.0), force_drift_n_per_min=(0.0, 0.0, 0.0),
                  force_noise_n: float = 0.0, stiffness_latency_s: float = STIFFNESS_LATENCY_S,
-                 seed: int = 0) -> None:
+                 seed: int = 0, empty_force_pose_n_per_m=(0.0, 0.0, 0.0),
+                 empty_force_moving_n=(0.0, 0.0), empty_force_moving_dir="against",
+                 friction_n: float = 0.0) -> None:
         self.patient = patient
+        self.empty_force_pose_n_per_m = np.array(empty_force_pose_n_per_m, dtype=float).reshape(3)
+        lo, hi = (float(v) for v in empty_force_moving_n)
+        if not 0 <= lo <= hi:
+            raise ValueError("empty_force_moving_n must be (low, high) with 0 <= low <= high")
+        self.empty_force_moving_n = (lo, hi)
+        if isinstance(empty_force_moving_dir, str):
+            if empty_force_moving_dir not in ("against", "with"):
+                raise ValueError('empty_force_moving_dir must be "against", "with" or a direction (x, y, z)')
+            self.empty_force_moving_dir = empty_force_moving_dir
+        else:
+            d = np.array(empty_force_moving_dir, dtype=float).reshape(3)
+            n = float(np.linalg.norm(d))
+            if not n > 0:
+                raise ValueError("empty_force_moving_dir must not be the zero vector")
+            self.empty_force_moving_dir = d / n
+        if not friction_n >= 0:
+            raise ValueError("friction_n must be >= 0")
+        self.friction_n = float(friction_n)
         self.force_offset = np.array(force_offset, dtype=float).reshape(3)
         self.force_drift_n_per_min = np.array(force_drift_n_per_min, dtype=float).reshape(3)
         if not force_noise_n >= 0:
@@ -188,7 +230,7 @@ class SimArm:
             self._mode = "idle"
             self._zero_t = self._t   # drift restarts from here
             self._zero_ref = (self._person_force(self._t, self._pos, self._vel)
-                              + self._sensor_error(self._t))
+                              + self._sensor_error(self._t) + self._empty_force())
 
     def home(self) -> None:
         """Put the hand at start_pos at rest. Nobody holding. Leaves mode "idle"."""
@@ -397,10 +439,26 @@ class SimArm:
         """Offset plus drift since the last zero (no noise)."""
         return self.force_offset + self.force_drift_n_per_min * ((t - self._zero_t) / 60.0)
 
+    def _empty_force(self) -> np.ndarray:
+        """Reading the arm gives with nothing on the handle: pose term plus moving term."""
+        along = float((self._pos - np.array(self.start_pos))[self.reach_axis])
+        f = self.empty_force_pose_n_per_m * along
+        lo, hi = self.empty_force_moving_n
+        speed = float(np.linalg.norm(self._vel))
+        if hi > 0 and speed > 0:
+            mag = ((lo + (hi - lo) * min(1.0, speed / EMPTY_FORCE_REF_SPEED))
+                   * min(1.0, speed / EMPTY_FORCE_ONSET_SPEED))
+            if isinstance(self.empty_force_moving_dir, str):
+                u = self._vel / speed
+                f = f + mag * (-u if self.empty_force_moving_dir == "against" else u)
+            else:
+                f = f + mag * self.empty_force_moving_dir
+        return f
+
     def _measured_force(self) -> np.ndarray:
         """What the sensor reports: true force + offset + drift + noise - the last zero."""
         f = (self._person_force(self._t, self._pos, self._vel) + self._sensor_error(self._t)
-             - self._zero_ref)
+             + self._empty_force() - self._zero_ref)
         if self.force_noise_n > 0:
             f = f + self._rng.normal(0.0, self.force_noise_n, 3)
         return f
@@ -409,7 +467,16 @@ class SimArm:
         """Force the person applies to the handle: effort plus passive limb load."""
         if not self.patient.present:
             return np.zeros(3)
-        f = np.asarray(self.patient.effort(t, pos, vel, self._goal(t)), dtype=float)
+        goal = self._goal(t)
+        f = np.asarray(self.patient.effort(t, pos, vel, goal), dtype=float)
+        if self.friction_n > 0:
+            # A person pushes through the handle's friction to get where they are going along
+            # the reach: up to friction_n more towards the goal, fading in over
+            # PATIENT_FRICTION_ERR_M and scaled down for weak patients (none for a limp arm).
+            # Only along the reach axis: the limb still rests its weight on the handle.
+            err = float((goal - pos)[self.reach_axis])
+            f[self.reach_axis] += (self.friction_n * float(np.clip(err / PATIENT_FRICTION_ERR_M, -1.0, 1.0))
+                                   * min(1.0, self.patient.strength / PATIENT_FRICTION_STRENGTH))
         passive = -PASSIVE_DRAG_NS_M * vel
         passive[2] -= PASSIVE_LOAD_N
         return f + passive
@@ -430,7 +497,14 @@ class SimArm:
                 f = (self._k * (self._target - self._pos)
                      + self._person_force(self._t, self._pos, self._vel)
                      - HAND_DAMPING_NS_M * self._vel)
-                self._vel = self._vel + (f / HAND_MASS_KG) * h
+                v = self._vel + (f / HAND_MASS_KG) * h
+                if self.friction_n > 0:
+                    # Coulomb friction: it can stop the handle but never reverse it. At rest the
+                    # handle stays put until the net force is larger than the friction.
+                    dv = self.friction_n / HAND_MASS_KG * h
+                    speed = float(np.linalg.norm(v))
+                    v = np.zeros(3) if speed <= dv else v * (1.0 - dv / speed)
+                self._vel = v
                 self._pos = self._pos + self._vel * h
             else:  # idle (before compliance or after stop): the robot holds the hand still
                 self._vel = np.zeros(3)

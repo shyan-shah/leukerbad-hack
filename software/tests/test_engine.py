@@ -385,7 +385,9 @@ def test_module_constants_match_section_4_2():
     assert engine_mod.F_PRESENT == 1.5
     assert engine_mod.OCCUPIED_WINDOW_S == 0.5
     assert engine_mod.ARM_DWELL_S == 1.0
-    assert engine_mod.NEAR_START_M == 0.02
+    assert engine_mod.NEAR_START_M == 0.03 and engine_mod.HOLD_START_M == 0.02     # 15 Nov, see DECISIONS
+    assert engine_mod.EMPTY_REST_N == 3.0 and engine_mod.EMPTY_MOVING_N == 7.0
+    assert engine_mod.HAND_ON_N == 4.5 and engine_mod.MAX_BASELINE_N == 6.0
     assert engine_mod.OUT_DONE == 0.9 and engine_mod.OUT_TIMEOUT_S == 10.0
     assert engine_mod.STALL_SPEED == 0.01
     assert engine_mod.STALL_ASSIST_S == 1.5 and engine_mod.STALL_RESIST_S == 3.0

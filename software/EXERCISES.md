@@ -3,7 +3,7 @@
 Presets live in `software/exercises.py` (`EXERCISES`, `LIVE`); the engine applies one with
 `Engine(..., exercise="<id>", reps=None)`. The app ids are those of `context/EXERCISE_MAP.md`.
 All numbers are team-chosen starting values, not clinical prescriptions. Everything below was
-tested on `SimArm` only (`software/tests/test_exercises.py`, 39 tests, reach along x and along y as in Layout B); nothing here has run on the real arm yet.
+tested on `SimArm` only (`software/tests/test_exercises.py`, 39 tests, reach along x and along y as in Layout B; `software/tests/test_real_arm_effects.py`, 153 tests with the real arm's friction and force-reading errors simulated); nothing here has run on the real arm yet.
 
 `LIVE = ("reach", "push", "pull", "armtest")`. `circle` is implemented but not live.
 
@@ -50,6 +50,7 @@ The line is the push line run backwards: path start = start pose + 0.28 m along 
 - **One exception since the release rule:** if the patient lets go during a pull rep, the handle is walked back to the far end (the path start) at 2 cm/s, away from the patient. See "Release" below.
 - When the hand has been within 2 cm of the far end for 1 s: `idle` (soft hold at the far end), then reps as usual. "out" is towards the patient; the band pulls back towards the far end in both phases.
 - Setup is entered only at `start()`, and only if the hand is not already at the far end.
+- Since 15 Nov every exercise has this setup, not only pull: see "Starting away from the path start" below.
 - Sim, strong patient: setup took 3.5 s, then 3 of 3 reps completed, peak 12.6 N.
 
 ### armtest (isometric)
@@ -74,7 +75,7 @@ Robot-led: after the usual 1 s with a hand on the handle at the start, the targe
 | test (`armtest`) | release (below): the try ends and is recorded (completed if its peak was over 5 N), no trip, the handle walks back to the start pose, the remaining tries wait for a hand at the start | yes, let go at 25%, 50% and 90% of the push |
 | guided (`circle`) | the circle ends as not completed, phase `idle`, the target stops | yes |
 | `pull` setup | nothing moves | yes |
-| any, handle left away from the start (e.g. `armtest` after `pull`) | an empty handle is not moved along the reach; the soft hold only lifts it back onto the path line (under 3 cm, vertical). The person brings it to the start; a try, rep or circle starts only there | yes, each of `armtest`, `reach`, `push`, `circle` started after `pull` |
+| any, session started with the handle away from its path start (e.g. `armtest`, `reach` or `push` after `pull`) | `setup` phase: the reach axis is free, the walls are on, nothing drives the handle. The person brings it to the start; a try, rep or circle starts only after 1 s there | yes, each of `armtest`, `reach`, `push`, `circle` started after `pull`, empty and held |
 
 ### Release: letting go of a loaded spring (resist side and armtest)
 
@@ -113,7 +114,82 @@ No trip in any case, the handle ends on the path start, and reps or tries resume
 
 So the 0.15 m/s target is met when the let-go is seen at once and missed by about 0.02 m/s for the strongest loads when it is seen one tick late; in every case there is no trip and under 0.15 m/s within 0.3 s. This is the limit of a 100 Hz loop on the sim's 1.5 kg handle (25 N for 10 ms is 0.17 m/s), not a tuning value. The real arm is heavier and damped, so expect less, but it is not measured.
 
-**Not proven on the real arm.** The instant test needs the empty handle to read under 1.5 N. On 14 Nov the real empty flange read 3 to 7 N while moving, so there the let-go may only be seen by the 0.5 s rule, or not at all, until the occupancy threshold is fixed.
+**Not proven on the real arm.** Since 15 Nov the let-go tests no longer need the empty handle to read under 1.5 N (see "Telling a hand from an empty handle" below), but they rest on two things only the arm can show: that the reading of a moving empty handle lies along its motion, and that a relaxed hand reads more than 4.5 N.
+
+## Starting away from the path start (setup for every exercise)
+
+`pull` ends with the handle at the far end. Before 15 Nov the next session started in idle there; the simulated patient hauled the handle 28 cm to the start at 0.45 m/s, the speed trip fired within 0.03 s, and the session sat in hold with no reps until it was stopped.
+
+Now `start()` puts **any** exercise into `setup` when the handle is more than 3 cm (along the reach) from that exercise's path start:
+
+- `Sample.phase == "setup"`, dial reported as 0, `rep_idx` -1. Reach axis free (0 N/m), walls at `K_WALL`, target beside the hand on the path line. The target is not clamped to the path segment: a handle left beyond a short path's end is not pulled to it (clamped, it tripped the speed limit in 40 ms).
+- The arm never moves the handle in setup. An empty handle stays where it is, for as long as it takes.
+- Setup ends when the hand has been within 3 cm of the path start for 1 s; then `idle`, and the exercise runs as usual.
+- Sim: after a pull, `armtest`, `reach` and `push` are brought back in about 3.4 s (peak 0.2 m/s) and then run all their reps; through the server API too (pull then armtest on one arm).
+- **A person who moves the handle back faster than 0.40 m/s still trips the arm.** That is the speed limit doing its job; the session then needs a stop and a new start.
+- **For the screens (server/, not changed here):** the patient screen and the app show "Move the handle to the far end" for every `setup` sample. For reach, push and armtest the right text is "Bring the handle back to the start".
+
+## Telling a hand from an empty handle (15 Nov)
+
+The arm has no wrist sensor. On 14 Nov the reading with nothing on the flange changed by up to 3 N with pose (0.7 to 3.2 N) and read 3 to 7 N while the arm moved. With the old rule (over 1.5 N = a hand) a moving empty handle counts as held: in the sim an empty handle was carried 12 to 18 cm on the assist side, a let-go in push tripped the speed limit, and a pull never left setup.
+
+| Constant (`software/engine.py`) | Value | Meaning |
+|---|---|---|
+| `EMPTY_REST_N` | 3.0 N | largest change of the empty reading with pose, at rest |
+| `EMPTY_MOVING_N` | 7.0 N | largest empty reading caused by motion |
+| `F_PRESENT` | 1.5 N | margin on top (unchanged) |
+| `HAND_ON_N` | 4.5 N | `F_PRESENT + EMPTY_REST_N`: hand force above this = a hand is on the handle |
+| `V_MOVING` | 0.002 m/s | faster than this the handle counts as moving |
+| `MAX_BASELINE_N` | 6.0 N (was 3.0) | `start()` refuses above this empty reading |
+| `NEAR_START_M` | 0.03 m (was 0.02) | "at the start" for arming a rep, ending setup, and ending a rep whose return has stopped |
+| `HOLD_START_M` | 0.02 m | inside this the idle hold pulls a held handle onto the start point; a moving return ends here |
+
+- **Hand force** = the baseline-relative reading with up to 7 N taken off along the direction the handle is moving in (either sign, any direction, whenever it moves faster than `V_MOVING`). A hand is on the handle when that is over 4.5 N for both the raw and the 50 ms-smoothed reading. Occupied = a hand within the last 0.5 s, as before.
+- **The one-tick let-go test** (resist side and armtest) uses the same 4.5 N but takes the 7 N off the reach-axis part only, and only while the handle moves along the reach. Otherwise a limb resting on a handle that is settling up or down (its weight then lies along the motion) would be read as a let-go.
+- **Every unknown is decided towards "empty".** A missed hand ends a rep; an empty handle taken for a hand would be driven.
+- **Baseline** follows the reading only while the handle is idle, empty and not moving, so the 3 to 7 N of a moving empty handle is never absorbed.
+- **Start refusal** at 6 N: above the real empty readings (3.2 N, plus up to 3 N with pose), below a limb resting on the handle (8 N in the sim) and the wrong tool (12 to 13 N).
+- `circle` (not live) moves the handle up and down by design, so it keeps the reach-only allowance; its hands-off rule is not robust to the moving reading.
+
+**What a person has to do to count as "on the handle":** rest or press with more than 4.5 N in any direction while still, and while moving with more than 4.5 N across the motion or more than 11.5 N along it. The simulated limb rests 8 N on the handle (5.7 N for a strong patient who half-carries their own arm), so the sim passes with 1.2 to 3.5 N to spare. **Whether a real relaxed hand reads over 4.5 N is not known.**
+
+### Measured in the sim with the effects on (`software/tests/test_real_arm_effects.py`, 153 tests)
+
+SimArm options, all off by default: `empty_force_pose_n_per_m`, `empty_force_moving_n` (with `empty_force_moving_dir`: `"against"` the motion, `"with"` it, or a fixed direction), `friction_n`. "Real" below = 3 N across the reach, 3 to 7 N against the motion, 4.5 N friction; "noise" adds 0.3 N sensor noise and 200 ms stiffness latency.
+
+| Check | Effects off | Readings only (no friction) | Friction only | Real | Real + noise |
+|---|---|---|---|---|---|
+| Empty handle, 20 s, each of the 4 exercises | no rep, no motion | same | same | same | same |
+| Assist side: travel after a let-go, limp arm carried at 0.13 m/s, let go at 30% | 7.6 cm | 7.6 cm | 7.3 cm | 7.3 cm | 7.3 cm |
+| same, let go at 60% | 6.9 cm | 6.9 cm | 6.2 cm | 6.2 cm | 6.2 cm |
+| same, strong patient at 50% | 3.7 cm | 3.7 cm | 0.8 cm | 0.8 cm | 0.8 cm |
+| Time from let-go to the rep ending | 0.5 s | 0.5 s | 0.5 s | 0.5 s | 0.5 s |
+| push, pull, armtest: let go at 25, 50, 90% | no trip, seen on the first tick, session goes on | same | same | same | same |
+| Handle after the walk back | on the start | on the start | 1.4 cm short | 1.4 cm short | 1.4 cm short |
+| Sessions (reach 1.0 / 0.3 / limp, push 1.0 / 0.5, pull, armtest 0.8 / 0.3) | all reps completed | same | same | same | same |
+
+- **Release detection is not slower.** The assist-side travel is the same 7.6 cm as before the change without friction (the bound is 8 cm, so the margin is still 4 mm), and friction shortens it. Shyan's nine resist-side cases give the same speeds as his table.
+- **Friction lag.** A released handle stops up to 1.5 cm short at 300 N/m and 2.5 cm at dial -0.6. A return that has stopped inside 3 cm now ends the rep (before, only 2 cm did, and a rep that stopped at 2.5 cm waited for the 10 s timeout). While the handle is still moving the 2 cm window is unchanged. Mean path error stays under 0.2 cm in the sim (limit 1.5 cm) and the measured range is 25 to 27 cm.
+- **armtest:** the spring is walked back after the last try too. Before, the last try went straight to idle; with 200 ms stiffness latency the 600 N/m spring was still on and snapped the relaxing arm back at 0.43 m/s (trip).
+- Random soak, one arm, 40 sessions of the four exercises, random strength, offset, drift, noise, latency and reading direction: 0 trips, 0 refused starts, 134 of 137 reps completed.
+
+### Limits (say these out loud)
+
+1. **Direction of the moving reading.** The rule assumes it lies along the motion (either sign). If it points **across** the motion, an empty handle reads as held: in the sim it was carried 19 cm (limit 8 cm) and a let-go in push tripped the speed limit, as with the old rule (`test_known_limit_a_moving_reading_across_the_motion_defeats_the_rule`). No threshold fixes that without also dropping real hands; it would need a calibration sweep of the empty arm or a better tool model.
+2. **A reading with the motion** (the arm appears to be pushed along): reach, push and pull behave the same (7.6 cm), but with no friction in the sim, armtest tries by a strong simulated patient were cut short as let-gos (their limb reads 5.7 N, and the reading jitters as the handle settles); with friction on they completed. Rep metrics are also inflated: a limp arm scored 0.86 contribution and the auto dial fell to +0.4.
+3. **Very weak patients and friction.** Someone who cannot push 4.5 N cannot slide the handle when the reach axis is free: they cannot do setup, push or pull (sim: strength under 0.2 stalls). The operator moves the handle for them, or they do `reach` only.
+4. **Force numbers include the arm's own reading error**, up to 7 N while moving. Peak force in push and pull is that much uncertain; armtest is read near standstill, so it is off by the pose change only (up to 3 N).
+
+### To measure on the real arm before a person holds the handle (Kian)
+
+1. Empty handle (`RehabHandle` tool), arm moving itself along the reach at 5 cm/s **and at rep speed (14 cm/s)**, both directions: the reading per axis. How much lies along the motion, how much across? Which sign?
+2. Empty handle at rest at 0, 10, 20, 28 cm, approached from each side: the reading per axis. Is the largest change under 3 N?
+3. A relaxed arm resting on the handle, still and while carried: the reading per axis. Is it over 4.5 N, and in which direction?
+4. Assist side, dial +1, let go mid-reach: how far does the handle travel? (under 8 cm)
+5. push at dial -0.6 and armtest at 15 to 20 N: let go. No trip, handle walks back? How far short of the start does it stop? (1.5 cm expected)
+6. Friction: with the reach axis free, the force needed to start the handle moving (4.5 N expected).
+
+If 1 shows more than about 2 N across the motion, or 3 shows under 4.5 N, do not run the assist side with a person until the rule is changed.
 
 ## Simulated patient hooks (`software/sim_arm.py`)
 

@@ -17,19 +17,27 @@ Each tick:
    auto mode, move the dial with ``next_dial``.
 
 Rep state machine (section 4.2):
-- ``idle``: soft hold at ``K_HOLD`` on all axes. Target: the path start while the hand is at
-  the start, else the hand projected onto the path line (so the limb weight does not drag the
+- ``idle``: soft hold at ``K_HOLD`` on all axes. Target: the path start while the hand is
+  within ``HOLD_START_M`` of it, else the hand projected onto the path line (so the limb weight does not drag the
   target down and the person can bring the handle back). A rep
   is armed when the hand has been within ``NEAR_START_M`` of the start, measured along the
   reach axis, for ``ARM_DWELL_S`` and the handle is occupied.
 - ``out``: reference clock starts when the rep is armed. Ends at progress ``OUT_DONE``
   (completed) or after ``OUT_TIMEOUT_S`` (not completed), then ``back``.
-- ``back``: same law toward the start. Ends within ``NEAR_START_M`` of the start, or after
+- ``back``: same law toward the start. Ends within ``HOLD_START_M`` of the start, or within
+  ``NEAR_START_M`` once the handle has stopped (friction lag), or after
   ``BACK_TIMEOUT_S`` (team choice, so a hand that never returns cannot hang the session).
-- Occupied: the baseline-relative force magnitude was above ``F_PRESENT`` within the last
-  ``OCCUPIED_WINDOW_S``, counting only ticks where both the raw value and the value smoothed
-  over ``FORCE_FILTER_S`` are above it. A noise spike alone (raw only) does not count, and
-  letting go is seen as soon as the raw value drops (no added filter delay).
+- Occupied: a hand was on the handle within the last ``OCCUPIED_WINDOW_S``. A tick counts as
+  "hand on" when the hand force (``_hand_force``, below) is above ``HAND_ON_N`` for both the raw
+  reading and the reading smoothed over ``FORCE_FILTER_S``. A noise spike alone (raw only) does
+  not count, and letting go is seen as soon as the raw value drops (no added filter delay).
+- Hand force (15 Nov, see DECISIONS.md): the real arm has no wrist sensor, and its force
+  estimate with nothing on the handle changes by up to ``EMPTY_REST_N`` with pose and reads up
+  to ``EMPTY_MOVING_N`` while the handle moves. So the hand force is the baseline-relative
+  force with up to ``EMPTY_MOVING_N`` removed along the direction of motion (either sign)
+  whenever the handle moves faster than ``V_MOVING``, and the threshold
+  is ``HAND_ON_N = F_PRESENT + EMPTY_REST_N``. Every unknown is decided towards "empty": a
+  hand that is missed only ends a rep, an empty handle taken for a hand would be driven.
 
 Force baseline (the real arm's sensor reads several N with nothing touching it, see
 context/BRINGUP_FINDINGS.md and DECISIONS.md): ``start()`` averages ``BASELINE_N`` force
@@ -37,9 +45,9 @@ readings BEFORE compliance starts, with the handle empty (the same "nobody touch
 as ``zero_force``), and refuses to start with a RuntimeError if that baseline is over
 ``MAX_BASELINE_N`` (sensor not zeroed, or something resting on the handle). Every force
 the engine uses (occupancy, Samples, metrics) is ``state.force - baseline``. While the
-phase is idle and the handle is not occupied the baseline follows the raw reading with
-time constant ``BASELINE_TRACK_S``, so slow drift does not build up while the handle is
-empty. Drift while the handle is held is not tracked (re-zero between sets on the real arm).
+phase is idle, the handle is not occupied and it is not moving, the baseline follows the raw
+reading with time constant ``BASELINE_TRACK_S``, so slow drift does not build up while the
+handle is empty (the reading of a moving empty handle is never absorbed). Drift while the handle is held is not tracked (re-zero between sets on the real arm).
 For ``SimArm`` the simulated patient keeps hands off while the baseline is taken.
 - Hands-off rule, assist side only (dial > 0): if the handle is not occupied during a rep the
   rep ends now as not completed and the phase goes to idle. While the handle is empty the
@@ -77,8 +85,11 @@ is then re-raised.
 Exercise presets (package E1, software/exercises.py and software/EXERCISES.md):
 ``Engine(..., exercise="reach" | "push" | "pull" | "armtest" | "circle", reps=None)``.
 "reach" is everything described above. "push" is the same line on the resist side. "pull"
-runs the line backwards from the far end: a "setup" phase (transparent, walls on) lasts until
-the person has brought the handle to the far end; the arm never drives it there. "armtest"
+runs the line backwards from the far end. Any exercise whose session starts with the handle
+more than ``NEAR_START_M`` from its path start (pull always, the others after a pull or
+whenever the handle was left out) begins with a "setup" phase: transparent along the line,
+walls on, until the person has held the handle at the path start for ``SETUP_DWELL_S``. The
+arm never drives the handle there. "armtest"
 is an isometric test (``_tick_test``) and "circle" a robot-led circle (``_tick_guided``).
 ``snapshot()`` carries ``exercise``, ``kind``, ``reps_target`` and ``done``.
 
@@ -105,16 +116,21 @@ from software.paths import LinePath
 __all__ = ["Engine", "DT"]
 
 DT = 0.01                    # s, 100 Hz
-NEAR_START_M = 0.02          # m along the reach axis: "at the start"
+NEAR_START_M = 0.03          # m along the reach axis: "at the start" for arming, ending a rep and setup (2 cm until 15 Nov; friction dead band is up to 2.5 cm)
+HOLD_START_M = 0.02          # m: inside this the idle soft hold pulls a held handle onto the start point; outside it follows the hand
 ARM_DWELL_S = 1.0            # s at the start (and occupied) before a rep is armed
 OUT_DONE = 0.9               # progress that completes the out phase
 OUT_TIMEOUT_S = 10.0         # s, out phase gives up (not completed)
 BACK_TIMEOUT_S = 10.0        # s, back phase gives up and the rep ends anyway (team choice)
-F_PRESENT = 1.5              # N, handle force magnitude (relative to the baseline) meaning "a hand is on it"
+F_PRESENT = 1.5              # N, margin above the largest empty-handle reading at rest
+EMPTY_REST_N = 3.0           # N, largest change of the empty-handle reading with pose, at rest (14 Nov: 0.7 to 3.2 N)
+EMPTY_MOVING_N = 7.0         # N, largest empty-handle reading caused by motion (14 Nov: 3 to 7 N), taken along the motion
+HAND_ON_N = F_PRESENT + EMPTY_REST_N   # N, hand force above this means "a hand is on the handle"
+V_MOVING = 0.002             # m/s, above this the handle counts as moving (motion allowance on, baseline frozen)
 OCCUPIED_WINDOW_S = 0.5      # s, occupied if force exceeded F_PRESENT within this window
 FORCE_FILTER_S = 0.05        # s, smoothing time constant of the force used for occupancy (noise)
 BASELINE_N = 30              # force readings averaged for the empty-handle baseline at start()
-MAX_BASELINE_N = 3.0         # N, a larger empty-handle baseline refuses to start (not zeroed)
+MAX_BASELINE_N = 6.0         # N, a larger empty-handle baseline refuses to start (not zeroed, wrong tool, or a hand on it)
 BASELINE_TRACK_S = 20.0      # s, time constant of baseline tracking while idle and empty (drift)
 STALL_SPEED = 0.01           # m/s along the path
 STALL_ASSIST_S = 1.5         # s stall on the assist side before rescue
@@ -201,6 +217,7 @@ class Engine:
         self._t0: float | None = None
         self.force_baseline = np.zeros(3)   # N, empty-handle sensor reading (set by start())
         self._f_filt: np.ndarray | None = None
+        self._vel = np.zeros(3)             # handle velocity of the current tick
         self._last_tick_t: float | None = None
         self._reset_rep_state()
 
@@ -221,9 +238,9 @@ class Engine:
             raise RuntimeError(
                 f"force sensor reads {mag:.1f} N with the handle empty "
                 f"(fx {baseline[0]:+.1f}, fy {baseline[1]:+.1f}, fz {baseline[2]:+.1f} N; limit "
-                f"{MAX_BASELINE_N:.1f} N). The sensor is not zeroed or something is resting on the "
-                "handle. With nobody touching the arm, run arm.zero_force() (robot/RUNBOOK.md), "
-                "then start the session again.")
+                f"{MAX_BASELINE_N:.1f} N). The sensor is not zeroed, the wrong tool is selected on "
+                "the robot, or something is resting on the handle. With nobody touching the arm, "
+                "run arm.zero_force() (robot/RUNBOOK.md), then start the session again.")
         self.force_baseline = baseline
         self.arm.start_compliance()
         # The line always lies between the arm's start pose and the far end of the configured
@@ -235,15 +252,21 @@ class Engine:
         end = start.copy()
         end[self.reach_axis] += self.reach_sign * self.reach_m
         self.path = LinePath(_tup3(start), _tup3(end))
-        if self.preset.start_at == "far" and abs(self._progress(self.arm.get_state().pos)) * self.reach_m > NEAR_START_M:
-            self._phase = "setup"                   # the person moves the handle to the far end
+        if abs(self._progress(self.arm.get_state().pos)) * self.reach_m > NEAR_START_M:
+            # The handle is not at this exercise's start (pull: the far end; any other exercise
+            # after a pull, or when the handle was left out): the person brings it there first.
+            self._phase = "setup"
         if hasattr(self.arm, "patient") and hasattr(self.arm, "cue"):
             # Simulated patient: where its reach starts, and whether the engine cues it itself
             # (pull and armtest) or it follows the stiffness change as before (reach, push).
             self._explicit_cues = self.preset.start_at == "far" or self.preset.kind == "test"
             self.arm.reach_origin = _tup3(start)
-            self.arm.auto_cue = not self._explicit_cues
-            self._sim_cue("back" if self._phase == "setup" else "rest")
+            if self._phase == "setup":
+                self.arm.auto_cue = False           # the setup stiffness change is not a "go"
+                self.arm.cue("back")                # move smoothly to the path start
+            else:
+                self.arm.auto_cue = not self._explicit_cues
+                self._sim_cue("rest")
         self.started_at = _now_iso()
         self._started = True
         self._stop_evt.clear()
@@ -445,19 +468,49 @@ class Engine:
             self._emit(t, state, _tup3(pos), dial, "idle", -1, force)
             return
 
-        # occupied? (baseline-relative force; raw AND smoothed above F_PRESENT)
-        if (float(np.linalg.norm(force)) > F_PRESENT
-                and float(np.linalg.norm(self._f_filt)) > F_PRESENT):
+        # occupied? (hand force of the raw AND the smoothed reading above HAND_ON_N)
+        vel = np.asarray(state.vel, dtype=float)
+        self._vel = vel
+        # (the robot-led circle moves the handle up and down by design, where a limb's weight
+        # lies along the motion, so it keeps the allowance along the reach only; it is not live)
+        reach_only = self.preset.kind == "guided"
+        if self._hand_on(force, vel, reach_only) and self._hand_on(self._f_filt, vel, reach_only):
             self._last_force_t = t_arm
         occupied = (self._last_force_t is not None
                     and t_arm - self._last_force_t <= OCCUPIED_WINDOW_S)
-        # follow slow sensor drift while the handle is empty and nothing is happening
-        if self._phase in ("idle", "setup") and not occupied:
+        # follow slow sensor drift while the handle is empty, at rest, and nothing is happening
+        if (self._phase in ("idle", "setup") and not occupied
+                and float(np.linalg.norm(vel)) < V_MOVING):   # never absorb a moving handle's reading
             self.force_baseline = (self.force_baseline
                                    + (raw_force - self.force_baseline) * (dt_tick / BASELINE_TRACK_S))
 
         s = self._progress(pos)
         near_start = abs(s) * self.reach_m <= NEAR_START_M
+        at_hold_start = abs(s) * self.reach_m <= HOLD_START_M
+
+        # setup: the session began with the handle away from this exercise's path start (pull:
+        # the far end; anything started after a pull). Transparent along the line, walls on,
+        # until the person has held the handle at the path start. The arm never drives it there.
+        if self._phase == "setup":
+            if near_start:
+                if self._near_since is None:
+                    self._near_since = t_arm
+                if t_arm - self._near_since >= SETUP_DWELL_S:
+                    self._phase = "idle"
+                    self._near_since = None
+                    if hasattr(self.arm, "patient") and hasattr(self.arm, "cue"):
+                        self.arm.auto_cue = not self._explicit_cues
+            else:
+                self._near_since = None
+            if self._phase == "setup":
+                # Target beside the hand on the path line (not clamped to the segment: a handle
+                # left beyond the path end must not be pulled to it), reach axis free, walls on.
+                target = _tup3(self._beside_hand(pos))
+                k = [float(controller.K_WALL)] * 3
+                k[self.reach_axis] = 0.0
+                self._send(target, (k[0], k[1], k[2]))
+                self._emit(t, state, target, 0.0, "setup", -1, force)
+                return
 
         if self._phase == "release":
             self._tick_release(state, t_arm, t, pos, force, occupied, dial, dt_tick)
@@ -468,23 +521,6 @@ class Engine:
         if self.preset.kind == "guided":
             self._tick_guided(state, t_arm, t, pos, force, occupied, near_start, dial, dt_tick)
             return
-
-        # setup ("far" presets such as pull): transparent along the line, walls on, until the
-        # person has brought the handle to the far end. The arm never drives it there.
-        if self._phase == "setup":
-            if near_start:
-                if self._near_since is None:
-                    self._near_since = t_arm
-                if t_arm - self._near_since >= SETUP_DWELL_S:
-                    self._phase = "idle"
-                    self._near_since = None
-            else:
-                self._near_since = None
-            if self._phase == "setup":
-                target, k = controller.command(0.0, "out", s, 0.0, pos, self.path, False)
-                self._send(target, k)
-                self._emit(t, state, target, 0.0, "setup", -1, force)
-                return
 
         # hands-off rule, resist side: the band is a loaded spring, so letting go must not let
         # it throw the handle back. End the rep and release the spring gently.
@@ -528,7 +564,10 @@ class Engine:
                 self._phase, self._phase_t0, self._stall_since = "back", t_arm, None
         elif self._phase == "back":
             t_in = t_arm - self._phase_t0
-            if near_start or t_in >= BACK_TIMEOUT_S:
+            # back at the start: inside HOLD_START_M, or inside NEAR_START_M and no longer moving
+            # (friction can stop the handle up to 2.5 cm short of where the spring pulls it)
+            stopped = abs(float(state.vel[self.reach_axis])) < STALL_SPEED
+            if at_hold_start or (near_start and stopped) or t_in >= BACK_TIMEOUT_S:
                 self._finish_rep(dial, aborted=False)
                 self._phase = "idle"
                 self._near_since = None
@@ -559,7 +598,7 @@ class Engine:
             if occupied:
                 self._latch = None
                 # at the start: hold the start point; elsewhere: follow the hand along the line
-                target = _tup3(self.path.point_at(0.0) if near_start else self._on_line(pos))
+                target = _tup3(self.path.point_at(0.0) if at_hold_start else self._on_line(pos))
             else:
                 if self._latch is None:
                     self._latch = self._on_line(pos)
@@ -582,15 +621,42 @@ class Engine:
     def _let_go(self, force, pos, occupied) -> bool:
         """True when the handle has been let go while the arm's spring is pulling on it.
 
-        Either the handle is unoccupied (the usual 0.5 s rule), or, at once, the force on the
-        handle is under F_PRESENT on this tick while the commanded spring pull along the reach
-        axis is above RELEASE_SPRING_N (nothing is holding a loaded spring). The second test is
+        Either the handle is unoccupied (the usual 0.5 s rule), or, at once, no hand force is
+        read on this tick (``_hand_on`` with the same threshold as occupancy and the motion
+        allowance along the reach only) while the commanded spring
+        pull along the reach axis is above RELEASE_SPRING_N (nothing is holding a loaded spring). The second test is
         what keeps the empty handle slow: waiting 0.5 s would let the spring throw it first.
         A person who is still holding on, even one moving with the band, is not "let go"."""
         if not occupied:
             return True
         spring = float(self._spring_force(pos)[self.reach_axis])
-        return abs(spring) > RELEASE_SPRING_N and float(np.linalg.norm(force)) < F_PRESENT
+        return abs(spring) > RELEASE_SPRING_N and not self._hand_on(force, self._vel, along_reach_only=True)
+
+    def _hand_force(self, force, vel, along_reach_only: bool = False) -> float:
+        """Force (N) that can only come from a hand: the baseline-relative reading with the
+        motion allowance taken off (an empty moving handle reads up to EMPTY_MOVING_N by itself).
+
+        Default (occupancy): up to EMPTY_MOVING_N, either sign, is removed along the direction
+        the handle is moving in, whatever that direction is, at any speed above V_MOVING. A
+        freed handle that springs up when a limb's weight comes off is covered too.
+        ``along_reach_only`` (the one-tick let-go test): the allowance is removed from the
+        reach-axis component only, and only while the handle moves along the reach. That test
+        must not mistake a limb's weight on a handle that is settling up or down for no hand."""
+        f = np.array(force, dtype=float)
+        if along_reach_only:
+            a = self.reach_axis
+            if abs(float(vel[a])) >= V_MOVING:
+                f[a] -= float(np.clip(f[a], -EMPTY_MOVING_N, EMPTY_MOVING_N))
+        else:
+            speed = float(np.linalg.norm(vel))
+            if speed >= V_MOVING:
+                u = np.asarray(vel, dtype=float) / speed
+                f = f - float(np.clip(f @ u, -EMPTY_MOVING_N, EMPTY_MOVING_N)) * u
+        return float(np.linalg.norm(f))
+
+    def _hand_on(self, force, vel, along_reach_only: bool = False) -> bool:
+        """True if this reading shows a hand on the handle (see the module docstring)."""
+        return self._hand_force(force, vel, along_reach_only) > HAND_ON_N
 
     def _begin_release(self, t_arm: float, pos) -> None:
         kh = float(self.arm.limits.k_hold)
@@ -700,12 +766,14 @@ class Engine:
             if t_arm - self._phase_t0 >= p.push_s or pushed_too_far:
                 self._test_offset = float(np.clip(s * self.reach_m, -p.max_disp_m, p.max_disp_m))
                 self._finish_try(aborted=False)
-                if self._limit_reached():
-                    self._phase = "idle"
-                else:
-                    self._phase, self._phase_t0 = "back", t_arm
+                # rest, also after the last try: the stretched spring is always walked back
+                self._phase, self._phase_t0 = "back", t_arm
         elif self._phase == "back":
-            if t_arm - self._phase_t0 >= p.rest_s:
+            if self._limit_reached():
+                if self._test_offset == 0.0:        # last try done and the target is back at the start
+                    self._phase = "idle"
+                    self._near_since = None
+            elif t_arm - self._phase_t0 >= p.rest_s:
                 self._begin_try(t_arm, t, dial)
 
         if self._phase in ("out", "back"):
@@ -727,7 +795,7 @@ class Engine:
             start = _tup3(np.asarray(self.path.start) + self._test_offset * self.path.axis())
         elif occupied:                          # idle, same rule as the line: never pull the hand
             self._latch = None
-            start = _tup3(self.path.point_at(0.0) if near_start else self._beside_hand(pos))
+            start = _tup3(self.path.point_at(0.0) if abs(s) * self.reach_m <= HOLD_START_M else self._beside_hand(pos))
         else:                                   # idle and empty: the target stays where it is
             if self._latch is None:
                 self._latch = self._beside_hand(pos)
@@ -802,7 +870,8 @@ class Engine:
             kh = float(self.arm.limits.k_hold)
             if occupied:
                 self._latch = None
-                target = _tup3(self.path.point_at(0.0) if near_start else self._beside_hand(pos))
+                target = _tup3(self.path.point_at(0.0) if abs(self._progress(pos)) * self.reach_m <= HOLD_START_M
+                               else self._beside_hand(pos))
             else:
                 if self._latch is None:
                     self._latch = self._beside_hand(pos)

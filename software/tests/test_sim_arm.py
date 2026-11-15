@@ -58,7 +58,9 @@ def test_interface_matches_arm():
     extras = [p for p in params.values() if p.kind is p.KEYWORD_ONLY]
     # sensor-error options are keyword-only with defaults, so the frozen call still works
     assert {p.name for p in extras} == {"force_offset", "force_drift_n_per_min",
-                                        "force_noise_n", "stiffness_latency_s", "seed"}
+                                        "force_noise_n", "stiffness_latency_s", "seed",
+                                        "empty_force_pose_n_per_m", "empty_force_moving_n",
+                                        "empty_force_moving_dir", "friction_n"}
     assert all(p.default is not p.empty for p in extras)
 
 
