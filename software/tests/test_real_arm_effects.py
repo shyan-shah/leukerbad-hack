@@ -290,6 +290,30 @@ def test_baseline_does_not_absorb_a_moving_handles_reading():
     assert np.linalg.norm(eng.force_baseline - base0) < 0.05         # frozen while it moves
 
 
+def test_baseline_does_not_absorb_a_hand_resting_lightly_on_the_handle(monkeypatch):
+    """A 4 N hand is under HAND_ON_N (4.5 N), so the handle counts as empty. Tracked into the
+    baseline (3.8 N of it within 60 s before this rule), the empty handle would afterwards read
+    4 N plus the pose change: over the threshold, an empty handle taken for a hand."""
+    from software import sim_arm
+    monkeypatch.setattr(sim_arm, "PASSIVE_LOAD_N", 4.0)
+    eng, arm, samples, reps = make("reach", strength=0.0, arm_kw={})
+    base0 = eng.force_baseline.copy()
+    eng.run_for(60.0)
+    assert eng.phase == "idle" and not reps                          # too light to count as a hand
+    assert np.linalg.norm(samples[-1].force) == pytest.approx(4.0, abs=0.1)
+    assert np.linalg.norm(eng.force_baseline - base0) < 0.05         # and not absorbed
+    arm.patient.present = False                                      # the hand comes off: reads empty again
+    eng.run_for(1.0)
+    assert np.linalg.norm(samples[-1].force) < 0.2
+
+
+def test_baseline_still_follows_slow_drift_on_an_empty_handle():
+    eng, arm, samples, reps = make("reach", present=False, arm_kw=dict(force_drift_n_per_min=(0.5, -0.3, 0.4)))
+    eng.run_for(300.0)                                               # 5 minutes: 3.5 N of drift in all
+    assert not reps and np.linalg.norm(samples[-1].force) < 0.3      # followed, the handle still reads empty
+    assert np.linalg.norm(eng.force_baseline) > 3.0
+
+
 # --------------------------------------------------------------------------- hands off, assist side (the 8 cm rule)
 
 def assist_let_go(arm_kw, strength, frac):

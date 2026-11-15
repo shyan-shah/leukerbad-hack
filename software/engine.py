@@ -45,9 +45,11 @@ readings BEFORE compliance starts, with the handle empty (the same "nobody touch
 as ``zero_force``), and refuses to start with a RuntimeError if that baseline is over
 ``MAX_BASELINE_N`` (sensor not zeroed, or something resting on the handle). Every force
 the engine uses (occupancy, Samples, metrics) is ``state.force - baseline``. While the
-phase is idle, the handle is not occupied and it is not moving, the baseline follows the raw
-reading with time constant ``BASELINE_TRACK_S``, so slow drift does not build up while the
-handle is empty (the reading of a moving empty handle is never absorbed). Drift while the handle is held is not tracked (re-zero between sets on the real arm).
+phase is idle, the handle is not occupied, it is not moving and the smoothed reading is within
+``F_PRESENT`` of the baseline, the baseline follows the raw reading with time constant
+``BASELINE_TRACK_S``, so slow drift does not build up while the handle is empty. The reading
+of a moving empty handle is never absorbed, and neither is a hand resting lightly on the
+handle (under ``HAND_ON_N`` but over ``F_PRESENT``). Drift while the handle is held is not tracked (re-zero between sets on the real arm).
 For ``SimArm`` the simulated patient keeps hands off while the baseline is taken.
 - Hands-off rule, assist side only (dial > 0): if the handle is not occupied during a rep the
   rep ends now as not completed and the phase goes to idle. While the handle is empty the
@@ -479,8 +481,11 @@ class Engine:
         occupied = (self._last_force_t is not None
                     and t_arm - self._last_force_t <= OCCUPIED_WINDOW_S)
         # follow slow sensor drift while the handle is empty, at rest, and nothing is happening
+        # (never a moving handle's reading, and never more than F_PRESENT away from the baseline:
+        # drift is slow and stays inside that, a light hand resting on the handle does not)
         if (self._phase in ("idle", "setup") and not occupied
-                and float(np.linalg.norm(vel)) < V_MOVING):   # never absorb a moving handle's reading
+                and float(np.linalg.norm(vel)) < V_MOVING
+                and float(np.linalg.norm(self._f_filt)) < F_PRESENT):
             self.force_baseline = (self.force_baseline
                                    + (raw_force - self.force_baseline) * (dt_tick / BASELINE_TRACK_S))
 
