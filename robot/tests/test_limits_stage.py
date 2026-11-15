@@ -188,3 +188,33 @@ def test_ctrl_c_holds_and_restores(monkeypatch, tmp_path, capsys):
     code = _run_real(monkeypatch, tmp_path, robot, "b")
     assert code == 1 and "Ctrl+C" in capsys.readouterr().out
     _assert_restored(robot)
+
+
+def test_the_3_cm_check_ignores_the_release():
+    """Real arm, 15 Nov, stage d: after a sudden let-go the force was under 40 N with the handle still 31 mm out."""
+    def row(along, disp_mm):
+        return dict(along=along, f=abs(along), disp=disp_mm / 1000.0)
+    rise = [row(f, f / 1.5) for f in (5, 20, 39, 53)]            # 39 N -> 26 mm
+    hold = [row(52, 35), row(50, 34), row(53, 35)]
+    release = [row(30, 31), row(5, 20), row(0, 2)]               # force gone, handle still coming back
+    assert tl.loaded_disp_le40(rise + hold + release) == pytest.approx(0.026)
+    assert tl.loaded_disp_le40(rise + hold) == pytest.approx(0.026)
+    # a handle that really gives too far under 40 N on the way up is still caught
+    assert tl.loaded_disp_le40([row(38, 33), row(53, 36)] + release) == pytest.approx(0.033)
+    assert tl.loaded_disp_le40([]) == 0.0
+
+
+def test_recheck_of_a_saved_run(tmp_path, capsys):
+    pytest.importorskip("numpy")
+    assert tl.main(["--stage", "d", "--sim", "--out", str(tmp_path)]) == 0
+    f = next(tmp_path.glob("test_limits_d_*.json"))
+    before = f.read_text(encoding="utf-8")
+    capsys.readouterr()
+    assert tl.main(["--recheck", str(f)]) == 0
+    assert "RECHECK STAGE d: PASS" in capsys.readouterr().out
+    r = json.loads(before)
+    r["stopped"] = "force reading 66.0 N"          # a run the script had to stop is never turned into a PASS
+    g = tmp_path / "stopped.json"
+    g.write_text(json.dumps(r), encoding="utf-8")
+    assert tl.main(["--recheck", str(g)]) == 1
+    assert f.read_text(encoding="utf-8") == before

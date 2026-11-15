@@ -4,6 +4,8 @@ A PERSON PUSHES THE HANDLE in stages b, c and d. E-stop holder in place for ever
     python -u -m robot.test_limits_stage --stage a --go      real arm (serial, reach axis and sign from robot/config.json)
     python -u -m robot.test_limits_stage --stage a --sim     dry run on software.sim_arm.SimArm, no robot
     python -u -m robot.test_limits_stage --stage a           prints the plan only, connects to nothing
+    python -m robot.test_limits_stage --recheck robot/results/test_limits_d_<time>_arm.json
+                                                             re-evaluates the 3 cm check of a saved c or d run
 
 One stage per run, in order, each only after the one before it printed PASS:
   a  nobody touching: the profile is switched on (stiffness to 1500 N/m) and off 3 times, 3 s each.
@@ -272,6 +274,21 @@ def stage_a(run: Run) -> list[tuple[str, bool, str]]:
     return checks
 
 
+HELD_FRACTION = 0.8        # the push counts as "held" until the reading last stood at this share of its peak
+
+
+def loaded_disp_le40(rows: list[dict]) -> float:
+    """Largest displacement among samples reading 40 N or less, over the rising and held part of the push
+    only: from the first sample to the last one at HELD_FRACTION of the peak or more. The release is left
+    out: there the force is gone before the handle is back (on the arm, 15 Nov: under 40 N with the handle
+    still 31 mm out, returning at 0.22 m/s), which says nothing about how far a 40 N push moves it."""
+    if not rows:
+        return 0.0
+    peak = max(abs(r["along"]) for r in rows)
+    last = max(i for i, r in enumerate(rows) if abs(r["along"]) >= HELD_FRACTION * peak)
+    return max((r["disp"] for r in rows[:last + 1] if r["f"] <= 40.0), default=0.0)
+
+
 def stage_push(run: Run) -> list[tuple[str, bool, str]]:
     arm, cfg = run.arm, run.cfg
     p0 = run.sample("switch")["pos"]
@@ -297,20 +314,21 @@ def stage_push(run: Run) -> list[tuple[str, bool, str]]:
     rows = push + ease
     top = max(rows, key=lambda r: abs(r["along"]))
     f_top, d_top, d_max = abs(top["along"]), top["disp"], max(r["disp"] for r in rows)
-    d_le40 = max((r["disp"] for r in rows if r["f"] <= 40.0), default=0.0)
+    d_le40 = loaded_disp_le40(rows)
     way = "in the reach direction" if top["along"] >= 0 else "AGAINST the reach direction"
     checks = [(f"no jump when the profile came on (under {JUMP_MAX_M * 1000:.0f} mm)", jump < JUMP_MAX_M, f"{jump * 1000:.2f} mm"),
               ("peak force along the reach (logged)", True,
                f"{f_top:.1f} N {way}; |F| peak {max(r['f'] for r in rows):.1f} N; {f_top / d_top if d_top > 1e-4 else float('nan'):.0f} N/m measured"),
               ("displacement (logged)", True, f"{d_top * 1000:.1f} mm at the peak, largest {d_max * 1000:.1f} mm, "
-                                               f"largest for readings up to 40 N {d_le40 * 1000:.1f} mm")]
+                                               f"largest for readings up to 40 N while the push was rising or held {d_le40 * 1000:.1f} mm")]
     if run.stage == "b":
         checks.append(("a push was seen: 5 to 25 N", 5.0 <= f_top <= 25.0, f"{f_top:.1f} N"))
         checks.append(("displacement under 2 cm", d_max < 0.02, f"{d_max * 1000:.1f} mm"))
     else:
         need = 30.0 if run.stage == "c" else 50.0
         checks.append((f"the reading passed {need:.0f} N", f_top > need, f"{f_top:.1f} N"))
-        checks.append(("displacement under 3 cm for readings up to 40 N", d_le40 < 0.03, f"{d_le40 * 1000:.1f} mm"))
+        checks.append(("displacement under 3 cm for readings up to 40 N (rising or held push, not the release)",
+                       d_le40 < 0.03, f"{d_le40 * 1000:.1f} mm"))
     checks.append(("the person let go before the profile went off", let_go,
                    "yes" if let_go else "still over 3 N after 5 s: the default limits came back with a hand on the handle"))
     return checks
@@ -433,15 +451,42 @@ def plan(stage: str) -> str:
             f"restore default limits and K_x_nom, Stop. No homing.")
 
 
+def recheck(path: str) -> int:
+    """Re-evaluate "under 3 cm for readings up to 40 N" from the samples saved in a result file (every 5th
+    sample, 50 ms apart). Connects to nothing and does not change the file."""
+    r = json.loads(Path(path).read_text(encoding="utf-8"))
+    rows = [dict(along=x[2], f=x[3], disp=x[4] / 1000.0) for x in r["samples"] if x[1] in ("push", "ease")]
+    if r["stage"] not in ("c", "d") or not rows:
+        print(f"{path}: stage {r['stage']} has no 3 cm check or no push samples")
+        return 2
+    d = loaded_disp_le40(rows)
+    others = [c for c in r["checks"] if not c["name"].startswith("displacement under 3 cm")]
+    bad = [c["name"] for c in others if not c["ok"]]
+    clean = not bad and r["stopped"] is None and r["tripped"] is None and r["error"] is None and r["restored"]
+    ok = d < 0.03 and clean
+    why = ", ".join(bad) or r["stopped"] or r["tripped"] or r["error"] or "limits not restored"
+    print(f"{path}\n  stage {r['stage']}, saved result {r['status']}{' [SIMULATED]' if r['sim'] else ''}\n"
+          f"  displacement for readings up to 40 N, rising or held push only (from the saved 50 ms samples): {d * 1000:.1f} mm "
+          f"({'under' if d < 0.03 else 'NOT under'} 3 cm)\n"
+          f"  every other line of that run: {'ok' if clean else 'NOT ok: ' + why}\n"
+          f"RECHECK STAGE {r['stage']}: {'PASS' if ok else 'FAIL'}")
+    return 0 if ok else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Staged on-arm test of Arm.set_test_limits.")
-    ap.add_argument("--stage", required=True, choices=sorted(STAGES))
+    ap.add_argument("--stage", choices=sorted(STAGES))
+    ap.add_argument("--recheck", metavar="JSON", help="connects to nothing: re-evaluate the 3 cm check of a saved stage c or d result")
     ap.add_argument("--go", action="store_true", help="really connect to the robot and run the stage")
     ap.add_argument("--sim", action="store_true", help="dry run on SimArm (no robot)")
     ap.add_argument("--serial", help="robot serial (default robot/config.json)")
     ap.add_argument("--sim-push", type=float, help="sim only: the scripted push in N (to dry-run the stops)")
     ap.add_argument("--out", help="folder for the result file (default robot/results)")
     args = ap.parse_args(argv)
+    if args.recheck:
+        return recheck(args.recheck)
+    if not args.stage:
+        ap.error("--stage is required")
     print(plan(args.stage), flush=True)
     if not args.sim and not args.go:
         print("\nNothing was connected. Add --go to run it on the arm (e-stop holder in place), or --sim for a dry run.")

@@ -57,8 +57,11 @@ Peak forces to copy from the run (for the pitch; nobody says a force limit on st
 
 ## Test-limits profile (`set_test_limits`): staged test on the real arm
 
-**Status: NOT RUN on the arm.** The calibrate phase and the strength test must not use the profile on the
-arm (`server.run --robot --calibrate`) until all four rows have an on-arm PASS, in order.
+**Status: RUN on the arm on 15 Nov, 18:24 to 18:34. a, b, c PASS. d: every line passed except one check
+that was wrong in the script (now fixed); its saved file still has to be re-checked, see below.** The values
+here are as reported by Kian from the run; the result files (`robot/results/test_limits*arm.json`) were not
+in the repo when this was written and must be committed. The calibrate phase and the strength test must not
+use the profile on the arm (`server.run --robot --calibrate`) until all four rows have an on-arm PASS.
 
 The profile (`robot/arm.py`, only while `set_test_limits(True)` is on): stiffness cap 1500 N/m, robot contact
 limit 65 N, force trip 75 N. Everything else as in "Limits in force" below.
@@ -81,14 +84,31 @@ IDLE, e-stop holder in place, one stage per run:
 
 | Stage | What the person does | Pass criterion | Result | Measured (peak force along the reach, displacement, trip/fault, highest joint torque %) |
 |---|---|---|---|---|
-| a | nobody touches; the profile goes on (1500 N/m) and off 3 times, 3 s each | handle moves under 2 mm at each of the 6 switches; no trip, no fault; limits restored | not run | |
-| b | gentle push along the reach, about 10 N, held 5 s | reading 5 to 25 N; handle gives under 2 cm; no trip, no fault; limits restored | not run | |
-| c | push of 30 to 40 N | reading passes 30 N; handle gives under 3 cm for readings up to 40 N; no trip, no fault; limits restored | not run | |
-| d | push towards 60 N | reading passes 50 N; under 3 cm for readings up to 40 N and never 5 cm; the script did not have to stop at 65 N; no trip, no fault; limits restored | not run | |
+| a | nobody touches; the profile goes on (1500 N/m) and off 3 times, 3 s each | handle moves under 2 mm at each of the 6 switches; no trip, no fault; limits restored | PASS | see the result file |
+| b | gentle push along the reach, about 10 N, held 5 s | reading 5 to 25 N; handle gives under 2 cm; no trip, no fault; limits restored | PASS on the third run | see the result files (two earlier runs did not pass) |
+| c | push of 30 to 40 N | reading passes 30 N; handle gives under 3 cm for readings up to 40 N while the push rises or is held; no trip, no fault; limits restored | PASS on the second run | see the result files (one earlier run did not pass) |
+| d | push towards 60 N | reading passes 50 N; under 3 cm for readings up to 40 N while the push rises or is held, and never 5 cm; the script did not have to stop at 65 N; no trip, no fault; limits restored | FAIL printed, by the faulty 3 cm check only; re-check the saved file | steady 50 to 54 N for 8 s, clean release, no trip; 62 N reached twice, no arm fault, the 65 N stop did not fire; highest joint load 46 % of its limit (J3); the failing sample: release, reading already under 40 N, handle still 31 mm out, returning at 0.22 m/s |
 
 Stage d cannot keep "under 3 cm" at 60 N: 60 N / 1500 N/m is 4 cm by arithmetic. So the 3 cm criterion is
 judged on readings up to 40 N in c and d, and the 5 cm stop covers the rest. The 65 N stop is a guard, not
 something to try on purpose.
+
+What the arm run on 15 Nov showed:
+
+- **The check that failed stage d was wrong, not the arm.** "Under 3 cm for readings up to 40 N" looked at
+  every sample, including the release. After a let-go the force is gone before the handle is back, so a
+  sample with under 40 N and 31 mm was counted against the arm. The check now looks only at the push while
+  it rises or is held (up to the last sample at 80 % of the peak or more). To settle stage d without another
+  60 N push on the printed handle, re-check the saved run (connects to nothing, changes no file):
+  `python -m robot.test_limits_stage --recheck robot/results/test_limits_d_<time>_arm.json`.
+  If it prints RECHECK PASS, write PASS in row d with the printed value. If not, stage d is a FAIL.
+- **Snap-back on a sudden let-go.** Let go suddenly from 53 N and the handle comes back at 0.22 m/s
+  (1500 N/m with 3.5 cm of stretch). That is under the 0.40 m/s speed trip and under this script's 0.25 m/s
+  stop, but close to the stop: a let-go from 60 N may reach it. People are told to ease off; the engine
+  must not rely on that (noted for Shiv in LOG).
+- 62 N was read twice with no robot fault, so the arm takes that load inside its own 65 N contact limit.
+  The limit itself was not reached and what the arm does at it is still not known.
+- Highest joint torque 46 % of `tau_max` (J3) in stage d.
 
 Dry run on the simulated arm (15 Nov, `--sim`, not evidence about the robot): a 0.0 mm; b 10.0 N, 6.8 mm;
 c 36.0 N, 24.2 mm; d 58.0 N, 38.9 mm (26.6 mm up to 40 N); all PASS. A simulated 70 N push in d and a 30 N
