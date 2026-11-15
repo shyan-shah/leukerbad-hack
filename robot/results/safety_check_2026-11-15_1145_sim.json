@@ -1,0 +1,138 @@
+{
+  "when": "2026-11-15_1145",
+  "sim": true,
+  "reach_axis": "y",
+  "reach_sign": 1,
+  "limits": {
+    "k_max": 600.0,
+    "max_lead_m": 0.05,
+    "k_hold": 300.0,
+    "max_linear_vel": 0.15,
+    "max_linear_acc": 0.5,
+    "trip_speed": 0.4,
+    "trip_force": 40.0,
+    "max_contact_n": 30.0,
+    "max_contact_nm": 5.0,
+    "watchdog_s": 0.2,
+    "box_half_m": [
+      0.1,
+      0.35,
+      0.1
+    ]
+  },
+  "k_wall": 500.0,
+  "k_assist": 400.0,
+  "k_resist": 300.0,
+  "baseline": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "results": [
+    {
+      "num": 1,
+      "title": "Empty handle force near 0 with the active tool",
+      "status": "PASS",
+      "measured": "|F| 0.00 N (x +0.00, y +0.00, z +0.00); noise 0.00 N",
+      "note": ""
+    },
+    {
+      "num": 2,
+      "title": "Push direction gives the expected force sign",
+      "status": "PASS",
+      "measured": "moved +27.2 mm along y, force[y] +6.0 N at that point",
+      "note": ""
+    },
+    {
+      "num": 3,
+      "title": "Soft hold at K_HOLD",
+      "status": "PASS",
+      "measured": "pushed 4.1 cm with 9.0 N = 220 N/m (commanded 300); came back to 0.0 mm",
+      "note": ""
+    },
+    {
+      "num": 4,
+      "title": "A target outside the workspace box is clamped",
+      "status": "PASS",
+      "measured": "asked 20.0 cm; arm.py sent at most 10.00 cm; hand rose 10.3 cm (box 10 cm)",
+      "note": ""
+    },
+    {
+      "num": 5,
+      "title": "A target 20 cm from the hand is clamped to 5 cm",
+      "status": "PASS",
+      "measured": "asked 20.0 cm from the hand; arm.py sent 5.00 cm; hand moved 0.0 mm",
+      "note": ""
+    },
+    {
+      "num": 6,
+      "title": "Stiffness 5000 N/m is clamped",
+      "status": "PASS",
+      "measured": "asked 5000 N/m; arm.py sent [600, 600, 600] (k_max 600)",
+      "note": ""
+    },
+    {
+      "num": 7,
+      "title": "Pushing past 40 N trips to hold",
+      "status": "PASS",
+      "measured": "peak force 34.8 N; pushed 17.4 cm; ended in hold (speed 0.40 m/s above 0.40 m/s)",
+      "note": "held, but a different trip fired before the force trip"
+    },
+    {
+      "num": 8,
+      "title": "Hand 3 cm outside the box trips",
+      "status": "PASS",
+      "measured": "tripped at 5.1 cm from the centre = 2.1 cm outside the 3 cm test box; hold (hand 2.1 cm outside workspace box on axis x)",
+      "note": ""
+    },
+    {
+      "num": 9,
+      "title": "Stopping the command stream trips the watchdog within 0.3 s",
+      "status": "PASS",
+      "measured": "hold after 0.19 s without a target; hold (watchdog: no set_target for 0.20 s)",
+      "note": ""
+    },
+    {
+      "num": 10,
+      "title": "Letting go mid-assist stops the arm within about 10 cm",
+      "status": "PASS",
+      "measured": "travel after release 3.2 cm (3.4 cm from the cue); peak speed after release 0.48 m/s; end speed 0.007 m/s; peak force while carried 19.4 N",
+      "note": "stopped by a trip: hold: speed 0.48 m/s above 0.40 m/s"
+    },
+    {
+      "num": 11,
+      "title": "Letting go in resistance returns slower than 0.20 m/s and stops at the start",
+      "status": "N/A-SIM",
+      "measured": "peak return speed 0.41 m/s; stopped +13.9 cm from the start (lowest +11.7 cm); end speed 0.006 m/s; peak push 15.3 N",
+      "note": "SimArm has no robot-side speed limit and little damping: a released band trips the speed limit. tripped on the way back: hold: speed 0.41 m/s above 0.40 m/s"
+    },
+    {
+      "num": 12,
+      "title": "Isometric hold at K_MAX: a push up to the 30 N contact cap stays within 5 cm",
+      "status": "PASS",
+      "measured": "peak push 28.0 N moved the handle 4.7 cm (599 N/m measured); largest movement at or under 30 N: 4.7 cm",
+      "note": ""
+    },
+    {
+      "num": 13,
+      "title": "Letting go during pull's set-up phase leaves the handle still",
+      "status": "PASS",
+      "measured": "coasted 2.1 cm after release; moved 0.0 mm in the last 2 s",
+      "note": ""
+    },
+    {
+      "num": 14,
+      "title": "Ctrl+C leaves the arm in hold",
+      "status": "PASS",
+      "measured": "mode hold; stiffness sent [300, 300, 300]; moved 0.0 mm in 2 s",
+      "note": ""
+    },
+    {
+      "num": 15,
+      "title": "After close() the stiffness is back to K_x_nom",
+      "status": "N/A-SIM",
+      "measured": "close() ran",
+      "note": "SimArm has no nominal stiffness to restore"
+    }
+  ]
+}
