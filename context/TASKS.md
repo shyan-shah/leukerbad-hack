@@ -36,6 +36,7 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | L3 Operator console (swap: Kian builds it, only server/screens/operator.*) | Kian | server/ | Done against `--mock` and `--mock --lan` in headless Chrome (`/screens/operator.html`); Home button waits for `POST /api/arm/home`; not yet used with the real arm |
 | Y6 `POST /api/arm/prepare` (fault check + zero_force before the first real session; no home) | Shyan | server/ | Done |
 | L4 QR / LAN phone access | Shyan | server/ | Todo (after L2) |
+| C1 Comfortable-push calibration, server side: pass-through, mock phase, storage and exports, go/resume, patient screen and operator console, API.md section 7 | Shyan | server/ | Done against the mock engine (steps 1-6); screens not opened in a browser; not run with the real engine or the arm |
 | Help Kian get the arm connected (K0): organisers/technician for Remote mode + licence | Shyan | n/a | Done (connected 14 Nov, licence RDK-Professional) |
 | Arm motion test stages 3-5 (soft hold, free axis, engine dry run) | Shyan | server/hw/ | Todo (needs the robot) |
 | B0 Therapist interviews in Leukerbad (3 by Sat evening, 5 by Sun midday) | Mat, Gio | business/ | Todo |

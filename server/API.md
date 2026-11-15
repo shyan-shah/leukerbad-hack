@@ -342,3 +342,92 @@ Summary: 3 reps, range 28.0 cm (mean), peak force 13.7 N (best), resistance leve
 ### Trying it without the robot
 
 `python -m server.run --mock --time-scale 4` (add `--strength 0.3` for a weaker pretend patient). The mock engine plays all four exercises, stops at the rep count and rests. Its numbers are made up to look plausible.
+
+## 7. Comfortable-push calibration (for Mat and Gio)
+
+Push and Row (`push`, `pull`) now begin with one comfortable push. The handle stays still for about
+3 seconds while the person pushes at a level that feels comfortable; the resistance for the set is then
+set from that push. Reach and the strength test do not have it.
+
+Wording, the same on every screen: **"Push once at a level that feels comfortable"**, then
+**"Resistance set: X N"**. Never say "AI" or "machine learning"; say it **"adjusts to you"**.
+
+All examples below are real messages from the mock engine (the engine behind `python -m server.run --mock`),
+captured through the API on 15 Nov with the mock sped up; `q` is left out and numbers are rounded.
+Everything is SIMULATED. The mock's numbers are made up (22 N push, 60% of it as resistance): build the
+screens against the shape, not the values.
+
+**Which exercises have it.** `GET /api/exercises` items carry `calibrates`:
+
+```json
+[{"id": "reach", "name": "Forward reach (assisted)", "kind": "assist", "reps": 10, "calibrates": false},
+ {"id": "push", "name": "Push (resisted)", "kind": "resist", "reps": 10, "calibrates": true},
+ {"id": "pull", "name": "Row (resisted)", "kind": "resist", "reps": 10, "calibrates": true},
+ {"id": "armtest", "name": "Push strength test", "kind": "test", "reps": 3, "calibrates": false}]
+```
+
+**Start.** `POST /api/session/start` takes an optional `"calibrate": true | false`. Leave it out and
+push and pull calibrate. `false` skips the push (status `"skipped"`).
+
+**While it runs.** `/api/state` and every `sample` message carry two objects (both `null` when the engine
+on the laptop is an older one, and `calibration` is `null` for reach and the strength test):
+
+- `calibration`: `status` is `"waiting"` (no push yet), `"pushing"`, `"done"` or `"skipped"`; `progress`
+  0..1 through the push; `comfort_force_n`, `resistance_n`, `fraction` are `null` until `"done"`;
+  `reason` is a short text or `null`.
+- `arming`: `progress` 0..1 towards the next rep starting, and `reason`, a short text saying why a rep
+  has not started yet (`null` when nothing is in the way). Show `reason` as a small hint.
+
+During the push `phase` is `"calibrate"` and `rep_idx` is -1. Draw the force bar from `force`.
+
+Waiting for the push. Show "Push once at a level that feels comfortable":
+
+```json
+{"type": "sample", "t": 0.01, "pos": [0.45, 0.0, 0.3], "vel": [0.0, 0.0, 0.0], "force": [0.0, 0.0, 0.0], "target": [0.45, 0.0, 0.3], "dial": 0.0, "rep_idx": -1, "simulated": true, "phase": "calibrate", "rep_count": 0, "auto": false, "arm_mode": "compliant", "arm_fault": null, "calibration": {"status": "waiting", "progress": 0.0, "comfort_force_n": null, "resistance_n": null, "fraction": null, "reason": "waiting for a push"}, "arming": {"progress": 0.0, "reason": "calibrating"}, "exercise": "push", "reps_target": 2, "done": false}
+```
+
+Pushing (just over halfway):
+
+```json
+{"type": "sample", "t": 2.68, "pos": [0.45, 0.0, 0.3], "vel": [0.0, 0.0, 0.0], "force": [21.814, 0.0, 0.0], "target": [0.45, 0.0, 0.3], "dial": 0.0, "rep_idx": -1, "simulated": true, "phase": "calibrate", "rep_count": 0, "auto": false, "arm_mode": "compliant", "arm_fault": null, "calibration": {"status": "pushing", "progress": 0.563, "comfort_force_n": null, "resistance_n": null, "fraction": null, "reason": null}, "arming": {"progress": 0.0, "reason": "calibrating"}, "exercise": "push", "reps_target": 2, "done": false}
+```
+
+Done. Show "Resistance set: 13.2 N". The rep has not started yet and `arming.reason` says why:
+
+```json
+{"type": "sample", "t": 4.13, "pos": [0.45, 0.0, 0.3], "vel": [0.0, 0.0, 0.0], "force": [0.0, 0.0, 0.0], "target": [0.45, 0.0, 0.3], "dial": -0.6, "rep_idx": -1, "simulated": true, "phase": "idle", "rep_count": 0, "auto": false, "arm_mode": "compliant", "arm_fault": null, "calibration": {"status": "done", "progress": 1.0, "comfort_force_n": 22.0, "resistance_n": 13.2, "fraction": 0.6, "reason": null}, "arming": {"progress": 0.14, "reason": "resting before the rep"}, "exercise": "push", "reps_target": 2, "done": false}
+```
+
+`GET /api/state` in the first rep (other fields left out here):
+
+```json
+{"session": {"session_id": "20261115-163150-f5a9", "patient_id": "sim-demo", "simulated": true, "exercise": "push"}, "phase": "out", "rep_count": 0, "calibration": {"status": "done", "progress": 1.0, "comfort_force_n": 22.0, "resistance_n": 13.2, "fraction": 0.6, "reason": null}, "arming": {"progress": 1.0, "reason": null}}
+```
+
+**After the session.** The answer of `POST /api/session/stop`, the rows of
+`GET /api/patients/{id}/sessions`, `sessions.json` and `latest_session.json` carry `comfort_force_n`,
+`resistance_n` and `resistance_fraction` (all `null` when the session was not calibrated, including a
+session stopped before the push finished):
+
+```json
+{"session_id": "20261115-163150-f5a9", "patient_id": "sim-demo", "started_at": "2026-11-15T16:31:50", "ended_at": "2026-11-15T16:31:52", "exercise": "push", "n_reps": 1, "simulated": true, "comfort_force_n": 22.0, "resistance_n": 13.2, "resistance_fraction": 0.6}
+```
+
+The session note gains one line:
+
+```
+Resistance set to 13.2 N from a comfortable push of 22.0 N (team heuristic, adjusts to the patient)
+```
+
+The server keeps the engine's calibration state per patient and exercise and hands it to that patient's
+next session of the same exercise, which is what "adjusts to you" means. In the mock the share goes up by
+5 points each session, to at most 80%; the real rule is the engine's.
+
+**Operator cues** (need the operator token when the server runs with `--lan`):
+
+- `POST /api/go` starts the next rep now. Answer `{"ok": true}`. 501 when there is no session or the engine has no cue.
+- `POST /api/session/resume` continues a paused session. Answer `{"ok": true}`. 409 with a sentence in
+  `detail` when it cannot, for example `{"detail": "no session running, so there is nothing to resume"}`.
+
+Both buttons are on the operator console (`/screens/operator.html`); the patient screen
+(`/screens/patient.html`) shows the prompt, a live force bar and the result.
