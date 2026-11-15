@@ -156,3 +156,15 @@ def test_operator_hold_does_not_depend_on_the_module():
 def test_physio_charts_carry_a_simulated_label():
     js = (SCREENS / "physio.js").read_text(encoding="utf-8")
     assert "simtag" in js and '"SIMULATED"' in js and "not clinically validated" in js
+
+
+def test_calibration_wording_on_screens(no_site):
+    patient = no_site.get("/screens/patient.html").text
+    assert "Push once at a level that feels comfortable" in patient and "Resistance set: " in patient
+    assert "calibration" in patient and "arming" in patient
+    op = no_site.get("/screens/operator.html").text + no_site.get("/screens/operator.js").text
+    assert "Push once at a level that feels comfortable" in op and "Resistance set: " in op
+    assert 'id="go"' in op and 'id="resume"' in op and "/api/session/resume" in op
+    for name in ("patient.html", "operator.html", "operator.js", "physio.html", "physio.js", "index.html"):
+        text = no_site.get(f"/screens/{name}").text
+        assert not re.search(r"\bAI\b", text) and "machine learning" not in text.lower(), name

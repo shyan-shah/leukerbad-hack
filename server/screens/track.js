@@ -27,7 +27,7 @@ export class Track {
     if (typeof t === "number") this.lastT = t;
     if (!this.start) {
       // opened mid-rep: wait for rest ("setup" is the walk to the far end before a pull set, also a fine start)
-      if (sample.phase && sample.phase !== "idle" && sample.phase !== "setup") return { s: null, targetS: null };
+      if (sample.phase && sample.phase !== "idle" && sample.phase !== "setup" && sample.phase !== "calibrate") return { s: null, targetS: null };
       this.start = pos.slice(0, 3);
     }
     if (!this.locked) {

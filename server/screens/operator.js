@@ -283,6 +283,29 @@ async function doStop() {
   pollHealth();
 }
 
+async function doCue(what, path, done) {
+  const r = await act(what, $("sessionMsg"), path);
+  if (r === undefined) return;
+  setMsg($("sessionMsg"), done, "ok");
+  log(done);
+}
+
+// Calibration cell: the comfortable push at the start of a push or row session.
+function calText(c) {
+  if (!c) return "–";
+  const n = v => (typeof v === "number" ? `${v.toFixed(1)} N` : "?");
+  if (c.status === "done") return `Resistance set: ${n(c.resistance_n)} (comfortable push ${n(c.comfort_force_n)}${typeof c.fraction === "number" ? `, ${Math.round(c.fraction * 100)}%` : ""})`;
+  if (c.status === "pushing") return `pushing ${Math.round((c.progress || 0) * 100)}%`;
+  if (c.status === "waiting") return `waiting for the push${c.reason ? `: ${c.reason}` : ""}`;
+  return `${c.status}${c.reason ? `: ${c.reason}` : ""}`;
+}
+
+function armText(a) {
+  if (!a) return "–";
+  const pct = `${Math.round((a.progress || 0) * 100)}%`;
+  return a.reason ? `${pct}, not starting: ${a.reason}` : `${pct}, ready`;
+}
+
 // ---------------------------------------------------------------- dial
 function snap(v) {
   for (const s of SNAPS) if (Math.abs(v - s) <= SNAP_WITHIN) return s;
@@ -364,6 +387,10 @@ function render() {
   $("sReps").textContent = m ? `${m.rep_count ?? 0} of ${m.reps_target ?? "∞"}` : "–";
   $("sDial").textContent = m ? `${signed(m.dial)} ${m.auto ? "auto" : "manual"}` : "–";
   $("sForce").textContent = m ? fmt.N(Math.hypot(...(m.force || [0, 0, 0]))) : "–";
+  $("sCal").textContent = m ? calText(m.calibration) : "–";
+  $("sArm").textContent = m ? armText(m.arming) : "–";
+  $("go").disabled = !run;
+  $("resume").disabled = !run;
   simBanner($("badge"), m ? m.simulated : health && health.arm === "flexiv" ? false : health && health.arm === "sim" ? true : undefined);
 
   // controls
@@ -406,6 +433,8 @@ $("prepare").onclick = doPrepare;
 $("exercise").onchange = exerciseChanged;
 $("start").onclick = doStart;
 $("stop").onclick = doStop;
+$("go").onclick = () => doCue("Go", "/api/go", "Go sent: the next rep starts now.");
+$("resume").onclick = () => doCue("Resume", "/api/session/resume", "Session resumed.");
 $("shutdown").onclick = doShutdown;
 $("pid").addEventListener("input", () => $("pid").classList.toggle("bad", !ID_OK.test($("pid").value.trim())));
 window.addEventListener("vita-hold", e => {

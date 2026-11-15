@@ -55,6 +55,11 @@
     transform: translate(-50%, -50%); transition: left 0.4s ease;
   }
   #last { text-align: center; }
+  #cal { display: none; text-align: center; }
+  #cal.on { display: block; }
+  #cal .meter { height: clamp(22px, 3.5vw, 40px); margin: 0.4em 3% 0; }
+  #calnote { font-size: var(--fs-s); color: var(--muted); margin-top: 0.4em; }
+  #hint { text-align: center; font-size: var(--fs-s); color: var(--muted); min-height: 1.2em; }
 
   .overlay {
     position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
@@ -81,6 +86,12 @@
 </div>
 
 <div id="prompt"></div>
+<div id="hint"></div>
+<div id="cal" class="panel">
+  <div class="label">Your push now: <b id="calforce">–</b></div>
+  <div class="meter"><div id="calbar"></div></div>
+  <div id="calnote"></div>
+</div>
 
 <div class="panel track-wrap">
   <div class="track">
@@ -121,7 +132,10 @@ const $ = id => document.getElementById(id);
 const FORCE_MAX_N = 40;          // bar full scale
 const STALE_MS = 2000;           // no samples this long: session has ended
 const MODE_WORD = { assist: "HELPING", free: "FREE", resist: "CHALLENGING" };
-const PROMPT = { idle: "Rest", out: "Reach out", back: "Come back", setup: "Move the handle to the far end" };
+const CAL_PROMPT = "Push once at a level that feels comfortable";
+const CAL_SHOW_MS = 6000;        // "Resistance set: X N" stays in the prompt this long after the push
+let calDoneAt = null;
+const PROMPT = { calibrate: CAL_PROMPT, idle: "Rest", out: "Reach out", back: "Come back", setup: "Move the handle to the far end" };
 const PROMPT_BY_EX = {      // exercise id -> wording that differs from the reach
   push: { out: "Push forward" },
   pull: { out: "Pull towards you", back: "Let it go back" },
@@ -149,7 +163,20 @@ function draw() {
   $("exname").textContent = EX_NAMES[ex] || ex;
   $("mode").textContent = test ? "STRENGTH TEST" : MODE_WORD[mode];
   $("mode").className = `mode-${mode}`;
-  $("prompt").textContent = (PROMPT_BY_EX[ex] || {})[m.phase] || PROMPT[m.phase] || "";
+  const cal = m.calibration, calibrating = m.phase === "calibrate";
+  const calDone = !!cal && cal.status === "done" && typeof cal.resistance_n === "number";
+  if (!calDone) calDoneAt = null; else if (calDoneAt === null) calDoneAt = performance.now();
+  const setText = calDone ? `Resistance set: ${cal.resistance_n.toFixed(1)} N` : "";
+  const showSet = calDone && (calibrating || performance.now() - calDoneAt < CAL_SHOW_MS);
+  $("prompt").textContent = showSet ? setText
+    : (PROMPT_BY_EX[ex] || {})[m.phase] || PROMPT[m.phase] || "";
+  $("cal").classList.toggle("on", calibrating || showSet);
+  $("calnote").textContent = showSet ? "This adjusts to you each session."
+    : calibrating ? "Hold the handle still and keep the push steady for 3 seconds." : "";
+  // why a rep is not starting yet (the engine's own words), only while resting
+  const arming = m.arming;
+  $("hint").textContent = !calibrating && m.phase === "idle" && !m.done && arming && arming.reason
+    ? `Not started yet: ${arming.reason}` : calDone && !showSet ? setText : "";
   $("contribLabel").textContent = test ? "Best try" : "You did (last rep)";
   $("holding").classList.toggle("on", m.arm_mode === "hold" || m.arm_mode === "fault");
 
@@ -165,6 +192,8 @@ function draw() {
   const f = Math.hypot(...(m.force || [0, 0, 0]));
   $("force").textContent = fmt.N(f);
   $("forcebar").style.width = `${Math.min(100, (f / FORCE_MAX_N) * 100)}%`;
+  $("calforce").textContent = fmt.N(f);
+  $("calbar").style.width = `${Math.min(100, (f / FORCE_MAX_N) * 100)}%`;
   $("reps").textContent = m.rep_count ?? 0;
   $("needle").style.left = `${((1 + Math.max(-1, Math.min(1, m.dial))) / 2) * 100}%`;
 }

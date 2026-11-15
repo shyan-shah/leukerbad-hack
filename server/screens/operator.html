@@ -28,6 +28,8 @@
   <div class="cell"><span class="k">Reps</span><span id="sReps" class="v num">–</span></div>
   <div class="cell"><span class="k">Dial</span><span id="sDial" class="v num">–</span></div>
   <div class="cell"><span class="k">Force</span><span id="sForce" class="v num">–</span></div>
+  <div class="cell wide"><span class="k">Calibration</span><span id="sCal" class="v">–</span></div>
+  <div class="cell wide"><span class="k">Rep start</span><span id="sArm" class="v">–</span></div>
   <div class="cell wide"><span class="k">Last error</span><span id="sErr" class="v">none</span></div>
 </section>
 
@@ -67,6 +69,11 @@
       <button id="start" type="button" class="go">Start</button>
       <button id="stop" type="button">Stop and save</button>
     </div>
+    <div class="row">
+      <button id="go" type="button" disabled>Go (start the rep now)</button>
+      <button id="resume" type="button" disabled>Resume</button>
+    </div>
+    <p class="hint">Push and Row begin with one comfortable push ("Push once at a level that feels comfortable"); the resistance is set from it and adjusts to the patient. Go cues the next rep. Resume continues a paused session.</p>
     <div id="sessionMsg" class="msg" aria-live="polite"></div>
   </section>
 
