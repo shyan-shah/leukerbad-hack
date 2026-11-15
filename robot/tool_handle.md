@@ -42,15 +42,59 @@ out of the flange** (away from the arm), x and y in the flange face.
 **Units trap:** the RDK uses metres (c = 45 mm is `0.045`). Elements may show mm. Read the unit
 printed next to each field before typing, and check the saved value with step 4.
 
-## 2. Mount the handle
+**Cross-check from the CAD (STL files of 15 Nov 12:16, ball handle).** These are estimates to
+catch a typing or measuring mistake, not values to type in: the weighed and measured numbers win.
 
+| Value | Expected from the STL | Why |
+|---|---|---|
+| Mass with 4 M6 screws | about 0.08 to 0.14 kg | adapter 43.6 cm3 + handle 52.1 cm3 of PLA is 119 g if printed solid, less with infill; 4 steel M6 screws add about 20 g |
+| CoM z from the flange face | about 25 to 35 mm | adapter plate is 0 to 12 mm, handle runs from 12 to 104 mm, screws sit near the flange |
+| TCP z (middle of the ball) | about 77 mm (`0.077`) | the ball is widest 65 mm above the handle's base, which sits 12 mm from the flange face |
+| CoM and TCP x, y | 0, 0 | both parts are round about the flange axis |
+
+If your mass is outside that range, or the balance point is more than about 10 mm away from it,
+re-weigh and re-measure before typing anything into Elements.
+
+## 2. Mount the handle (press-fit ball handle, design of 15 Nov 12:16)
+
+The parts: `RizonAdapter` (plate with 4 M6 holes on a 50 mm circle, a 6 mm locating-pin hole, a
+31.3 mm centring ring 2.5 mm tall on the robot side and a 30.1 mm peg 12 mm tall on the handle
+side) and `RehabHandle` (92 mm ball knob with a 30.0 mm bore). **Nothing but the press fit holds
+the handle on the peg, so it is glued.** There are no M5 screws or nuts in this design.
+
+Before the real parts:
+- [ ] `FitTest_RobotSide` sits flat on the flange: ring in the recess, 4 holes and the pin hole
+      line up. If it rocks, the 2.5 mm ring is too tall or too wide for the recess: sand it and
+      do the same to the adapter.
+- [ ] `PressGauge` pushes onto the adapter's peg by hand with firm pressure and does not wobble.
+      Loose: use gel superglue or epoxy (thin superglue does not fill gaps). Too tight: sand the peg.
+
+Order (decide with the dry fit, before any glue):
+- [ ] Dry-fit the handle on the peg. With the ball on, a straight hex key cannot reach the M6
+      screws; only the short arm of an L-shaped 5 mm key fits under the ball (about 45 mm of room).
+      **Key fits:** glue on the bench, then bolt the assembly to the robot.
+      **Key does not fit:** bolt the adapter to the robot first, then glue the handle on there,
+      keeping glue away from the flange.
+- [ ] Glue: a thin ring of superglue around the **peg**, push the handle straight down until its
+      base sits flat on the plate. Leave it 10 to 15 minutes before any load.
+- [ ] Weigh and balance the glued assembly with its screws (section 1) **after** gluing.
+
+On the robot:
 - [ ] Arm is stopped (IDLE) and nobody is running a program. E-stop holder in place: the arm is
       live whenever it is powered.
-- [ ] Flange and plate clean. Locating pin or mark lined up so the grip points the way we want.
+- [ ] Flange and plate clean. Locating pin (if used) lined up with the 6 mm hole.
 - [ ] Four M6 screws, **cross pattern** (1, then the opposite one, then the other two):
       finger-tight all four first, then **hand-tight plus a quarter turn** each, again in the cross
-      pattern. The technician confirms the screw length (they must not bottom out in the flange).
-- [ ] Pull and twist the grip by hand: no play, no rotation.
+      pattern. There is 5 mm of plastic under each screw head; the technician confirms the screw
+      length against the flange's thread depth (they must not bottom out in the flange).
+- [ ] Pull, twist and lever the ball by hand, clearly harder than a patient would (the arm trips
+      at 40 N, about the weight of 4 kg): no play, no rotation, no creak from the glue joint.
+      Any movement: nobody holds the handle on the arm until it is re-glued or pinned.
+- [ ] The handle points along the reach, towards the patient. Pushing presses the ball onto the
+      peg, but anything that drags the ball towards the patient loads the glue joint in tension:
+      `pull` (up to the full band force), and also assisted `reach` when the arm carries a limp
+      hand forward (up to about 20 N). Pull-test the joint by hand as above before any session,
+      and do not run or film `pull` on glue alone.
 
 ## 3. Create and select the tool in Elements
 
