@@ -238,3 +238,7 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Now on main in `demo/`: `website/` (11-page marketing site, live at https://vitarehab.netlify.app), `app/` (patient app prototype, live at https://vitastation.netlify.app), `pitch-deck/`, `app-backend/` (the app prototype's own SQLite backend, separate from `server/`; key and database not committed) and `src/` (sources and build scripts). See `demo/README.md`.
 - Figures on the site and in the deck are still illustrative; they need B1/B2 (claims table) before the pitch.
 - Next: hook the website/app screens to `server/exports/` (B6), finish the deck (B4). No blockers for the others.
+
+**2026-11-15 · Shyan · exercise map**
+- Read Mat's app (demo/app/index.html: `EX` library, `MOV` 3D motions). New `context/EXERCISE_MAP.md` maps each app exercise to the robot: MUST live on the arm = reach (assist), push (resist), pull (reversed resist), armtest (isometric strength test). SHOULD (robot-led, isotropic stiffness, scaled down) = circle, trace, rot. Not this weekend = lift, knee, kneebend, legtest.
+- Shiv: engine presets for the four MUST exercises. Shyan: `exercise` field on /api/session/start. Mat/Gio: a demo plan in the app with only robot-live exercises, and the exercise screen calling the laptop server. Kian: far-end pose for pull, isometric hold in the safety checks.
