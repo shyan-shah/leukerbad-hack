@@ -415,3 +415,86 @@ def test_stop_does_not_move_a_held_handle_and_survives_an_interrupted_home():
     arm.home = interrupted
     s = eng.stop()
     assert s.n_reps == 0 and "interrupted" in eng.snapshot()["message"] and arm.get_state().mode == "hold"
+
+
+# --------------------------------------------------------------------------- found on the real arm, 15 Nov
+
+REAL_QUAT = (-0.0017, -0.637798, 0.770077, -0.013832)        # robot/config.json start orientation (flange down)
+
+
+def test_stiffness_goes_on_the_tool_axis_that_lies_along_the_reach():
+    """The real arm applies the three stiffness values along the tool's axes. With the flange down the tool's
+    y axis lies along base x, so (200, 500, 500) gave about 489 N/m along the push: level 1 pulled 25 N."""
+    from software.simple import _rotation
+    R = _rotation(REAL_QUAT)
+    assert (R @ np.diag([200.0, 500.0, 500.0]) @ R.T)[0, 0] == pytest.approx(489.0, abs=3.0)   # what happened
+    eng, arm, hand, samples, reps = make(1, present=False)
+    assert eng._k_vector(200.0) == [200.0, K_WALL, K_WALL]                    # SimArm: base axes, unchanged
+    eng._tool_R = R
+    for level, f in LEVELS.items():
+        k = eng._k_vector(f / LEAD_M)
+        world = R @ np.diag(k) @ R.T
+        assert world[0, 0] == pytest.approx(f / LEAD_M, abs=0.5)              # the level's stiffness along the push
+        assert k[0] == K_WALL and k[2] == K_WALL and abs(k[1] - f / LEAD_M) < 15   # on tool y, walls on the others
+        assert world[2, 2] == pytest.approx(K_WALL, abs=1.0) and 450.0 < world[1, 1] <= K_WALL + 5
+
+
+class _HomingArm:
+    """Just enough of an arm to test the guard on the move to the start."""
+    realtime = True
+
+    def __init__(self):
+        self.force, self.held, self.homed = np.zeros(3), False, False
+
+    def get_state(self):
+        import types
+        return types.SimpleNamespace(force=tuple(self.force), vel=(0.0, 0.0, 0.0), pos=(0.5, 0.0, 0.3), t=0.0,
+                                     mode="hold" if self.held else "idle", fault=None, q=(0.0,) * 7)
+
+    def hold(self):
+        self.held = True
+
+    def home(self):
+        import time as _t
+        for _ in range(100):
+            if self.held:
+                raise RuntimeError("home() interrupted; arm mode is 'hold'")
+            _t.sleep(0.005)
+        self.homed = True
+
+
+def test_a_move_to_the_start_holds_when_something_presses_on_the_handle():
+    """15 Nov: a start with the handle 10 cm out homed against a hand and the reading reached 61 N."""
+    import threading
+    arm = _HomingArm()
+    eng = BandEngine(arm, "s", "p", False, exercise="push_1")
+    th = threading.Thread(target=lambda: pytest.raises(RuntimeError, eng._home_guarded))
+    th.start()
+    time_limit = 200
+    while not eng._homing and time_limit:
+        time_limit -= 1
+        __import__("time").sleep(0.002)
+    eng._watch_home(arm.get_state())
+    assert arm.held is False                                                  # nothing touching: it carries on
+    arm.force = np.array([-12.0, 0.0, 0.0])                                   # a hand pushes back
+    eng._watch_home(arm.get_state())
+    th.join(2.0)
+    assert arm.held is True and arm.homed is False and eng._homing is False
+
+
+def test_start_countdown_waits_while_the_handle_is_pressed_before_a_move_to_the_start():
+    hand = Hand(cycle())
+    hand.present = False
+    arm = SimArm(hand, start_pos=START, realtime=False, **REAL)
+    arm.connect()
+    arm.zero_force()
+    arm._pos = np.array([0.55, 0.0, 0.30])                                    # left 10 cm out after a trip
+    arm.force_offset = np.array([-20.0, 0.0, 0.0])                            # ... with a hand resting on it
+    eng = BandEngine(arm, "s", "p", True, exercise="push_1", prepare=True)
+    eng.start()
+    eng.run_for(6.0)
+    assert eng.stage == "countdown" and eng.snapshot()["countdown_s"] == pytest.approx(3.0, abs=0.05)
+    assert np.allclose(arm.get_state().pos, (0.55, 0.0, 0.30))                # it has not moved
+    arm.force_offset = np.zeros(3)                                            # hands off
+    eng.run_for(3.4)
+    assert eng.stage == "band" and np.allclose(arm.get_state().pos, START, atol=1e-3)

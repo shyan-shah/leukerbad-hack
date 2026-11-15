@@ -79,6 +79,7 @@ COUNTDOWN_S = 3.0            # s, "hands off" countdowns
 NEAR_START_M = 0.02          # m from the start pose: zero here, otherwise move there first
 GATE_SPEED = 0.02            # m/s: the handle counts as held or moving above this
 GATE_FORCE_N = 6.0           # N (baseline-relative): the handle counts as held above this
+HOME_ABORT_N = 10.0          # N: a reading that changes by more than this during a move to the start holds the arm
 BASELINE_N = 30              # readings averaged for the empty-handle baseline
 MAX_BASELINE_N = 6.0         # N: a larger empty reading right after zeroing means a hand is on it
 FORCE_CAP_N = 30.0           # readings stop at about this (the robot's contact limit)
@@ -98,6 +99,16 @@ def is_band(exercise: str) -> bool:
 
 def _now_iso() -> str:
     return _dt.datetime.now().isoformat(timespec="seconds")
+
+
+def _rotation(quat) -> np.ndarray:
+    """Rotation matrix (columns = the tool's axes in the base frame) of a quaternion (qw, qx, qy, qz)."""
+    w, x, y, z = (float(v) for v in quat)
+    n = math.sqrt(w * w + x * x + y * y + z * z) or 1.0
+    w, x, y, z = w / n, x / n, y / n, z / n
+    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
 
 
 def _tup3(a) -> tuple[float, float, float]:
@@ -168,6 +179,9 @@ class BandEngine:
         self._rep: dict | None = None
         self._rest_since: float | None = None
         self._sim_present = True             # simulated patient only: was a hand on the handle at start()
+        self._tool_R: np.ndarray | None = None      # tool axes in the base frame (real arm), see _k_vector
+        self._homing = False                 # a move to the start is under way
+        self._home_f0: np.ndarray | None = None     # reading when it began
 
     # ------------------------------------------------------------------ interface
     @property
@@ -366,8 +380,26 @@ class BandEngine:
 
     def _prepare_job(self) -> None:
         if self._need_home:
-            self.arm.home()
+            self._home_guarded()
         self.arm.zero_force()
+
+    def _home_guarded(self) -> None:
+        """arm.home() with ``_homing`` set, so the tick that keeps running can hold the arm if something
+        starts pressing on the handle (``_watch_home``)."""
+        self._home_f0 = np.asarray(self.arm.get_state().force, dtype=float)
+        self._homing = True
+        try:
+            self.arm.home()
+        finally:
+            self._homing = False
+
+    def _watch_home(self, st) -> None:
+        """During a move to the start (nominal stiffness): if the reading changes by more than HOME_ABORT_N,
+        something is in the way. Hold at once; home() then ends with an error and nothing more is sent."""
+        if self._homing and self._home_f0 is not None:
+            if float(np.linalg.norm(np.asarray(st.force, dtype=float) - self._home_f0)) > HOME_ABORT_N:
+                self._homing = False
+                self.arm.hold()
 
     def _begin_band(self) -> None:
         """Empty-handle baseline, compliance on, the ONE stiffness command of the session."""
@@ -393,6 +425,10 @@ class BandEngine:
         self.force_baseline = baseline
         self.arm.start_compliance()
         self._start = np.asarray(self.arm.start_pos, dtype=float)
+        self._tool_R = None
+        quat = getattr(self.arm, "start_quat", None)
+        if quat is not None and getattr(self.arm, "stiffness_frame", "base" if hasattr(self.arm, "patient") else "tool") == "tool":
+            self._tool_R = _rotation(quat)
         if hasattr(self.arm, "patient") and hasattr(self.arm, "cue"):
             self.arm.reach_origin = _tup3(self._start)
             self.arm.cue("rest")
@@ -404,10 +440,25 @@ class BandEngine:
         with self._lock:
             self._countdown = None
 
-    def _send_k(self, k_reach: float) -> None:
+    def _k_vector(self, k_reach: float) -> list[float]:
+        """The three stiffness values to command for ``k_reach`` along the reach and K_WALL across it.
+
+        Measured on the real arm (15 Nov, first hand-on Push set): the robot applies the three values along
+        the TOOL's axes, not the base axes. With (200, 500, 500) commanded and the flange pointing down
+        (tool y nearly along base x) the push direction had 480 to 500 N/m, so level 1 pulled 25 N. So the
+        level's stiffness goes on the tool axis that lies along the reach, corrected for the small angle
+        between the two (about 11 degrees), and the walls on the other two. SimArm applies them per base axis."""
         k = [K_WALL, K_WALL, K_WALL]
-        k[self.axis] = float(k_reach)
-        self.arm.set_stiffness(*k)
+        if self._tool_R is None:
+            k[self.axis] = float(k_reach)
+            return k
+        w = self._tool_R[self.axis, :] ** 2          # share of each tool axis along the reach (sums to 1)
+        i = int(np.argmax(w))
+        k[i] = float(np.clip((k_reach - K_WALL * (1.0 - w[i])) / w[i], 20.0, 600.0))
+        return k
+
+    def _send_k(self, k_reach: float) -> None:
+        self.arm.set_stiffness(*self._k_vector(k_reach))
         self.stiffness_commands += 1
 
     # ------------------------------------------------------------------ the tick
@@ -423,7 +474,10 @@ class BandEngine:
 
     def _tick_countdown(self, st) -> None:
         t = float(st.t)
-        if float(np.linalg.norm(st.vel)) > GATE_SPEED:       # someone is moving the handle: start over
+        held = float(np.linalg.norm(st.vel)) > GATE_SPEED      # someone is moving the handle: start over
+        if self._need_home and float(np.linalg.norm(st.force)) > GATE_FORCE_N:
+            held = True         # the arm is about to move by itself: never with something pressing on the handle
+        if held:
             self._count_end = t + COUNTDOWN_S
         left = max(0.0, self._count_end - t)
         with self._lock:
@@ -441,6 +495,7 @@ class BandEngine:
 
     def _tick_preparing(self, st) -> None:
         if self._job is not None and self._job.is_alive():
+            self._watch_home(st)
             return self._emit(st, st.pos, "idle", -1, st.force)
         self._job = None
         err = self._job_exc
@@ -605,9 +660,10 @@ class BandEngine:
         with self._lock:
             self._countdown = None
             self._message = "Returning to start. Hands off."
-        self._run_job(self.arm.home)
+        self._run_job(self._home_guarded)
         while self._job is not None and self._job.is_alive():
             st = self.arm.get_state()
+            self._watch_home(st)
             self._emit(st, st.pos, "idle", -1, np.asarray(st.force, dtype=float) - self.force_baseline)
             time.sleep(DT)
         self._job = None
