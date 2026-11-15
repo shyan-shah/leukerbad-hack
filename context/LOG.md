@@ -245,3 +245,6 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 
 **2026-11-15 · Shyan · task swap**
 - Shyan does E1 (engine presets for reach/push/pull/armtest) in software/; Shiv does E2 (exercise field on /api/session/start, state, reps, DB, API.md) in server/. Interface between them: Engine(..., exercise=<id>) keyword; ids exactly as in context/EXERCISE_MAP.md. See DECISIONS.
+
+**2026-11-15 · Shyan · name**
+- Product name is **Vita** everywhere (site, app, deck, screens, pitch). "The dial" still means the control. Mat/Gio: trademark and domain check (IGE, EUIPO, UK IPO) is still unverified.

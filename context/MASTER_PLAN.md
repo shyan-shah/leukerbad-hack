@@ -25,9 +25,9 @@ Leukerbad Robotics Hackathon, Track 4 (Elderly Care and Rehabilitation). Written
 
 ## 2. Company one-pager
 
-**Name (working):** Dial. [U] nobody has checked the trademark or domain; Mat or Gio search the Swiss (IGE), EU (EUIPO) and UK (IPO) registers before it goes on a slide.
+**Name:** Vita (decided 15 Nov; replaces the working name Dial. "The dial" still means the -1 to +1 control). [U] nobody has checked the trademark or domain; Mat or Gio search the Swiss (IGE), EU (EUIPO) and UK (IPO) registers before it goes on a slide.
 
-**One-liner:** Dial is software that turns a standard force-sensing robot arm into an arm-rehab station: it helps a weak arm move, challenges a strong one, and measures every repetition.
+**One-liner:** Vita is software that turns a standard force-sensing robot arm into an arm-rehab station: it helps a weak arm move, challenges a strong one, and measures every repetition.
 
 **Problem.** After a stroke, about three in four patients have a weak arm (77.4% of 1,259 first strokes, Lawrence 2001 [B]). Guidelines ask for far more therapy than services deliver: NICE asks for at least 3 hours a day, 5 days a week [B]; an audit of England, Wales and Northern Ireland found 25% of eligible patients got the equivalent of 45 minutes of physiotherapy 5 days a week [B]. Observed sessions contain about 32 task-specific arm repetitions (Lang 2009 [B]). Progress is mostly judged by eye and written up by hand.
 
@@ -102,7 +102,7 @@ Leukerbad Robotics Hackathon, Track 4 (Elderly Care and Rehabilitation). Written
 | Barrett | BURT | end-effector on its own arm | not public | US: listed exempt | [B] |
 | Life Science Robotics | ROBERT | on a KUKA medical arm; mainly lower limb, bedside | not public | CE class [U] | [B] |
 | Fourier, Motorika, Axinesis, Harmonic Bionics | various | dedicated | not public | [U] | [U] |
-| Dial (us) | software on a general cobot | end-effector, general arm | CHF 30k per year [ASSUMPTION] | none; research prototype | |
+| Vita (us) | software on a general cobot | end-effector, general arm | CHF 30k per year [ASSUMPTION] | none; research prototype | |
 
 The closest is ROBERT: proof that a cobot-based rehab device can reach market, and the company to study. Mat and Gio: find its price and unit sales (ask the UK distributor).
 
