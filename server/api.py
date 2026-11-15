@@ -305,7 +305,7 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
                engine_kwargs: dict | None = None, control_token: str | None = None,
                site_dir: str | Path | None = None, is_real: Callable[[Any], bool] = is_real_arm,
                live_exercises: list[str] | None = None,
-               enabled_exercises: list[str] | None = None) -> FastAPI:
+               enabled_exercises: list[str] | None = None, no_calibrate: bool = False) -> FastAPI:
     """
     arm_factory()      -> arm object (connected on first session start)
     engine_factory(**) -> engine with the MASTER_PLAN 4.4 interface (default software.engine.Engine)
@@ -323,6 +323,10 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
               engine_kwargs or {}, is_real)
     if enabled_exercises is not None:
         hub.enabled = {str(i) for i in enabled_exercises}
+    # no_calibrate (server.run --no-calibrate, the default with --robot): every session is started with
+    # calibrate=False whatever the caller sends, so the engine never enters the calibrate phase and never
+    # switches the arm's raised test limits on. /api/exercises then says "calibrates": false.
+    app_no_calibrate = bool(no_calibrate)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -449,7 +453,7 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     @app.get("/api/exercises")
     def list_exercises():
         """The programmes the robot can run now: id, name, kind and default reps."""
-        return [exercises.info(i) for i in live_ids()]
+        return [exercises.info(i) | ({"calibrates": False} if app_no_calibrate else {}) for i in live_ids()]
 
     @app.post("/api/exercises/enable")
     def enable_exercises(body: IdsBody, x_operator_token: str | None = Header(default=None)):
@@ -501,8 +505,9 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
                 kw["dial"] = body.dial
             if body.auto is not None:
                 kw["auto"] = body.auto
+            calibrate = False if app_no_calibrate else body.calibrate
             if _accepts(hub.engine_factory, "calibrate"):
-                kw["calibrate"] = body.calibrate
+                kw["calibrate"] = calibrate     # an engine without this argument has no calibrate phase
             if _accepts(hub.engine_factory, "calibration_state"):
                 with hub.db_lock:
                     kw["calibration_state"] = db.get_calibration_state(conn, body.patient_id, body.exercise)
@@ -526,7 +531,7 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
                     raise HTTPException(409, f"session not started: {e}")
                 raise
             return {"session_id": sid, "simulated": sim, "display_name": name,
-                    "exercise": body.exercise, "reps": reps}
+                    "exercise": body.exercise, "reps": reps, "calibrate": calibrate}
 
     @app.post("/api/session/stop")
     def stop(x_operator_token: str | None = Header(default=None)):

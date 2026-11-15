@@ -221,3 +221,62 @@ def test_go_and_resume(tmp_path):
         assert c.post("/api/session/resume", headers=h).json() == {"ok": True}
         assert c.get("/api/state").json()["arm_mode"] == "compliant"
         c.post("/api/session/stop", headers=h)
+
+
+# ---------------------------------------------------------------- --no-calibrate (default on the real arm)
+def test_no_calibrate_forces_false_whatever_the_caller_sends(tmp_path):
+    seen = []
+
+    def factory(**kw):
+        seen.append(kw.get("calibrate", "absent"))
+        return FAST(**kw)
+
+    with _client(tmp_path, factory=factory, no_calibrate=True) as c:
+        assert not any(e["calibrates"] for e in c.get("/api/exercises").json())
+        for extra in ({}, {"calibrate": True}, {"calibrate": False}):
+            r = c.post("/api/session/start", json={"patient_id": "sim-cal", "exercise": "push", "reps": 1} | extra)
+            assert r.status_code == 200 and r.json()["calibrate"] is False
+            st = _wait(c, lambda s: (s.get("rep_count") or 0) >= 1)
+            assert st["calibration"]["status"] == "skipped"
+            s = c.post("/api/session/stop").json()
+            assert s["resistance_n"] is None and s["comfort_force_n"] is None
+    assert seen == [False, False, False]
+
+
+def test_real_engine_never_raises_limits_with_no_calibrate():
+    """software.engine.Engine with calibrate=False on a push: set_test_limits(True) is never called."""
+    pytest.importorskip("software.engine")
+    from software.engine import Engine
+    from software.sim_arm import SimArm
+    from software.sim_patient import SimPatient
+
+    calls = []
+
+    class Arm(SimArm):
+        def set_test_limits(self, on):
+            calls.append(bool(on))
+
+    phases = set()
+    arm = Arm(SimPatient(strength=0.8))
+    arm.connect()
+    e = Engine(arm=arm, session_id="s", patient_id="p", simulated=True,
+               exercise="push", reps=1, calibrate=False, on_sample=lambda s: phases.add(s.phase))
+    e.start()
+    time.sleep(1.5)
+    snap = e.snapshot()
+    e.stop()
+    assert True not in calls and "calibrate" not in phases
+    assert snap["calibration"]["status"] == "skipped"
+
+
+def test_run_flag_defaults():
+    import argparse
+    from server.run import no_calibrate_for
+
+    def ns(**kw):
+        return argparse.Namespace(**({"robot": None, "calibrate": None} | kw))
+    assert no_calibrate_for(ns(robot="")) is True                   # --robot: off by default
+    assert no_calibrate_for(ns(robot="Rizon4-1")) is True
+    assert no_calibrate_for(ns(robot="", calibrate=True)) is False  # only with an explicit --calibrate
+    assert no_calibrate_for(ns()) is False                          # --mock / --sim: on
+    assert no_calibrate_for(ns(calibrate=False)) is True            # --no-calibrate

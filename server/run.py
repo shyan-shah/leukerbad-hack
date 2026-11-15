@@ -8,7 +8,8 @@ Options: --strength 0.2 (simulated patient), --port 8000, --lan (reachable from 
 control routes then need the printed operator token), --db, --no-export,
 --reach-m 0.30 and --reach-sign 1|-1 (the reach line; the sign defaults to "reach_sign" in
 robot/config.json, else +1), --tool Flange (--robot: the tool that must be selected on the robot),
---exercises reach (comma list offered at start-up; POST /api/exercises/enable adds more later).
+--exercises reach (comma list offered at start-up; POST /api/exercises/enable adds more later),
+--no-calibrate (every session is sent calibrate=false; the default with --robot) / --calibrate.
 
 --robot never clears faults or enables the robot (server/hw/checked_arm.py): it refuses to
 connect unless the arm is fault-free, operational, in IDLE and has the expected tool selected.
@@ -74,6 +75,13 @@ def mock_exercises(a: argparse.Namespace) -> list[str] | None:
     return list(PRESETS)
 
 
+def no_calibrate_for(a: argparse.Namespace) -> bool:
+    """True when sessions must start with calibrate=false: --no-calibrate, or --robot without --calibrate."""
+    if a.calibrate is None:
+        return a.robot is not None
+    return not a.calibrate
+
+
 def build(a: argparse.Namespace):
     """Return (arm_factory, engine_factory or None, label)."""
     if a.mock:
@@ -120,7 +128,15 @@ def main(argv=None) -> None:
     ap.add_argument("--exercises", default=None, metavar="IDS",
                     help="comma list of exercise ids offered at start-up (default: all the robot can run); "
                          "enable more later with POST /api/exercises/enable")
+    cal = ap.add_mutually_exclusive_group()
+    cal.add_argument("--no-calibrate", dest="calibrate", action="store_false", default=None,
+                     help="every session starts with calibrate=false: no comfortable-push phase, so the engine "
+                          "never switches on the arm's raised test limits. THE DEFAULT WITH --robot")
+    cal.add_argument("--calibrate", dest="calibrate", action="store_true", default=None,
+                     help="allow the comfortable-push calibration (default with --mock and --sim). With --robot "
+                          "this lets the engine raise the arm's limits during the push: only when the team agrees")
     a = ap.parse_args(argv)
+    no_calibrate = no_calibrate_for(a)
     enabled = None
     if a.exercises is not None:
         enabled = [x.strip() for x in a.exercises.split(",") if x.strip()]
@@ -143,7 +159,7 @@ def main(argv=None) -> None:
     app = create_app(arm_factory, a.db, engine_factory=engine_factory,
                      exports_dir=None if a.no_export else DEFAULT_OUT, control_token=token,
                      engine_kwargs=engine_kwargs, live_exercises=mock_exercises(a),
-                     enabled_exercises=enabled)
+                     enabled_exercises=enabled, no_calibrate=no_calibrate)
     host = "0.0.0.0" if a.lan else "127.0.0.1"
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=a.port, log_level="warning"))
     app.state.request_exit = lambda: setattr(server, "should_exit", True)   # used by POST /api/shutdown
@@ -153,8 +169,14 @@ def main(argv=None) -> None:
         print(f"  Reach      axis {'xyz'[axis]}, sign {engine_kwargs['reach_sign']:+d}, "
               f"length {engine_kwargs.get('reach_m', 0.30):.2f} m"
               + (f"   (tool must be {a.tool})" if a.robot is not None else ""))
+    print("  Calibrate  " + ("OFF (--no-calibrate" + (", the default with --robot" if a.calibrate is None else "")
+                             + "): push and pull use the preset resistance at the normal limits; "
+                               "every session is sent calibrate=false"
+                             if no_calibrate else
+                             "on for push and pull (comfortable push)"
+                             + ("; THE ENGINE RAISES THE ARM'S LIMITS DURING IT" if a.robot is not None else "")))
     if enabled is not None:
-        print(f"  Exercises  enabled now: {', '.join(enabled)}   (more: POST /api/exercises/enable)")
+        print(f"  Exercises enabled now: {', '.join(enabled)}   (more: POST /api/exercises/enable)")
     print(f"  API        http://127.0.0.1:{a.port}/api/health")
     print(f"  Live feed  ws://127.0.0.1:{a.port}/ws/live    (terminal view: python -m server.watch)")
     if a.lan:
