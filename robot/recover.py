@@ -80,8 +80,7 @@ def _call(robot, name: str):
 
 def print_status(robot, label: str) -> None:
     print(f"\n--- {label} ---")
-    # connected/fault/operational exist in 1.9.x. The others are printed if this RDK has them.
-    # TODO(confirm on arm): which of estop_released / enabling_button_pressed / busy / mode exist in the pinned RDK
+    # All of these getters exist in flexivrdk 1.7.0 (checked 14 Nov, context/BRINGUP_FINDINGS.md section 5).
     for name in ("connected", "fault", "operational", "estop_released", "enabling_button_pressed", "busy", "mode"):
         print(f"  {name:<24} {_call(robot, name)}")
     try:
@@ -114,7 +113,7 @@ def clear_fault(robot) -> bool:
         print("[recover] no fault.")
         return True
     print("[recover] robot is faulted, calling ClearFault() ...")
-    # In 1.9.x ClearFault() blocks and returns a bool. TODO(confirm on arm): return type and default timeout.
+    # flexivrdk 1.7.0: ClearFault(timeout_sec=30) -> bool (signature checked; not yet called on this arm).
     result = robot.ClearFault()
     if result is False or robot.fault():
         print(

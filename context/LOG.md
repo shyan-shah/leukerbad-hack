@@ -256,3 +256,10 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - The server adds `exercise` and `reps_target` to state, sample and rep messages itself (from the session), so the engine doesn't need to emit them. If E1 differs from any of this, tell me and I'll change the adapter (server/exercises.py).
 **2026-11-15 · Mat · robot colours**
 - Website, app and pitch deck (demo/) recoloured to the robot arm's own palette: cyan light rings `#58E6F2` as the accent, petrol `#0A4552` as the brand colour, teal `#0B7F91` for text, silver-white backgrounds. Logo dot is now a glowing cyan light ring. Coral/red/yellow (load, stop button) unchanged.
+
+**2026-11-15 10:30 · Kian · PITCH FORMAT: video round first**
+- Round 1 is a **pre-recorded 4-minute video**, then **2 minutes of questions**. Round 2 (if we go through) is a **5-minute in-person pitch + 3 minutes of questions**. Not in EVENT.md yet.
+- **The video must be finished by end of today (Sun 15 Nov).** B5 "backup video" is now the main round-1 submission, not a backup. Everything needed on camera has to work on the real arm today.
+- Footage needed from the arm: guided reach with assistance falling, resistance reps with numbers on screen, plus screen recordings of the patient and physio screens (QR/phone access matters only for round 2).
+- For Mat and Gio: start the script and shot list now; grab clips as each piece starts working (Shyan's 4-min motion run from last night is usable B-roll). For Shyan and Shiv: prioritise stage 3-5 motion tests and anything that appears on screen in the video over L3/L4.
+- GCP sandbox (project robotcarnival26brn-607, logins from Kian) is free for anyone who wants Gemini in AI Studio for script, captions or voiceover text.

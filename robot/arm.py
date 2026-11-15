@@ -234,11 +234,17 @@ class Arm:
     # ------------------------------------------------------------------ connection
 
     def connect(self) -> None:
-        """Connect, clear fault, enable, wait operational, read K_x_nom, start worker threads."""
+        """Connect, make sure the robot is operational, read K_x_nom, start worker threads.
+
+        This Rizon 4 comes up already enabled in Auto (Remote) mode. If operational() is
+        already True, connect() calls neither ClearFault() nor Enable() (same rule as
+        server/hw/checked_arm.py); a robot that is operational but reports a fault is refused.
+        Only a robot that is not yet operational is un-faulted and enabled here.
+        """
         if "XXXXXX" in self.serial or (self.serial == self.config.serial
                                        and self.config.is_placeholder("serial")):
             raise RuntimeError(f"serial {self.serial!r} is a placeholder; set it in robot/config.json "
-                               "from robot/BRINGUP.md")
+                               "(see context/BRINGUP_FINDINGS.md)")
         for key in ("force_sign", "reach_axis"):
             if self.config.is_placeholder(key):
                 warnings.warn(f"robot/config.json '{key}' is still a placeholder; confirm it in K0",
@@ -246,16 +252,22 @@ class Arm:
         import flexivrdk  # lazy: only the real arm needs the RDK
 
         robot = flexivrdk.Robot(self.serial)
-        if robot.fault():
-            robot.ClearFault()
+        if robot.operational():
+            # Already live (normal after power-on in Auto/Remote mode): change nothing.
             if robot.fault():
-                raise RuntimeError("robot fault could not be cleared; see robot/RUNBOOK.md")
-        robot.Enable()
-        deadline = time.monotonic() + 30.0
-        while not robot.operational():
-            if time.monotonic() > deadline:
-                raise RuntimeError("robot did not become operational within 30 s (e-stop released?)")
-            time.sleep(0.1)
+                raise RuntimeError("robot is operational but reports a fault; clear it with "
+                                   "robot/recover.py (see robot/RUNBOOK.md), then connect again")
+        else:
+            if robot.fault():
+                robot.ClearFault()
+                if robot.fault():
+                    raise RuntimeError("robot fault could not be cleared; see robot/RUNBOOK.md")
+            robot.Enable()
+            deadline = time.monotonic() + 30.0
+            while not robot.operational():
+                if time.monotonic() > deadline:
+                    raise RuntimeError("robot did not become operational within 30 s (e-stop released?)")
+                time.sleep(0.1)
         self._attach(robot, flexivrdk, tuple(robot.info().K_x_nom))
 
     def _attach(self, robot: Any, rdk: Any, k_nom: Sequence[float]) -> None:

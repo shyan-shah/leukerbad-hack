@@ -110,6 +110,85 @@ def test_force_sign_from_config(tmp_path):
         a.close()
 
 
+# --------------------------------------------------------------------------- connect()
+
+class FakeConnectRobot(FakeRobot):
+    """FakeRobot plus the getters connect() uses. Enable() makes it operational."""
+
+    def __init__(self, operational, fault=False, clearable=True):
+        super().__init__()
+        self.is_operational = operational
+        self.is_fault = fault
+        self.clearable = clearable
+
+    def operational(self):
+        return self.is_operational
+
+    def info(self):
+        return SimpleNamespace(K_x_nom=list(K_NOM))
+
+    def ClearFault(self):
+        self.calls.append(("ClearFault", ()))
+        if self.clearable:
+            self.is_fault = False
+
+    def Enable(self):
+        self.calls.append(("Enable", ()))
+        self.is_operational = True
+
+
+def _connect_with(monkeypatch, robot):
+    """Run Arm.connect() against a fake flexivrdk module that hands out `robot`."""
+    fake = SimpleNamespace(Robot=lambda serial: robot, Mode=None)
+    monkeypatch.setitem(sys.modules, "flexivrdk", fake)
+    a = Arm("Rizon4-TEST01")
+    a.connect()
+    return a
+
+
+def test_connect_skips_clearfault_and_enable_when_already_operational(monkeypatch):
+    robot = FakeConnectRobot(operational=True)
+    a = _connect_with(monkeypatch, robot)
+    try:
+        assert robot.count("ClearFault") == 0 and robot.count("Enable") == 0
+        assert a.get_state().mode == "idle"
+        assert a._k_nom == K_NOM
+    finally:
+        a.close()
+
+
+def test_connect_refuses_operational_robot_with_fault(monkeypatch):
+    robot = FakeConnectRobot(operational=True, fault=True)
+    with pytest.raises(RuntimeError, match="fault"):
+        _connect_with(monkeypatch, robot)
+    assert robot.count("ClearFault") == 0 and robot.count("Enable") == 0
+
+
+def test_connect_enables_a_robot_that_is_not_operational(monkeypatch):
+    robot = FakeConnectRobot(operational=False)
+    a = _connect_with(monkeypatch, robot)
+    try:
+        assert robot.count("Enable") == 1 and robot.count("ClearFault") == 0
+    finally:
+        a.close()
+
+
+def test_connect_clears_fault_then_enables_when_not_operational(monkeypatch):
+    robot = FakeConnectRobot(operational=False, fault=True)
+    a = _connect_with(monkeypatch, robot)
+    try:
+        assert [n for n, _ in robot.calls if n in ("ClearFault", "Enable")] == ["ClearFault", "Enable"]
+    finally:
+        a.close()
+
+
+def test_connect_raises_when_fault_will_not_clear(monkeypatch):
+    robot = FakeConnectRobot(operational=False, fault=True, clearable=False)
+    with pytest.raises(RuntimeError, match="could not be cleared"):
+        _connect_with(monkeypatch, robot)
+    assert robot.count("Enable") == 0
+
+
 # --------------------------------------------------------------------------- pure clamps
 
 def _inside_box(p, start, lim, margin=0.0):

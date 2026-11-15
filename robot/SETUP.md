@@ -21,12 +21,14 @@ Python 3.12 is the team decision (DECISIONS.md): there is no Windows `flexivrdk`
 ### Install packages
 Run from the repo root with the venv active:
 ```powershell
-uv pip install pytest
-python -m pytest robot/tests -q     # offline arm tests, no robot needed (18 pass)
+uv pip install pytest numpy
+python -m pytest robot/tests -q     # offline arm tests, no robot needed
 ```
-`flexivrdk` is **not installed yet**. Pin it to the exact 1.9.x release that matches the
-robot's software (found during K0 bring-up) and install it pinned, never a plain
-`pip install flexivrdk`. TODO(K0): add `robot/requirements.txt` with the pinned version.
+To drive the arm the venv also needs the RDK: `uv pip install -r robot/requirements.txt`
+(`flexivrdk==1.7.*` plus numpy). Robot software v3.9.3 goes with **flexivrdk 1.7.0**; never a
+plain `pip install flexivrdk` (2.x is a different robot family, 1.9.x does not match this
+robot). On 14-15 Nov the arm was driven from Shyan's laptop (`C:\venvs\flexiv17`, see
+`server/hw/README.md`). Only one laptop drives the arm at a time.
 
 ### Firewall (McAfee on Kian's laptop)
 A uv venv's `Scripts\python.exe` is a launcher: it starts the real interpreter as a
