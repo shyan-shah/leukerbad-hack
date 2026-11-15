@@ -45,6 +45,12 @@ For ``SimArm`` the simulated patient keeps hands off while the baseline is taken
   rep ends now as not completed and the phase goes to idle. While the handle is empty the
   target is latched at the point where the hand was when it became empty (``K_HOLD``), so an
   empty handle is never driven along the path.
+- Hands-off rule, resist side (dial < 0) and the strength test (see DECISIONS.md, 15 Nov):
+  the band and the test hold are loaded springs, so on a let-go (``_let_go``) the rep or try
+  ends, the target is put on the hand at once, the reach-axis stiffness ramps to zero over
+  ``RESIST_RAMP_S`` in ``RESIST_RAMP_STEP_S`` steps, and then, in the soft hold, the target
+  walks back to the path start at ``TEST_RETURN_SPEED``. Engine phase "release", Samples
+  labelled "idle". A hand back on the handle ends the walk.
 - Stall rescue: on the assist side, along-path speed under ``STALL_SPEED`` for
   ``STALL_ASSIST_S`` before 90% phase progress marks the rep rescued (the controller raises
   the dial to at least 0.6). On the resist side (dial < 0) a ``STALL_RESIST_S`` stall marks it
@@ -116,7 +122,8 @@ STALL_RESIST_S = 3.0         # s stall on the resist side before dropping to tra
 STALL_MAX_PROGRESS = 0.9     # stall rescue only before this phase progress
 RESIST_RAMP_S = 1.0          # s, resist-side rescue ramps the resistance to 0 over this
 RESIST_RAMP_STEP_S = 0.1     # s between ramp steps (10 steps over RESIST_RAMP_S)
-TEST_RETURN_SPEED = 0.02     # m/s, armtest: after a push the target walks back to the start at this speed
+TEST_RETURN_SPEED = 0.02     # m/s, the target walks back to the start at this speed (armtest rest, release)
+RELEASE_SPRING_N = 1.0       # N, a commanded spring pull above this needs a hand to hold it
 SETUP_DWELL_S = 1.0          # s at the far end before a "far" exercise (pull) leaves the setup phase
 EXERCISE = "reach_line"      # SessionSummary.exercise for the default "reach" preset (unchanged)
 
@@ -314,7 +321,8 @@ class Engine:
 
     @property
     def phase(self) -> str:
-        """Current rep phase: "idle", "out" or "back"."""
+        """Current phase: "idle", "setup", "out", "back", or "release" (after a let-go on the
+        resist side or in the strength test; its Samples are labelled "idle")."""
         return self._phase
 
     @property
@@ -375,6 +383,9 @@ class Engine:
         self._cmd: tuple[np.ndarray, np.ndarray] | None = None  # (target, k) last sent
         self._theta = 0.0                    # circle angle (guided presets)
         self._test_offset = 0.0              # m along the reach: armtest target offset during rest
+        self._rel_k = np.zeros(3)            # release: stiffness when the handle was let go
+        self._rel_t0 = 0.0
+        self._rel_walk = False
         self._clear_rep()
 
     def _clear_rep(self) -> None:
@@ -448,6 +459,9 @@ class Engine:
         s = self._progress(pos)
         near_start = abs(s) * self.reach_m <= NEAR_START_M
 
+        if self._phase == "release":
+            self._tick_release(state, t_arm, t, pos, force, occupied, dial, dt_tick)
+            return
         if self.preset.kind == "test":
             self._tick_test(state, t_arm, t, pos, force, occupied, s, near_start, dial, dt_tick)
             return
@@ -472,7 +486,15 @@ class Engine:
                 self._emit(t, state, target, 0.0, "setup", -1, force)
                 return
 
-        # hands-off rule (assist side only)
+        # hands-off rule, resist side: the band is a loaded spring, so letting go must not let
+        # it throw the handle back. End the rep and release the spring gently.
+        if self._phase in ("out", "back") and dial < 0 and self._let_go(force, pos, occupied):
+            self._finish_rep(dial, aborted=True)
+            self._begin_release(t_arm, pos)
+            self._tick_release(state, t_arm, t, pos, force, occupied, dial, dt_tick)
+            return
+
+        # hands-off rule, assist side
         if self._phase in ("out", "back") and dial > 0 and not occupied:
             self._finish_rep(dial, aborted=True)
             self._phase = "idle"
@@ -555,6 +577,66 @@ class Engine:
             self._k_sent = k
         self._cmd = (np.asarray(target, dtype=float), np.asarray(k, dtype=float))
 
+    # ------------------------------------------------------------------ release (hands off a loaded spring)
+
+    def _let_go(self, force, pos, occupied) -> bool:
+        """True when the handle has been let go while the arm's spring is pulling on it.
+
+        Either the handle is unoccupied (the usual 0.5 s rule), or, at once, the force on the
+        handle is under F_PRESENT on this tick while the commanded spring pull along the reach
+        axis is above RELEASE_SPRING_N (nothing is holding a loaded spring). The second test is
+        what keeps the empty handle slow: waiting 0.5 s would let the spring throw it first.
+        A person who is still holding on, even one moving with the band, is not "let go"."""
+        if not occupied:
+            return True
+        spring = float(self._spring_force(pos)[self.reach_axis])
+        return abs(spring) > RELEASE_SPRING_N and float(np.linalg.norm(force)) < F_PRESENT
+
+    def _begin_release(self, t_arm: float, pos) -> None:
+        kh = float(self.arm.limits.k_hold)
+        self._rel_k = np.array(self._cmd[1] if self._cmd is not None else (kh, kh, kh), dtype=float)
+        self._rel_t0 = t_arm
+        self._rel_walk = False
+        self._latch = np.asarray(pos, dtype=float).copy()   # target on the hand: no spring force at all
+        self._near_since = None
+        self._phase = "release"
+
+    def _tick_release(self, state, t_arm, t, pos, force, occupied, dial, dt_tick) -> None:
+        """After a let-go on the resist side or in the strength test. The target sits where the
+        hand was let go while the reach-axis stiffness ramps to zero over RESIST_RAMP_S in
+        RESIST_RAMP_STEP_S steps; then, in the soft hold, the target walks back to the path
+        start at TEST_RETURN_SPEED. A hand back on the handle ends the walk. Samples: "idle"."""
+        elapsed = t_arm - self._rel_t0
+        if not self._rel_walk and elapsed >= RESIST_RAMP_S:
+            self._rel_walk = True
+            self._latch = pos.copy()
+        if not self._rel_walk:
+            step = int(elapsed / RESIST_RAMP_STEP_S + 1e-9) * RESIST_RAMP_STEP_S
+            kk = self._rel_k.copy()
+            kk[self.reach_axis] *= (1.0 - step / RESIST_RAMP_S)
+            k = _tup3(kk)
+            target = _tup3(self._latch)
+        else:
+            kh = float(self.arm.limits.k_hold)
+            k = (kh, kh, kh)
+            if occupied:                                    # taken again: ordinary idle from here
+                self._phase = "idle"
+                self._latch = None
+                target = _tup3(pos)
+            else:
+                goal = np.asarray(self.path.start, dtype=float)
+                d = goal - self._latch
+                dist = float(np.linalg.norm(d))
+                step_m = TEST_RETURN_SPEED * dt_tick
+                if dist <= step_m:
+                    self._latch = goal
+                    self._phase = "idle"
+                else:
+                    self._latch = self._latch + d / dist * step_m
+                target = _tup3(self._latch)
+        self._send(target, k)
+        self._emit(t, state, target, dial, "idle", -1, force)
+
     def _limit_reached(self) -> bool:
         return self._reps_limit is not None and self.rep_count >= self._reps_limit
 
@@ -609,6 +691,11 @@ class Engine:
                 self._out_t.append(t)
                 self._out_pos.append(_tup3(pos))
                 self._out_force.append(_tup3(force))
+            if self._let_go(force, pos, occupied):          # let go mid-push: release the spring gently
+                self._finish_try(aborted=False)
+                self._begin_release(t_arm, pos)
+                self._tick_release(state, t_arm, t, pos, force, occupied, dial, dt_tick)
+                return
             pushed_too_far = abs(s) * self.reach_m > p.max_disp_m
             if t_arm - self._phase_t0 >= p.push_s or pushed_too_far:
                 self._test_offset = float(np.clip(s * self.reach_m, -p.max_disp_m, p.max_disp_m))

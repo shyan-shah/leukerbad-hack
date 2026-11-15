@@ -3,7 +3,7 @@
 Presets live in `software/exercises.py` (`EXERCISES`, `LIVE`); the engine applies one with
 `Engine(..., exercise="<id>", reps=None)`. The app ids are those of `context/EXERCISE_MAP.md`.
 All numbers are team-chosen starting values, not clinical prescriptions. Everything below was
-tested on `SimArm` only (`software/tests/test_exercises.py`, 23 tests, reach along x and along y as in Layout B); nothing here has run on the real arm yet.
+tested on `SimArm` only (`software/tests/test_exercises.py`, 32 tests, reach along x and along y as in Layout B); nothing here has run on the real arm yet.
 
 `LIVE = ("reach", "push", "pull", "armtest")`. `circle` is implemented but not live.
 
@@ -56,6 +56,7 @@ The line is the push line run backwards: path start = start pose + 0.28 m along 
 - During a push the target is the start pose, the reach axis is at `arm.limits.k_max` (600 N/m, the arm's own clamp) and the other axes at `K_WALL`. That stiffness stays on from the first try to the last.
 - One `RepResult` per try: `mode "isometric"`, `peak_force_n` and `mean_force_n` are the force **along the reach axis in the push direction**, relative to the engine's force baseline; `rom_m` is the largest displacement; `contribution` 1.0; `completed` if the peak is over 5 N; `duration_s` the push time; `sparc` 0.
 - A push that moves the handle more than 5 cm ends the try early (it is still recorded). With 600 N/m that is 30 N, the same as the arm's contact limit, so **readings top out at about 30 N**.
+- **Letting go mid-push** ends the try (recorded with whatever peak it reached) and releases the spring gently: see "Release" below.
 - **Rest is not a fixed target.** When a push ends the target is put on the hand and walked back to the start at 2 cm/s. With the target left on the start pose, the simulated patient relaxing from 20 N let the spring snap the handle back at 0.46 m/s, which tripped the speed limit and ended the session.
 - Sim: strength 0.8 gives 20.1 N peak (patient's cap 20 N), 13.0 N mean, 3.5 cm displacement; strength 1.0 gives 25.1 N and 4.3 cm.
 
@@ -68,13 +69,36 @@ Robot-led: after the usual 1 s with a hand on the handle at the start, the targe
 | kind | what happens when the person lets go | tested |
 |---|---|---|
 | assist (`reach`) | hands-off rule: the rep ends, the target is latched, the hand stops within 8 cm | yes |
-| resist (`push`, `pull`) | never carried further along the reach. In the sim the band snaps the empty handle back at 0.40 m/s and the arm's speed trip puts it in hold (fault text set, session needs a restart) | yes |
-| test (`armtest`) | never driven anywhere (stays within 5 cm). Letting go while pushing hard releases the spring: in the sim 0.46 m/s, speed trip, hold | yes |
+| resist (`push`, `pull`, and `reach` at a negative dial) | release (below): the rep ends as not completed, no trip, the handle walks back to the path start at 2 cm/s, the session goes on | yes, let go at 25%, 50% and 90% of the reach |
+| test (`armtest`) | release (below): the try ends and is recorded (completed if its peak was over 5 N), no trip, the handle walks back to the start pose, the remaining tries wait for a hand at the start | yes, let go at 25%, 50% and 90% of the push |
 | guided (`circle`) | the circle ends as not completed, phase `idle`, the target stops | yes |
 | `pull` setup | nothing moves | yes |
 | any, handle left away from the start (e.g. `armtest` after `pull`) | an empty handle is not moved along the reach; the soft hold only lifts it back onto the path line (under 3 cm, vertical). The person brings it to the start; a try, rep or circle starts only there | yes, each of `armtest`, `reach`, `push`, `circle` started after `pull` |
 
-The two speed trips are the arm's safety net working, but they end the session. Not changed here because they are section 4.2 behaviour: a gentler option for Shiv is to apply the hands-off rule on the resist side too (end the rep and latch the target where the handle was released).
+### Release: letting go of a loaded spring (resist side and armtest)
+
+The band (up to 15 N) and the test hold (up to 30 N) are stretched springs. Before 15 Nov a let-go threw the empty handle back at 0.40 to 0.46 m/s in the sim and the speed trip ended the session. Now:
+
+1. **Detect.** Let go = the handle is unoccupied (the usual 0.5 s rule), or, on a single tick, the force on the handle is under `F_PRESENT` (1.5 N) while the commanded spring pull along the reach axis is over 1 N. The second test acts within one 10 ms tick; waiting 0.5 s would be too late. A person still holding on, even one moving back with the band, is not a let-go.
+2. **Target on the hand at once** (the exact hand position, so the wall springs let go of the limb's weight too): no spring force from that tick.
+3. **Ramp** the reach-axis stiffness to zero over 1 s in 0.1 s steps (the stall-rescue ramp's constants); the walls stay on.
+4. **Walk back.** Soft hold (300 N/m on all axes), target walked to the path start at 2 cm/s. For `pull` the path start is the far end, away from the patient. A hand back on the handle stops the walk and the ordinary idle rule takes over.
+5. `idle` at the start; the next rep or try needs a hand on the handle there for 1 s, as always.
+
+`Engine.phase` is `"release"` during steps 2 to 4; Samples are labelled `"idle"`.
+
+Sim results (`test_let_go_releases_gently_no_trip_and_the_session_goes_on`, 9 cases):
+
+| exercise | let go at | speed when let go | peak speed after | 0.3 s later |
+|---|---|---|---|---|
+| push, pull | 25% | 0.18 m/s | 0.18 m/s | under 0.08 m/s |
+| push, pull | 50% | 0.23 m/s | 0.23 m/s | under 0.10 m/s |
+| push, pull | 90% | 0.15 m/s | 0.15 m/s | under 0.07 m/s |
+| armtest (25 N push) | 25%, 50%, 90% | under 0.05 m/s | under 0.05 m/s | 0.03 m/s |
+
+No trip in any case, the handle ends on the path start, and reps or tries resume when the patient takes the handle again. **The arm never speeds the empty handle up, but in push and pull the simulated patient is itself moving at 0.15 to 0.23 m/s at the moment of release**, so "under 0.15 m/s" holds from 0.3 s after the let-go, not at the instant of it. From rest (armtest) it holds throughout.
+
+**Not proven on the real arm.** The instant test needs the empty handle to read under 1.5 N. On 14 Nov the real empty flange read 3 to 7 N while moving, so there the let-go may only be seen by the 0.5 s rule, or not at all, until the occupancy threshold is fixed.
 
 ## Simulated patient hooks (`software/sim_arm.py`)
 

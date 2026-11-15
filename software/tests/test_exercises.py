@@ -246,23 +246,89 @@ def test_hands_off_reach_stops_advancing():
     assert np.linalg.norm(after[-1].vel) < 0.005
 
 
-@pytest.mark.parametrize("exercise", ["push", "pull"])
-def test_hands_off_resist_never_advances_and_stops(exercise):
-    eng, arm, samples, _ = make(exercise, strength=1.0)
+def let_go_at(exercise, frac, strength=1.0):
+    """Run `exercise` until `frac` of the movement (progress along the reach for push and pull,
+    share of the 3 s push for armtest), then take the hand off. Returns what happened next."""
+    eng, arm, samples, reps = make(exercise, strength=strength)
     if exercise == "pull":
         run_until_phase(eng, "idle")
     run_until_phase(eng, "out")
-    eng.run_for(1.5)
-    s0 = eng._progress(arm.get_state().pos)
-    assert s0 > 0.15
+    if exercise == "armtest":
+        eng.run_for(3.0 * frac)
+    else:
+        for _ in range(3000):
+            if eng._progress(arm.get_state().pos) >= frac:
+                break
+            eng.run_for(DT)
+        assert eng._progress(arm.get_state().pos) >= frac
+    v_release = float(np.linalg.norm(arm.get_state().vel))
+    s_release = eng._progress(arm.get_state().pos)
     arm.patient.present = False
-    after = settle(eng, samples, 8.0)
-    assert max(eng._progress(s.pos) for s in after) < s0 + 0.03      # never carried on along the reach
-    assert np.linalg.norm(after[-1].vel) < 0.005                     # and it has stopped
-    # In the sim the band snaps the empty handle back and the arm's speed trip holds it;
-    # either that, or it is back at the path start.
+    after = settle(eng, samples, 20.0)
+    return eng, arm, reps, after, v_release, s_release
+
+
+@pytest.mark.parametrize("exercise", ["push", "pull", "armtest"])
+@pytest.mark.parametrize("frac", [0.25, 0.50, 0.90])
+def test_let_go_releases_gently_no_trip_and_the_session_goes_on(exercise, frac):
+    eng, arm, reps, after, v_release, s_release = let_go_at(exercise, frac)
+    speed = [float(np.linalg.norm(s.vel)) for s in after]
+    # The arm never speeds the empty handle up: it is never faster than at the moment it was let
+    # go (the simulated patient itself moves at up to 0.23 m/s in push and pull), it is under
+    # 0.15 m/s within 0.3 s, and where it was let go at under 0.15 m/s it never exceeds that.
+    assert max(speed) <= v_release + 0.035
+    assert max(speed[30:]) < 0.15
+    if v_release < 0.15:
+        assert max(speed) < 0.15
+    # no trip, the arm is still compliant, the engine is still running
     st = arm.get_state()
-    assert st.mode == "hold" or abs(eng._progress(st.pos)) * eng.reach_m < 0.03
+    assert st.fault is None and st.mode == "compliant" and eng.error is None
+    assert all(s.phase == "idle" and s.rep_idx == -1 for s in after[1:])
+    # the handle did not carry on along the movement (coasting only), then came back to the start
+    assert max(eng._progress(s.pos) for s in after) < s_release + 0.08
+    assert eng.phase == "idle"
+    assert abs(eng._progress(st.pos)) * eng.reach_m < 0.01
+    assert max(speed[150:]) < 0.03                                    # the walk back is 2 cm/s
+    # the session is still running: a hand back on the handle starts the next rep or try
+    n = len(reps)
+    arm.patient.present = True
+    eng.run_for(20.0)
+    assert len(reps) > n and reps[-1].completed and arm.get_state().fault is None
+
+
+def test_let_go_ramps_reach_stiffness_down_in_steps_then_walks_back():
+    eng, arm, samples, reps = make("push", strength=1.0)
+    run_until_phase(eng, "out")
+    eng.run_for(1.5)
+    hand = arm.get_state().pos
+    arm.patient.present = False
+    eng.run_for(DT)
+    assert eng.phase == "release"
+    assert samples[-1].target == pytest.approx(hand, abs=1e-9)        # target on the hand at once
+    ks = []
+    for _ in range(100):
+        eng.run_for(DT)
+        ks.append(float(arm._k[0]))
+    assert ks[0] <= 0.6 * controller.K_RESIST + 1e-9 and ks[-1] <= 0.1 * 0.6 * controller.K_RESIST + 1e-9
+    assert all(b <= a + 1e-9 for a, b in zip(ks, ks[1:]))            # only ever down
+    assert 8 <= len(set(round(k, 6) for k in ks)) <= 11               # about ten 0.1 s steps
+    assert float(arm._k[1]) == controller.K_WALL                      # walls stay on during the ramp
+    eng.run_for(0.5)
+    assert tuple(float(v) for v in arm._k) == (arm.limits.k_hold,) * 3   # then the soft hold
+    eng.run_for(1.5)
+    moved = np.linalg.norm(np.subtract(samples[-100].target, samples[-1].target))
+    assert moved / (99 * DT) == pytest.approx(0.02, rel=0.05)         # target walks back at 2 cm/s
+    assert reps and reps[-1].completed is False
+
+
+def test_let_go_on_the_resist_side_of_reach_too():
+    eng, arm, samples, reps = make("reach", strength=1.0, dial=-0.6, auto=False)
+    run_until_phase(eng, "out")
+    eng.run_for(1.5)
+    arm.patient.present = False
+    after = settle(eng, samples, 20.0)
+    assert arm.get_state().fault is None and eng.phase == "idle"
+    assert max(np.linalg.norm(s.vel) for s in after[30:]) < 0.15
 
 
 def test_hands_off_armtest_does_not_move():
