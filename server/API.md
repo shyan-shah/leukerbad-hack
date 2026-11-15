@@ -72,7 +72,7 @@ Field meanings are the same as in `server/exports/README.md` (range of motion, p
 
 | Route | Returns |
 |-------|---------|
-| `/api/health` | `{"ok": true, "arm": null, "arm_mode": null, "session": false}`. `arm` becomes `"sim"` or `"flexiv"` after the first session |
+| `/api/health` | `{"ok": true, "arm": null, "arm_mode": null, "session": false, "arm_prepared": false}`. `arm` becomes `"sim"` or `"flexiv"` after the first session or prepare. `arm_prepared` turns true once `/api/arm/prepare` has succeeded on the real arm |
 | `/api/state` | `{"session": null}` when nothing runs; otherwise the session plus the latest sample (example below) |
 | `/api/patients` | list of patients |
 | `/api/patients/{id}/sessions` | that patient's sessions, each with averages (same fields as `sessions.json`) |
@@ -113,10 +113,31 @@ Field meanings are the same as in `server/exports/README.md` (range of motion, p
 | `/api/dial` | `{"dial": 0.4, "auto": false}` | sets the dial by hand (`auto: false`) or hands it back to auto (`auto: true`) |
 | `/api/hold` | none | soft stop of the arm, any time |
 | `/api/go` | none | only used if the arm cannot tell when the handle is held; may return 501 |
+| `/api/arm/prepare` | none | **real arm only, nobody touching the handle.** Checks the arm is connected and has no fault, zeroes the force reading, and returns the empty-handle force. Needed once after the server starts, before the first real session; safe to repeat between sessions |
 
 Errors are JSON with a `detail` field: 409 `{"detail": "no session running"}` or "a session is already running", 404 for unknown ids, 422 for a bad body (for example dial above 1).
 
-**On the venue network** the server is started with `--lan`. It then prints its address (for example `http://192.168.1.23:8000`, which a phone on the same Wi-Fi can open) and an operator token. Start, stop, dial and go then need the header `x-operator-token: <token>`, so nobody else on the Wi-Fi can drive the arm. Reading routes, the live feed and `/api/hold` stay open.
+**Starting can be refused (409).** Show the `detail` text to the operator; nothing is running afterwards.
+
+- `"prepare the arm first: POST /api/arm/prepare with nobody touching the handle"`: real arm, and prepare has not succeeded since the server started.
+- `"session not started: ..."`: the engine refused, usually because the empty handle reads more than 3 N (someone is touching it, or the tool setting on the robot is wrong). Let go and call prepare again.
+
+**`/api/arm/prepare` responses.**
+
+Real arm:
+
+```json
+{"ok": true, "simulated": false, "zeroed": true, "zero_error": null,
+ "baseline_force": [0.0, 0.0, 0.1], "baseline_n": 0.1}
+```
+
+- `baseline_force` is the mean force per axis in newtons with nobody touching, `baseline_n` its size. The engine refuses to start above 3 N.
+- `zeroed: false` with a `zero_error` text means the robot's own zeroing step failed. That is not fatal (our Rizon 4 may not support it): the engine takes its own baseline at session start.
+- Simulated and mock arms answer `{"ok": true, "simulated": true, "skipped": true, ...}` and never need prepare.
+- 409 if a session is running or the arm reports a fault; 503 if the arm cannot be reached.
+- It does not move the arm. Moving to the start pose (`home`) is not part of this route.
+
+**On the venue network** the server is started with `--lan`. It then prints its address (for example `http://192.168.1.23:8000`, which a phone on the same Wi-Fi can open) and an operator token. Start, stop, dial, go and arm/prepare then need the header `x-operator-token: <token>`, so nobody else on the Wi-Fi can drive the arm. Reading routes, the live feed and `/api/hold` stay open.
 
 ## 5. Ideas that the data already supports
 

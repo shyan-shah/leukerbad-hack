@@ -40,7 +40,8 @@ START = {"patient_id": "sim-1", "display_name": "Sim", "dial": 1.0, "auto": True
 
 
 def test_health_and_empty_state(client):
-    assert client.get("/api/health").json() == {"ok": True, "arm": None, "arm_mode": None, "session": False}
+    assert client.get("/api/health").json() == {"ok": True, "arm": None, "arm_mode": None, "session": False,
+                                                "arm_prepared": False}
     assert client.get("/api/state").json() == {"session": None}
 
 
@@ -153,9 +154,10 @@ def test_is_real_arm_only_for_robot_arm():
 
 
 def test_real_arm_session_marked_real(tmp_path):
-    app = create_app(MockArm, tmp_path / "r.db", engine_factory=FAST, site_dir=tmp_path / "x",
+    app = create_app(FakeRealArm, tmp_path / "r.db", engine_factory=FAST, site_dir=tmp_path / "x",
                      is_real=lambda arm: True)
     with TestClient(app) as c:
+        assert c.post("/api/arm/prepare").status_code == 200
         r = c.post("/api/session/start", json={"patient_id": "p-real", "display_name": "Volunteer A",
                                                "dial": 0.5, "auto": False}).json()
         assert r["simulated"] is False and r["display_name"] == "Volunteer A"
@@ -176,3 +178,144 @@ def test_serves_site_folder_without_hiding_api(tmp_path):
         assert c.get("/api/health").json()["ok"] is True
         with c.websocket_connect("/ws/live"):
             pass
+
+
+# ---------------------------------------------------------------- refused start (409) and arm prepare (Y6)
+
+class FakeRealArm(MockArm):
+    """Stands in for robot.arm.Arm in tests (used with is_real=lambda arm: True)."""
+    instances: list = []
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.fault = None
+        self.force = (0.4, -0.3, 1.2)
+        self.zero_calls = 0
+        self.zero_error = None
+        FakeRealArm.instances.append(self)
+
+    def zero_force(self) -> None:
+        self.zero_calls += 1
+        if self.zero_error:
+            raise RuntimeError(self.zero_error)
+        self.force = (0.0, 0.0, 0.1)
+
+    def get_state(self):
+        from types import SimpleNamespace
+        return SimpleNamespace(mode="fault" if self.fault else self.mode, fault=self.fault, force=self.force)
+
+
+class RefusingEngine(MockEngine):
+    refuse = True
+
+    def start(self) -> None:
+        if RefusingEngine.refuse:
+            raise RuntimeError("empty-handle force baseline is 6.2 N (fx +0.1, fy +0.0, fz +6.2 N; limit 3.0 N)")
+        super().start()
+
+
+def _real_app(tmp_path, arm_factory=FakeRealArm, **kw):
+    return create_app(arm_factory, tmp_path / "real.db", engine_factory=FAST, site_dir=tmp_path / "x",
+                      is_real=lambda arm: True, **kw)
+
+
+def test_start_refused_by_engine_is_409_not_500(tmp_path):
+    RefusingEngine.refuse = True
+    app = create_app(MockArm, tmp_path / "ref.db", engine_factory=partial(RefusingEngine, time_scale=200),
+                     site_dir=tmp_path / "x")
+    with TestClient(app) as c:
+        r = c.post("/api/session/start", json=START)
+        assert r.status_code == 409
+        assert "baseline is 6.2 N" in r.json()["detail"]
+        assert c.get("/api/state").json() == {"session": None}
+        assert c.get("/api/health").json()["session"] is False
+        assert app.state.hub.arm.mode == "hold"                       # arm was put in hold
+        # no session is left "running" in the history
+        assert all(s["ended_at"] for s in c.get("/api/patients/sim-1/sessions").json())
+        # and the next start works once the engine accepts
+        RefusingEngine.refuse = False
+        assert c.post("/api/session/start", json=START).status_code == 200
+        assert c.post("/api/session/stop").status_code == 200
+
+
+def test_start_other_engine_errors_still_raise(tmp_path):
+    class Broken(MockEngine):
+        def start(self) -> None:
+            raise ValueError("bug")
+    app = create_app(MockArm, tmp_path / "b.db", engine_factory=Broken, site_dir=tmp_path / "x")
+    with TestClient(app, raise_server_exceptions=False) as c:
+        assert c.post("/api/session/start", json=START).status_code == 500
+        assert c.get("/api/state").json() == {"session": None}
+
+
+def test_prepare_skipped_on_simulated_arm(client):
+    r = client.post("/api/arm/prepare")
+    assert r.status_code == 200 and r.json()["simulated"] is True and r.json()["skipped"] is True
+    assert client.post("/api/session/start", json=START).status_code == 200    # no prepare needed
+    client.post("/api/session/stop")
+
+
+def test_real_arm_needs_prepare_before_start(tmp_path):
+    FakeRealArm.instances.clear()
+    with TestClient(_real_app(tmp_path)) as c:
+        body = {"patient_id": "p-real", "display_name": "Volunteer A", "dial": 0.5}
+        r = c.post("/api/session/start", json=body)
+        assert r.status_code == 409 and "prepare the arm first" in r.json()["detail"]
+        assert c.get("/api/health").json()["arm_prepared"] is False
+
+        p = c.post("/api/arm/prepare")
+        assert p.status_code == 200
+        out = p.json()
+        assert out["ok"] is True and out["simulated"] is False and out["zeroed"] is True
+        assert out["zero_error"] is None
+        assert out["baseline_force"] == [0.0, 0.0, 0.1] and out["baseline_n"] == pytest.approx(0.1)
+        assert FakeRealArm.instances[-1].zero_calls == 1
+        assert c.get("/api/health").json()["arm_prepared"] is True
+
+        assert c.post("/api/session/start", json=body).status_code == 200
+        # refused while a session runs
+        r = c.post("/api/arm/prepare")
+        assert r.status_code == 409 and "session is running" in r.json()["detail"]
+        assert c.post("/api/session/stop").status_code == 200
+        assert c.post("/api/arm/prepare").status_code == 200           # allowed again between sessions
+
+
+def test_prepare_zero_force_failure_is_not_fatal(tmp_path):
+    def factory():
+        arm = FakeRealArm()
+        arm.zero_error = "ZeroFTSensor did not terminate within 15 s"
+        return arm
+    with TestClient(_real_app(tmp_path, factory)) as c:
+        out = c.post("/api/arm/prepare").json()
+        assert out["ok"] is True and out["zeroed"] is False
+        assert "ZeroFTSensor" in out["zero_error"]
+        assert out["baseline_force"] == [0.4, -0.3, 1.2]              # un-zeroed reading is reported as is
+        assert out["baseline_n"] == pytest.approx(1.3, abs=0.01)
+        assert c.post("/api/session/start", json={"patient_id": "p-real", "dial": 0.5}).status_code == 200
+        c.post("/api/session/stop")
+
+
+def test_prepare_refuses_faulted_or_unconnected_arm(tmp_path):
+    def faulted():
+        arm = FakeRealArm()
+        arm.fault = "robot reported a fault"
+        return arm
+    with TestClient(_real_app(tmp_path, faulted)) as c:
+        r = c.post("/api/arm/prepare")
+        assert r.status_code == 409 and "fault" in r.json()["detail"]
+        assert c.get("/api/health").json()["arm_prepared"] is False
+        assert c.post("/api/session/start", json={"patient_id": "p-real"}).status_code == 409
+
+    class NoArm(FakeRealArm):
+        def connect(self) -> None:
+            raise RuntimeError("Failed to connect to [Rizon4-TEST00]")
+    with TestClient(create_app(NoArm, tmp_path / "n.db", engine_factory=FAST, site_dir=tmp_path / "y",
+                               is_real=lambda arm: True)) as c:
+        r = c.post("/api/arm/prepare")
+        assert r.status_code == 503 and "Failed to connect" in r.json()["detail"]
+
+
+def test_prepare_needs_operator_token_in_lan_mode(tmp_path):
+    with TestClient(_real_app(tmp_path, control_token="secret")) as c:
+        assert c.post("/api/arm/prepare").status_code == 403
+        assert c.post("/api/arm/prepare", headers={"x-operator-token": "secret"}).status_code == 200

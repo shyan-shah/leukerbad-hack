@@ -14,6 +14,7 @@ import mimetypes
 import os
 import queue
 import threading
+import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -61,6 +62,34 @@ class DialBody(BaseModel):
     auto: bool | None = None
 
 
+PREPARE_SAMPLES = 30        # get_state() readings averaged for the empty-handle force
+PREPARE_SAMPLE_DT = 0.01    # s between readings
+
+
+def _arm_fault(arm: Any) -> str | None:
+    """Fault text if the arm reports one, else None. Arms without get_state() report none."""
+    get_state = getattr(arm, "get_state", None)
+    if get_state is None:
+        return None
+    st = get_state()
+    if getattr(st, "mode", None) == "fault":
+        return getattr(st, "fault", None) or "fault"
+    return None
+
+
+def _baseline_force(arm: Any) -> list[float]:
+    """Mean force over PREPARE_SAMPLES readings (N, per axis). Zeros for arms without get_state()."""
+    get_state = getattr(arm, "get_state", None)
+    if get_state is None:
+        return [0.0, 0.0, 0.0]
+    acc = [0.0, 0.0, 0.0]
+    for i in range(PREPARE_SAMPLES):
+        acc = [a + float(v) for a, v in zip(acc, get_state().force)]
+        if i + 1 < PREPARE_SAMPLES:
+            time.sleep(PREPARE_SAMPLE_DT)
+    return [a / PREPARE_SAMPLES for a in acc]
+
+
 class Hub:
     """All mutable server state. Engine callbacks run on the engine thread; everything else
     on the event loop or FastAPI's thread pool."""
@@ -69,6 +98,7 @@ class Hub:
         self.arm_factory, self.conn, self.engine_factory = arm_factory, conn, engine_factory
         self.exports_dir, self.engine_kwargs, self.is_real = exports_dir, engine_kwargs, is_real
         self.arm = None
+        self.prepared = False                   # real arm: POST /api/arm/prepare succeeded since server start
         self.engine = None
         self.session: SessionSummary | None = None
         self.db_lock = threading.Lock()
@@ -188,7 +218,8 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     arm_factory()      -> arm object (connected on first session start)
     engine_factory(**) -> engine with the MASTER_PLAN 4.4 interface (default software.engine.Engine)
     exports_dir        -> if set, exports are rewritten after every session stop
-    control_token      -> if set, POST start/stop/dial/go need header `x-operator-token`. /api/hold never does.
+    control_token      -> if set, POST start/stop/dial/go and arm/prepare need header `x-operator-token`.
+                          /api/hold never does.
     """
     conn = db.connect(db_path)
     hub = Hub(arm_factory, conn, engine_factory or default_engine_factory, exports_dir,
@@ -216,7 +247,43 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     def health():
         arm_kind = None if hub.arm is None else ("flexiv" if hub.is_real(hub.arm) else "sim")
         mode = hub.snapshot().get("arm_mode") if hub.engine else getattr(hub.arm, "mode", None)
-        return {"ok": True, "arm": arm_kind, "arm_mode": mode, "session": hub.session is not None}
+        return {"ok": True, "arm": arm_kind, "arm_mode": mode, "session": hub.session is not None,
+                "arm_prepared": hub.prepared}
+
+    @app.post("/api/arm/prepare")
+    def prepare(x_operator_token: str | None = Header(default=None)):
+        """Real arm only, nobody touching the handle: check it is connected and fault-free, zero the
+        force reading and report the empty-handle force. Sessions on a real arm need this first."""
+        guard(x_operator_token)
+        with hub.ctl_lock:
+            if hub.session is not None:
+                raise HTTPException(409, "a session is running; stop it before preparing the arm")
+            try:
+                arm = hub.get_arm()
+            except Exception as e:
+                raise HTTPException(503, f"arm not connected: {e}")
+            if hub.simulated:
+                return {"ok": True, "simulated": True, "skipped": True,
+                        "detail": "simulated arm: nothing to prepare"}
+            hub.prepared = False
+            fault = _arm_fault(arm)
+            if fault:
+                raise HTTPException(409, f"arm reports a fault: {fault}")
+            zeroed, zero_error = False, None
+            try:
+                arm.zero_force()
+                zeroed = True
+            except Exception as e:   # this Rizon 4 has no wrist sensor: ZeroFTSensor may be unsupported
+                zero_error = f"{type(e).__name__}: {e}"
+                print(f"[api] arm.zero_force() failed (non-fatal, the engine takes its own baseline): {zero_error}")
+            fault = _arm_fault(arm)
+            if fault:
+                raise HTTPException(409, f"arm reports a fault after zeroing: {fault}")
+            force = _baseline_force(arm)
+            mag = sum(v * v for v in force) ** 0.5
+            hub.prepared = True
+            return {"ok": True, "simulated": False, "zeroed": zeroed, "zero_error": zero_error,
+                    "baseline_force": [round(v, 3) for v in force], "baseline_n": round(mag, 3)}
 
     @app.get("/api/state")
     def state():
@@ -233,6 +300,9 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
                 raise HTTPException(409, "a session is already running; stop it first")
             arm = hub.get_arm()
             sim = hub.simulated
+            if not sim and not hub.prepared:
+                raise HTTPException(409, "prepare the arm first: POST /api/arm/prepare with nobody "
+                                         "touching the handle")
             name = body.display_name or body.patient_id
             if sim and "SIMULATED" not in name.upper():
                 name = f"{name} (SIMULATED)"
@@ -254,9 +324,16 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             hub.session, hub.engine = summary, engine
             try:
                 engine.start()
-            except Exception:
+            except Exception as e:
                 hub.engine, hub.session = None, None
-                hub.hold()
+                try:
+                    hub.hold()
+                finally:
+                    with hub.db_lock:       # close the row, so no session is left "running" in the history
+                        db.save_session(conn, SessionSummary(**(summary.to_dict() | {
+                            "ended_at": clock.now_iso()})))
+                if isinstance(e, RuntimeError):   # the engine refused (e.g. empty-handle force too high)
+                    raise HTTPException(409, f"session not started: {e}")
                 raise
             return {"session_id": sid, "simulated": sim, "display_name": name}
 
