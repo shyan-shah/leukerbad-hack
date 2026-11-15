@@ -276,7 +276,7 @@ def test_let_go_releases_gently_no_trip_and_the_session_goes_on(exercise, frac):
     # The arm never speeds the empty handle up: it is never faster than at the moment it was let
     # go (the simulated patient itself moves at up to 0.23 m/s in push and pull), it is under
     # 0.15 m/s within 0.3 s, and where it was let go at under 0.15 m/s it never exceeds that.
-    assert max(speed) <= v_release + 0.035
+    assert max(speed) <= v_release + (0.035 if exercise == "armtest" else 0.005)
     assert max(speed[30:]) < 0.15
     if v_release < 0.15:
         assert max(speed) < 0.15
@@ -294,6 +294,53 @@ def test_let_go_releases_gently_no_trip_and_the_session_goes_on(exercise, frac):
     arm.patient.present = True
     eng.run_for(20.0)
     assert len(reps) > n and reps[-1].completed and arm.get_state().fault is None
+
+
+def let_go_late(exercise, strength, ticks, at):
+    """Like a real loop: the spring acts for `ticks` x 10 ms on the empty handle before the
+    engine's next tick sees it. `at` = ("push", share of the 3 s) or ("back", seconds into back)."""
+    eng, arm, samples, reps = make(exercise, strength=strength)
+    if exercise == "pull":
+        run_until_phase(eng, "idle")
+    run_until_phase(eng, "out")
+    if at[0] == "back":
+        run_until_phase(eng, "back")
+        eng.run_for(at[1])
+    else:
+        eng.run_for(3.0 * at[1])
+    v_release = float(np.linalg.norm(arm.get_state().vel))
+    arm.patient.present = False
+    for _ in range(ticks):
+        arm.step(DT)
+    after = settle(eng, samples, 20.0)
+    speed = [float(np.linalg.norm(s.vel)) for s in after]
+    st = arm.get_state()
+    assert st.fault is None and st.mode == "compliant" and eng.phase == "idle"   # never a trip
+    assert max(speed[30:]) < 0.15
+    return v_release, max(speed)
+
+
+@pytest.mark.parametrize("exercise", ["push", "pull"])
+@pytest.mark.parametrize("t_back", [0.5, 1.5, 2.5])
+def test_let_go_in_the_back_phase_adds_no_speed(exercise, t_back):
+    """In "back" the band pulls the way the handle is already moving."""
+    v_release, peak = let_go_late(exercise, 1.0, 0, ("back", t_back))
+    assert v_release < 0.15 and peak < 0.15 and peak <= v_release + 0.03
+
+
+def test_let_go_seen_one_tick_late_measured_limits():
+    """Measured limits when the spring gets 10 ms before the engine reacts (100 Hz, sim handle
+    1.5 kg): the handle can pass 0.15 m/s for the strongest loads, but never trips."""
+    v, peak = let_go_late("armtest", 0.8, 1, ("push", 0.9))          # 20 N held
+    assert peak < 0.15
+    v, peak = let_go_late("armtest", 1.0, 1, ("push", 0.9))          # 25 N held: 0.17 m/s
+    assert 0.15 < peak < 0.20
+    v, peak = let_go_late("push", 1.0, 1, ("back", 1.5))             # 9 N band, moving at 0.12: 0.175
+    assert peak < v + 0.07 and peak < 0.20
+    v, peak = let_go_late("push", 1.0, 1, ("back", 0.5))
+    assert peak < 0.15
+    v, peak = let_go_late("armtest", 1.0, 2, ("push", 0.9))          # 20 ms late: 0.32 m/s, still no trip
+    assert peak < 0.40
 
 
 def test_let_go_ramps_reach_stiffness_down_in_steps_then_walks_back():

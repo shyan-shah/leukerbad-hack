@@ -3,7 +3,7 @@
 Presets live in `software/exercises.py` (`EXERCISES`, `LIVE`); the engine applies one with
 `Engine(..., exercise="<id>", reps=None)`. The app ids are those of `context/EXERCISE_MAP.md`.
 All numbers are team-chosen starting values, not clinical prescriptions. Everything below was
-tested on `SimArm` only (`software/tests/test_exercises.py`, 32 tests, reach along x and along y as in Layout B); nothing here has run on the real arm yet.
+tested on `SimArm` only (`software/tests/test_exercises.py`, 39 tests, reach along x and along y as in Layout B); nothing here has run on the real arm yet.
 
 `LIVE = ("reach", "push", "pull", "armtest")`. `circle` is implemented but not live.
 
@@ -46,7 +46,8 @@ Same state machine and metrics on the resist side: the target sits 5 cm behind t
 
 ### pull
 The line is the push line run backwards: path start = start pose + 0.28 m along the configured reach (the far end), path end = the start pose.
-- **`setup`** (`Sample.phase == "setup"`, dial reported as 0): transparent along the line, walls on the other two axes, target on the hand. The patient moves the handle out to the far end. The arm never drives it there: with an empty handle nothing moves (tested for 8 s).
+- **`setup`** (`Sample.phase == "setup"`, dial reported as 0): transparent along the line, walls on the other two axes, target on the hand. The patient moves the handle out to the far end. The arm never drives it there in setup: with an empty handle nothing moves (tested for 8 s).
+- **One exception since the release rule:** if the patient lets go during a pull rep, the handle is walked back to the far end (the path start) at 2 cm/s, away from the patient. See "Release" below.
 - When the hand has been within 2 cm of the far end for 1 s: `idle` (soft hold at the far end), then reps as usual. "out" is towards the patient; the band pulls back towards the far end in both phases.
 - Setup is entered only at `start()`, and only if the hand is not already at the far end.
 - Sim, strong patient: setup took 3.5 s, then 3 of 3 reps completed, peak 12.6 N.
@@ -96,7 +97,21 @@ Sim results (`test_let_go_releases_gently_no_trip_and_the_session_goes_on`, 9 ca
 | push, pull | 90% | 0.15 m/s | 0.15 m/s | under 0.07 m/s |
 | armtest (25 N push) | 25%, 50%, 90% | under 0.05 m/s | under 0.05 m/s | 0.03 m/s |
 
-No trip in any case, the handle ends on the path start, and reps or tries resume when the patient takes the handle again. **The arm never speeds the empty handle up, but in push and pull the simulated patient is itself moving at 0.15 to 0.23 m/s at the moment of release**, so "under 0.15 m/s" holds from 0.3 s after the let-go, not at the instant of it. From rest (armtest) it holds throughout.
+No trip in any case, the handle ends on the path start, and reps or tries resume when the patient takes the handle again. Let go in the back phase (0.5, 1.5, 2.5 s in): released at up to 0.12 m/s, never above 0.15 m/s.
+
+**Two limits on "never above 0.15 m/s":**
+- **The patient's own speed.** In push and pull the simulated patient is itself moving at 0.15 to 0.23 m/s when it lets go in the out phase. The arm adds nothing to that (peak after = speed at release), and the handle is under 0.15 m/s within 0.3 s.
+- **One tick of delay.** The table above has the engine seeing the let-go before the spring has acted. In a real loop the spring gets up to one 10 ms tick first (`test_let_go_seen_one_tick_late_measured_limits`):
+
+| case, detection one tick (10 ms) late | peak speed |
+|---|---|
+| armtest, 20 N held | 0.14 m/s |
+| armtest, 25 N held | **0.17 m/s** |
+| push, let go 1.5 s into the back phase (moving at 0.12 m/s) | **0.175 m/s** |
+| push, let go 0.5 s into the back phase | 0.06 m/s |
+| armtest, 25 N held, two ticks late | 0.32 m/s (still under the 0.40 m/s trip) |
+
+So the 0.15 m/s target is met when the let-go is seen at once and missed by about 0.02 m/s for the strongest loads when it is seen one tick late; in every case there is no trip and under 0.15 m/s within 0.3 s. This is the limit of a 100 Hz loop on the sim's 1.5 kg handle (25 N for 10 ms is 0.17 m/s), not a tuning value. The real arm is heavier and damped, so expect less, but it is not measured.
 
 **Not proven on the real arm.** The instant test needs the empty handle to read under 1.5 N. On 14 Nov the real empty flange read 3 to 7 N while moving, so there the let-go may only be seen by the 0.5 s rule, or not at all, until the occupancy threshold is fixed.
 
