@@ -33,6 +33,10 @@ FORCE_CAP_N = 30.0       # armtest readings stop at about this (the robot's safe
 # exercise -> (dial, auto, reach_m) used when the caller does not set them
 PRESETS = {"reach": (1.0, True, 0.30), "push": (-0.6, False, 0.28), "pull": (-0.6, False, 0.28),
            "armtest": (0.0, False, 0.30)}
+BAND_LEVELS = {1: 10.0, 2: 15.0, 3: 20.0, 4: 28.0}      # push_1 .. push_4, as software/simple.py
+for _n, _f in BAND_LEVELS.items():
+    PRESETS[f"push_{_n}"] = (-_f / 30.0, False, 0.30)
+HANDS_OFF_S = 3.0        # push_N: the "hands off" countdown before the band comes on
 
 
 class MockArm:
@@ -102,6 +106,9 @@ class MockEngine:
             reason="waiting for a push" if self.calibrate else "calibration turned off for this session")
         self._arming = {"progress": 0.0, "reason": "calibrating" if self.calibrate else "resting before the rep"}
         self._go = threading.Event()
+        self.level = int(exercise[5:]) if exercise in PRESETS and exercise.startswith("push_") else None
+        self._message: str | None = None
+        self._countdown: float | None = None
 
     # ---------------------------------------------------------------- interface (4.4)
     def start(self) -> None:
@@ -133,7 +140,29 @@ class MockEngine:
             return d | {"rep_count": self.rep_count, "auto": self.auto,
                         "arm_mode": getattr(self.arm, "mode", None),
                         "calibration": None if self._cal is None else dict(self._cal),
-                        "arming": dict(self._arming)}
+                        "arming": dict(self._arming)} | self._band_fields()
+
+    def _band_fields(self) -> dict:
+        """push_1 .. push_4: the fields the band engine (software/simple.py) reports."""
+        if self.level is None:
+            return {}
+        start = self.start_xyz.copy()
+        end = start.copy()
+        end[self.axis] += self.sign * self.reach
+        return {"exercise": self.exercise, "group": "push", "level": self.level,
+                "level_force_n": BAND_LEVELS[self.level], "message": self._message,
+                "countdown_s": self._countdown, "force_cap_n": 30.0, "arming": None,
+                "path_start": [float(v) for v in start], "path_end": [float(v) for v in end]}
+
+    def set_level(self, level: int) -> None:
+        """push_N only: change the resistance level now."""
+        if self.level is None:
+            raise RuntimeError("levels are for push_1 to push_4")
+        if level not in BAND_LEVELS:
+            raise ValueError(f"level must be 1 to 4, got {level!r}")
+        with self._lock:
+            self.level, self.exercise = int(level), f"push_{int(level)}"
+            self.dial = -BAND_LEVELS[level] / 30.0
 
     def go(self) -> None:
         """Operator cue: start the next rep now instead of waiting out the rest."""
@@ -284,6 +313,20 @@ class MockEngine:
             t = self._run_calibrate(t)
             if t is None:
                 return
+        if self.level is not None:      # the band engine's "hands off" countdown, then zeroing
+            n = int(HANDS_OFF_S / dt)
+            for i in range(n):
+                if self._stop.is_set():
+                    return
+                left = HANDS_OFF_S - i * dt
+                with self._lock:
+                    self._countdown = round(left, 1)
+                    self._message = f"Hands off: zeroing in {math.ceil(left - 0.005)}"
+                self._tick(t, 0.0, 0.0, "idle", -1, 0.0, 0.0, 0.0)
+                t += dt
+                self._sleep(dt)
+            with self._lock:
+                self._countdown, self._message = None, None
         if self.flip:       # pull: the person first moves the handle from the start to the far end
             n = int(SETUP_S / dt)
             for i in range(n):
@@ -295,6 +338,8 @@ class MockEngine:
         while not self._stop.is_set():
             if self.reps is not None and idx >= self.reps:
                 self._set_arming(0.0, "set finished")
+                if self.level is not None:
+                    self._message = "Set finished"
                 return self._idle_forever(t)
             with self._lock:
                 dial = self.dial
@@ -306,6 +351,8 @@ class MockEngine:
             contribution = float(np.clip(0.15 + 0.85 * cap - 0.1 * help_ * (1 - cap) + rng.normal(0, 0.04), 0, 1))
             rescued = help_ > 0.05 and cap < 0.2
             resist_n = 15.0 * max(-dial, 0.0) if self.resistance_n is None else self.resistance_n
+            if self.level is not None:
+                resist_n = BAND_LEVELS[self.level]
             # idle
             n_idle = int(IDLE_S / dt)
             for i in range(n_idle):

@@ -49,6 +49,12 @@ def is_real_arm(arm: Any) -> bool:
 def default_engine_factory(**kw):
     """software.engine.Engine. An engine from before E1 has no `exercise`/`reps` arguments: it can
     only run "reach" (anything else is refused, never silently run as a reach) and ignores `reps`."""
+    if exercises.is_band(kw.get("exercise")):
+        # Push at a fixed level: the small band engine beside the main one. It zeroes the force itself
+        # after a "hands off" countdown and returns the arm to the start at stop.
+        from software.simple import BandEngine
+        params = inspect.signature(BandEngine.__init__).parameters
+        return BandEngine(**{k: v for k, v in kw.items() if k in params}, prepare=True, return_home=True)
     from software.engine import Engine
     params = inspect.signature(Engine.__init__).parameters
     if not any(p.kind is p.VAR_KEYWORD for p in params.values()):
@@ -82,6 +88,14 @@ class StartBody(BaseModel):
 
 class IdsBody(BaseModel):
     ids: list[str] = Field(min_length=1, max_length=16)
+
+
+class LevelBody(BaseModel):
+    level: int = Field(ge=1, le=4)
+
+
+# snapshot fields copied into every sample message as they are (null when the engine does not report them)
+SNAPSHOT_FIELDS = ("group", "level", "level_force_n", "message", "countdown_s", "path_start", "path_end")
 
 
 class DialBody(BaseModel):
@@ -203,6 +217,8 @@ class Hub:
             snap.setdefault("calibration", None)      # engines from before the calibration contract: null
             snap.setdefault("arming", None)
             snap.setdefault("force_cap_n", self.force_cap_n())
+            for k in SNAPSHOT_FIELDS:
+                snap.setdefault(k, None)
         return snap
 
     def force_cap_n(self) -> float:
@@ -240,11 +256,16 @@ class Hub:
                 cal = engine.snapshot().get("calibration")
             except Exception as e:
                 print(f"[api] snapshot before stop failed: {e!r}", flush=True)
+            ended = None
             try:
-                engine.stop()
+                ended = engine.stop()       # the band engine counts down and returns the arm to the start here
                 state_after = getattr(engine, "calibration_state_after", None)
             finally:
                 self.engine = None
+            ex_end = getattr(ended, "exercise", None)
+            if exercises.is_band(ex_end) and exercises.is_band(self.session.exercise):
+                # the level was changed during the set: the session is stored at the level it ended on
+                self.session = SessionSummary(**(self.session.to_dict() | {"exercise": ex_end}))
             self.flush_reps()
             done = cal if isinstance(cal, dict) and cal.get("status") == "done" else {}
             with self.db_lock:
@@ -294,7 +315,8 @@ class Hub:
                         "arm_mode": snap.get("arm_mode"),
                         "arm_fault": snap.get("arm_fault"), "calibration": snap.get("calibration"),
                         "arming": snap.get("arming"),
-                        "force_cap_n": snap.get("force_cap_n")} | self.progress(snap))
+                        "force_cap_n": snap.get("force_cap_n")}
+                        | {k: snap.get(k) for k in SNAPSHOT_FIELDS} | self.progress(snap))
                 if not msgs or not self.clients:
                     continue
                 for ws in list(self.clients):
@@ -319,7 +341,7 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     arm_factory()      -> arm object (connected on first session start)
     engine_factory(**) -> engine with the MASTER_PLAN 4.4 interface (default software.engine.Engine)
     exports_dir        -> if set, exports are rewritten after every session stop
-    control_token      -> if set, POST start/stop/dial/go/resume, arm/prepare, arm/home, exercises/enable|disable
+    control_token      -> if set, POST start/stop/dial/level/go/resume, arm/prepare, arm/home, exercises/enable|disable
                           and shutdown need header `x-operator-token`.
                           /api/hold never does.
     live_exercises     -> ids this engine can run. Default: software.exercises.LIVE, read on every request
@@ -493,7 +515,9 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             except Exception as e:
                 raise HTTPException(503, f"arm not connected: {e}")
             sim = hub.simulated
-            if not sim and not hub.prepared:
+            # the band engine zeroes the force itself (hands-off countdown), so it needs no Prepare
+            self_prepares = exercises.is_band(body.exercise) and hub.engine_factory is default_engine_factory
+            if not sim and not hub.prepared and not self_prepares:
                 raise HTTPException(409, "prepare the arm first: POST /api/arm/prepare with nobody "
                                          "touching the handle")
             name = body.display_name or body.patient_id
@@ -557,6 +581,22 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             raise HTTPException(409, "no session running")
         hub.engine.set_dial(body.dial, body.auto)
         return {"dial": body.dial, "auto": hub.snapshot().get("auto", body.auto)}
+
+    @app.post("/api/level")
+    def level(body: LevelBody, x_operator_token: str | None = Header(default=None)):
+        """Change the resistance level (1 to 4) of a running Push session. The stiffness ramps over 0.5 s."""
+        guard(x_operator_token)
+        if hub.engine is None:
+            raise HTTPException(409, "no session running")
+        fn = getattr(hub.engine, "set_level", None)
+        if fn is None:
+            raise HTTPException(409, "this exercise has no levels; levels are for Push (push_1 to push_4)")
+        try:
+            fn(body.level)
+        except (ValueError, RuntimeError) as e:
+            raise HTTPException(409, f"level not changed: {e}")
+        hub.exercise = f"push_{body.level}"
+        return {"ok": True, "level": body.level, "level_force_n": exercises.BAND_LEVELS[body.level]}
 
     @app.post("/api/hold")
     def hold():

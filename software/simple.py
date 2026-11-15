@@ -167,6 +167,7 @@ class BandEngine:
         self._phase = "idle"
         self._rep: dict | None = None
         self._rest_since: float | None = None
+        self._sim_present = True             # simulated patient only: was a hand on the handle at start()
 
     # ------------------------------------------------------------------ interface
     @property
@@ -195,6 +196,11 @@ class BandEngine:
         if hasattr(self.arm, "patient") and hasattr(self.arm, "reach_m"):     # simulated patient: same line
             self.arm.reach_axis, self.arm.reach_sign, self.arm.reach_m = self.axis, int(self.sign), REACH_M
             self.arm.auto_cue = False
+            self._sim_present = self.arm.patient.present
+            if hasattr(self.arm, "cue"):
+                self.arm.cue("rest")              # it waits for this engine's cue instead of starting by itself
+            if self.prepare:
+                self.arm.patient.present = False  # the simulated person follows the procedure: hands off
         self.started_at = _now_iso()
         self._started = True
         self._stop_evt.clear()
@@ -365,7 +371,7 @@ class BandEngine:
         """Empty-handle baseline, compliance on, the ONE stiffness command of the session."""
         realtime = getattr(self.arm, "realtime", True)
         patient = getattr(self.arm, "patient", None) if hasattr(self.arm, "reach_m") else None
-        was_present = getattr(patient, "present", None)
+        was_present = self._sim_present
         if patient is not None:
             patient.present = False              # the simulated person follows the procedure
         try:
@@ -443,7 +449,7 @@ class BandEngine:
             except RuntimeError as e:
                 err = e
         self._stage = "error"
-        self._say(f"Not started: {err}. Stop the session and start again.")
+        self._say(f"Not started: {str(err).rstrip('.')}. Stop the session and start again.")
         self._emit(st, st.pos, "idle", -1, st.force)
 
     def _tick_band(self, st) -> None:

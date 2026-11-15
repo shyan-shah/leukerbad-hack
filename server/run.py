@@ -82,6 +82,51 @@ def no_calibrate_for(a: argparse.Namespace) -> bool:
     return not a.calibrate
 
 
+def exercise_sets(a: argparse.Namespace) -> tuple[list[str] | None, list[str] | None]:
+    """(what this server can run, what it offers at start-up). None, None: software.exercises.LIVE decides.
+
+    --robot: Push at four fixed levels (push_1 .. push_4, the band engine) and nothing else. The older
+    exercises (reach, push, pull, armtest) are offered only when named in --exercises.
+    --sim: the older exercises as before; push_1 .. push_4 can be named in --exercises.
+    --mock: everything the mock can play."""
+    from . import exercises as ex
+    wanted = None
+    if a.exercises is not None:
+        wanted = [x.strip() for x in a.exercises.split(",") if x.strip()]
+    if a.mock:
+        from .mock import PRESETS
+        known = list(PRESETS)
+        live, default = known, None
+    else:
+        known = list(ex.BAND_IDS) + [i for i in ex.live_ids() if i not in ex.BAND_IDS]
+        if a.robot is not None:
+            live, default = (list(ex.BAND_IDS) if wanted is None else known), None
+        else:
+            live, default = (None if wanted is None else known), None
+    if wanted is not None:
+        bad = [x for x in wanted if x not in known]
+        if bad or not wanted:
+            raise ValueError(f"--exercises: unknown or not runnable: {', '.join(bad) or '(empty)'}. "
+                             f"Can run: {', '.join(known)}")
+        return live, wanted
+    return live, default
+
+
+def lan_ips() -> list[str]:
+    """Every IPv4 address of this laptop that is not loopback, the outbound one first. A phone reaches the
+    laptop on the address of the network they share (the hotspot or Wi-Fi), not on a VPN adapter's."""
+    ips = [_lan_ip()]
+    try:
+        ips += socket.gethostbyname_ex(socket.gethostname())[2]
+    except OSError:
+        pass
+    out = []
+    for ip in ips:
+        if ip not in out and not ip.startswith("127."):
+            out.append(ip)
+    return out
+
+
 def build(a: argparse.Namespace):
     """Return (arm_factory, engine_factory or None, label)."""
     if a.mock:
@@ -137,19 +182,10 @@ def main(argv=None) -> None:
                           "this lets the engine raise the arm's limits during the push: only when the team agrees")
     a = ap.parse_args(argv)
     no_calibrate = no_calibrate_for(a)
-    enabled = None
-    if a.exercises is not None:
-        enabled = [x.strip() for x in a.exercises.split(",") if x.strip()]
-        if a.mock:
-            from .mock import PRESETS
-            known = list(PRESETS)
-        else:
-            from . import exercises as _ex
-            known = _ex.live_ids()
-        bad = [x for x in enabled if x not in known]
-        if bad or not enabled:
-            ap.error(f"--exercises: unknown or not runnable: {', '.join(bad) or '(empty)'}. "
-                     f"Can run: {', '.join(known)}")
+    try:
+        live, enabled = exercise_sets(a)
+    except ValueError as e:
+        ap.error(str(e))
     if a.reach_m is not None and not 0.02 <= a.reach_m <= 0.35:
         ap.error("--reach-m must be between 0.02 and 0.35 m (the workspace box is 0.35 m along the reach)")
 
@@ -158,7 +194,7 @@ def main(argv=None) -> None:
     engine_kwargs = reach_kwargs(a)
     app = create_app(arm_factory, a.db, engine_factory=engine_factory,
                      exports_dir=None if a.no_export else DEFAULT_OUT, control_token=token,
-                     engine_kwargs=engine_kwargs, live_exercises=mock_exercises(a),
+                     engine_kwargs=engine_kwargs, live_exercises=live,
                      enabled_exercises=enabled, no_calibrate=no_calibrate)
     host = "0.0.0.0" if a.lan else "127.0.0.1"
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=a.port, log_level="warning",
@@ -176,14 +212,19 @@ def main(argv=None) -> None:
                              if no_calibrate else
                              "on for push and pull (comfortable push)"
                              + ("; THE ENGINE RAISES THE ARM'S LIMITS DURING IT" if a.robot is not None else "")))
+    if live is not None and not a.mock:
+        print(f"  Exercises  can run: {', '.join(live)}"
+              + ("   (Push at 4 fixed levels; the older ones only with --exercises)" if a.exercises is None else ""))
     if enabled is not None:
         print(f"  Exercises enabled now: {', '.join(enabled)}   (more: POST /api/exercises/enable)")
     print(f"  API        http://127.0.0.1:{a.port}/api/health")
     print(f"  Live feed  ws://127.0.0.1:{a.port}/ws/live    (terminal view: python -m server.watch)")
     if a.lan:
         print(f"  On the LAN http://{_lan_ip()}:{a.port}   operator token for control routes: {token}")
+        print(f"  On this laptop: http://127.0.0.1:{a.port}/app/?op={token}")
         print(f"  Patient app (phone on the same network; this link carries the operator token, do not share it):")
-        print(f"             http://{_lan_ip()}:{a.port}/app/?op={token}")
+        for ip in lan_ips() or ["127.0.0.1"]:      # one per network adapter: use the one the phone is on
+            print(f"             http://{ip}:{a.port}/app/?op={token}")
     else:
         print(f"  Patient app http://127.0.0.1:{a.port}/app/")
     print(f"  Stop       Ctrl+C here, or: curl -X POST http://127.0.0.1:{a.port}/api/shutdown")

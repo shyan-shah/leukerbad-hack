@@ -22,7 +22,24 @@ BUILTIN: dict[str, dict[str, Any]] = {
     "armtest": {"name": "Push strength test", "kind": "test", "reps": 3},
     "circle":  {"name": "Circle (robot-led)", "kind": "guided", "reps": 8},
 }
+# Push against a constant band at four fixed levels (software/simple.py BandEngine): level -> newtons.
+# A copy of software.simple.LEVELS (a test keeps the two equal), so the list works without software/.
+BAND_LEVELS: dict[int, float] = {1: 10.0, 2: 15.0, 3: 20.0, 4: 28.0}
+BAND_IDS: tuple[str, ...] = tuple(f"push_{n}" for n in BAND_LEVELS)
+for _n, _f in BAND_LEVELS.items():
+    BUILTIN[f"push_{_n}"] = {"name": f"Push \u00b7 Level {_n} ({_f:.0f} N)", "kind": "resist", "reps": 10}
+GROUPS = {"pull": "row"}                # id -> group shown as one card in the app (default: the id itself)
 FALLBACK_LIVE = ("reach",)
+
+
+def band_level(exercise_id: str | None) -> int | None:
+    """Level of a band exercise id ("push_3" -> 3), else None."""
+    s = str(exercise_id or "")
+    return int(s[5:]) if s in BAND_IDS else None
+
+
+def is_band(exercise_id: str | None) -> bool:
+    return band_level(exercise_id) is not None
 LEGACY = {"reach_line": "reach"}        # sessions stored before E2
 REPS_MAX = 100
 _REGISTRY_NAMES = ("EXERCISES", "REGISTRY", "PRESETS", "PROGRAMMES")
@@ -71,7 +88,9 @@ def live_ids() -> list[str]:
 
 
 def info(exercise_id: str) -> dict[str, Any]:
-    """{"id", "name", "kind", "reps", "calibrates"} for one programme (registry values win over the built-in table)."""
+    """{"id", "name", "kind", "reps", "calibrates", "group", "level", "level_force_n"} for one programme
+    (registry values win over the built-in table). ``group`` is the card it belongs to in the app; ``level``
+    and ``level_force_n`` are set for the band exercises push_1 .. push_4 and None for the others."""
     base = BUILTIN.get(exercise_id, {"name": exercise_id, "kind": "unknown", "reps": 10})
     out = {"id": exercise_id, **base}
     calibrates = None
@@ -92,6 +111,12 @@ def info(exercise_id: str) -> dict[str, Any]:
             pass
     # comfortable-push calibration at the start of the session: on for resist exercises (push, pull)
     out["calibrates"] = bool(calibrates) if calibrates is not None else out["kind"] == "resist"
+    lv = band_level(exercise_id)
+    out["group"] = "push" if lv else GROUPS.get(exercise_id, exercise_id)
+    out["level"] = lv
+    out["level_force_n"] = BAND_LEVELS[lv] if lv else None
+    if lv:
+        out["calibrates"] = False       # no comfortable push on the band: the level is the resistance
     return out
 
 
