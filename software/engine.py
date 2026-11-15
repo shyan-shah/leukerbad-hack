@@ -68,6 +68,14 @@ drives the engine and the sim together with ``run_for(seconds)`` (one ``tick()``
 Safety: any exception in a tick (including from a callback) calls ``arm.hold()`` first and
 is then re-raised.
 
+Exercise presets (package E1, software/exercises.py and software/EXERCISES.md):
+``Engine(..., exercise="reach" | "push" | "pull" | "armtest" | "circle", reps=None)``.
+"reach" is everything described above. "push" is the same line on the resist side. "pull"
+runs the line backwards from the far end: a "setup" phase (transparent, walls on) lasts until
+the person has brought the handle to the far end; the arm never drives it there. "armtest"
+is an isometric test (``_tick_test``) and "circle" a robot-led circle (``_tick_guided``).
+``snapshot()`` carries ``exercise``, ``kind``, ``reps_target`` and ``done``.
+
 The timing constants below are section 4.2 start values or team choices; they are not
 clinical rules.
 """
@@ -83,8 +91,9 @@ import numpy as np
 
 from server.contract import RepResult, Sample, SessionSummary
 from software import controller
+from software import exercises
 from software.adapt import AUTO_FLOOR, mode_of, next_dial
-from software.metrics import contribution, force_stats, path_error, rep_metrics, rom
+from software.metrics import contribution, force_stats, path_error, rep_metrics, rom, sparc
 from software.paths import LinePath
 
 __all__ = ["Engine", "DT"]
@@ -107,7 +116,9 @@ STALL_RESIST_S = 3.0         # s stall on the resist side before dropping to tra
 STALL_MAX_PROGRESS = 0.9     # stall rescue only before this phase progress
 RESIST_RAMP_S = 1.0          # s, resist-side rescue ramps the resistance to 0 over this
 RESIST_RAMP_STEP_S = 0.1     # s between ramp steps (10 steps over RESIST_RAMP_S)
-EXERCISE = "reach_line"
+TEST_RETURN_SPEED = 0.02     # m/s, armtest: after a push the target walks back to the start at this speed
+SETUP_DWELL_S = 1.0          # s at the far end before a "far" exercise (pull) leaves the setup phase
+EXERCISE = "reach_line"      # SessionSummary.exercise for the default "reach" preset (unchanged)
 
 
 def _now_iso() -> str:
@@ -122,20 +133,45 @@ class Engine:
     """Section 4.4 engine. See the module docstring."""
 
     def __init__(self, arm, session_id: str, patient_id: str, simulated: bool,
-                 reach_axis: int = 0, reach_sign: int = 1, reach_m: float = 0.30,
-                 dial: float = 1.0, auto: bool = True,
-                 on_sample=None, on_rep=None) -> None:
+                 reach_axis: int = 0, reach_sign: int = 1, reach_m: float | None = None,
+                 dial: float | None = None, auto: bool | None = None,
+                 on_sample=None, on_rep=None,
+                 exercise: str = "reach", reps: int | None = None) -> None:
+        """``exercise`` is a preset id from software/exercises.py (default "reach": unchanged
+        behaviour). ``reach_m`` given overrides the preset's length. ``dial`` and ``auto`` are
+        the caller's for "reach"; for the other presets ``auto`` is the preset's and ``dial`` is
+        used only if it is on the preset's side (a resist preset ignores dial >= 0). ``reps``
+        given: no new rep is armed after that many. ``reps=None``: reach/push/pull keep running
+        (the preset's default_reps is only reported), armtest and circle stop after theirs."""
         if reach_axis not in (0, 1, 2):
             raise ValueError(f"reach_axis must be 0, 1 or 2, got {reach_axis}")
+        self.preset = exercises.get(exercise)
+        p = self.preset
+        if reach_m is None:
+            reach_m = p.reach_m
         if not reach_m > 0:
             raise ValueError(f"reach_m must be > 0, got {reach_m}")
+        if reps is not None and (int(reps) != reps or reps < 1):
+            raise ValueError(f"reps must be a positive integer, got {reps}")
+        if p.id == "reach":
+            dial = p.dial if dial is None else dial
+            auto = p.auto if auto is None else auto
+        else:
+            auto = p.auto
+            if dial is None or p.kind != "resist" or not dial < 0:
+                dial = p.dial
         self.arm = arm
         self.session_id = str(session_id)
         self.patient_id = str(patient_id)
         self.simulated = bool(simulated)
+        self.exercise = p.id
         self.reach_axis = int(reach_axis)
-        self.reach_sign = 1 if reach_sign >= 0 else -1
+        self.config_reach_sign = 1 if reach_sign >= 0 else -1     # the configured reach direction
+        self.reach_sign = self.config_reach_sign * p.direction    # direction of this exercise's "out"
         self.reach_m = float(reach_m)
+        self.reps_target = int(reps) if reps is not None else p.default_reps
+        # hard stop on the count: always for tries and circles, for line reps only when asked
+        self._reps_limit = self.reps_target if (reps is not None or p.kind in ("test", "guided")) else None
         self.on_sample = on_sample
         self.on_rep = on_rep
 
@@ -152,6 +188,7 @@ class Engine:
         self._thread: threading.Thread | None = None
         self._stop_evt = threading.Event()
         self._started = False
+        self._explicit_cues = False          # simulated patient cued by the engine (set in start())
 
         self.path: LinePath | None = None
         self._t0: float | None = None
@@ -182,10 +219,24 @@ class Engine:
                 "then start the session again.")
         self.force_baseline = baseline
         self.arm.start_compliance()
+        # The line always lies between the arm's start pose and the far end of the configured
+        # reach. "far" presets (pull) run it backwards: path start = the far end.
         start = np.asarray(self.arm.start_pos, dtype=float)
+        if self.preset.start_at == "far":
+            start = start.copy()
+            start[self.reach_axis] += self.config_reach_sign * self.reach_m
         end = start.copy()
         end[self.reach_axis] += self.reach_sign * self.reach_m
         self.path = LinePath(_tup3(start), _tup3(end))
+        if self.preset.start_at == "far" and abs(self._progress(self.arm.get_state().pos)) * self.reach_m > NEAR_START_M:
+            self._phase = "setup"                   # the person moves the handle to the far end
+        if hasattr(self.arm, "patient") and hasattr(self.arm, "cue"):
+            # Simulated patient: where its reach starts, and whether the engine cues it itself
+            # (pull and armtest) or it follows the stiffness change as before (reach, push).
+            self._explicit_cues = self.preset.start_at == "far" or self.preset.kind == "test"
+            self.arm.reach_origin = _tup3(start)
+            self.arm.auto_cue = not self._explicit_cues
+            self._sim_cue("back" if self._phase == "setup" else "rest")
         self.started_at = _now_iso()
         self._started = True
         self._stop_evt.clear()
@@ -223,7 +274,8 @@ class Engine:
         return SessionSummary(
             session_id=self.session_id, patient_id=self.patient_id,
             started_at=self.started_at or _now_iso(), ended_at=_now_iso(),
-            exercise=EXERCISE, n_reps=self.rep_count, simulated=self.simulated)
+            exercise=EXERCISE if self.exercise == "reach" else self.exercise,
+            n_reps=self.rep_count, simulated=self.simulated)
 
     def set_dial(self, dial: float, auto: bool | None = None) -> None:
         """Set the dial (clamped to [-1, 1]); ``auto`` True/False switches auto mode."""
@@ -239,7 +291,14 @@ class Engine:
         with self._lock:
             d = self._latest.to_dict() if self._latest is not None else {}
             return d | {"rep_count": self.rep_count, "auto": self._auto,
-                        "arm_mode": self._arm_mode}
+                        "arm_mode": self._arm_mode, "exercise": self.exercise,
+                        "kind": self.preset.kind, "reps_target": self.reps_target,
+                        "done": self.done}
+
+    @property
+    def done(self) -> bool:
+        """True once the planned number of reps (tries, circles) has been recorded."""
+        return self.rep_count >= self.reps_target
 
     # ------------------------------------------------------------------ extras
 
@@ -314,6 +373,8 @@ class Engine:
         self._latch: np.ndarray | None = None
         self._k_sent: tuple[float, float, float] | None = None
         self._cmd: tuple[np.ndarray, np.ndarray] | None = None  # (target, k) last sent
+        self._theta = 0.0                    # circle angle (guided presets)
+        self._test_offset = 0.0              # m along the reach: armtest target offset during rest
         self._clear_rep()
 
     def _clear_rep(self) -> None:
@@ -358,8 +419,8 @@ class Engine:
 
         if state.mode != "compliant":
             # hold, fault or idle: never command. Abandon any rep in progress.
-            if self._phase != "idle":
-                self._finish_rep(dial, aborted=True)
+            if self._phase in ("out", "back"):
+                self._abort_rep(dial)
             self._phase = "idle"
             self._near_since = None
             self._latch = None
@@ -375,12 +436,36 @@ class Engine:
         occupied = (self._last_force_t is not None
                     and t_arm - self._last_force_t <= OCCUPIED_WINDOW_S)
         # follow slow sensor drift while the handle is empty and nothing is happening
-        if self._phase == "idle" and not occupied:
+        if self._phase in ("idle", "setup") and not occupied:
             self.force_baseline = (self.force_baseline
                                    + (raw_force - self.force_baseline) * (dt_tick / BASELINE_TRACK_S))
 
         s = self._progress(pos)
         near_start = abs(s) * self.reach_m <= NEAR_START_M
+
+        if self.preset.kind == "test":
+            self._tick_test(state, t_arm, t, pos, force, occupied, s, near_start, dial, dt_tick)
+            return
+        if self.preset.kind == "guided":
+            self._tick_guided(state, t_arm, t, pos, force, occupied, near_start, dial, dt_tick)
+            return
+
+        # setup ("far" presets such as pull): transparent along the line, walls on, until the
+        # person has brought the handle to the far end. The arm never drives it there.
+        if self._phase == "setup":
+            if near_start:
+                if self._near_since is None:
+                    self._near_since = t_arm
+                if t_arm - self._near_since >= SETUP_DWELL_S:
+                    self._phase = "idle"
+                    self._near_since = None
+            else:
+                self._near_since = None
+            if self._phase == "setup":
+                target, k = controller.command(0.0, "out", s, 0.0, pos, self.path, False)
+                self._send(target, k)
+                self._emit(t, state, target, 0.0, "setup", -1, force)
+                return
 
         # hands-off rule (assist side only)
         if self._phase in ("out", "back") and dial > 0 and not occupied:
@@ -390,7 +475,7 @@ class Engine:
 
         # idle -> out
         if self._phase == "idle":
-            if near_start and occupied:
+            if near_start and occupied and not self._limit_reached():
                 if self._near_since is None:
                     self._near_since = t_arm
                 if t_arm - self._near_since >= ARM_DWELL_S:
@@ -453,13 +538,243 @@ class Engine:
                     self._latch = self._on_line(pos)
                 target = _tup3(self._latch)
 
+        self._send(target, k)
+        self._emit(t, state, target, dial, label_phase,
+                   label_idx if label_phase != "idle" else -1, force)
+
+    def _send(self, target, k) -> None:
+        """Target every tick (feeds the watchdog); stiffness only when it changes."""
         self.arm.set_target(target)
         if k != self._k_sent:
             self.arm.set_stiffness(*k)
             self._k_sent = k
         self._cmd = (np.asarray(target, dtype=float), np.asarray(k, dtype=float))
-        self._emit(t, state, target, dial, label_phase,
-                   label_idx if label_phase != "idle" else -1, force)
+
+    def _limit_reached(self) -> bool:
+        return self._reps_limit is not None and self.rep_count >= self._reps_limit
+
+    def _sim_cue(self, intent: str) -> None:
+        """Tell a simulated patient what to do ("out" = push/reach now, "rest"). No-op on the real arm."""
+        if self._explicit_cues:
+            self.arm.cue(intent)
+
+    def _abort_rep(self, dial_now: float) -> None:
+        """Close whatever rep, try or circle is in progress as not completed."""
+        kind = self.preset.kind
+        if kind == "test":
+            self._finish_try(aborted=True)
+        elif kind == "guided":
+            self._finish_circle(completed=False)
+        else:
+            self._finish_rep(dial_now, aborted=True)
+
+    def _record(self, rep: RepResult, adapt: bool = False) -> None:
+        with self._lock:
+            self.rep_count += 1
+            self.reps.append(rep)
+            if adapt and self._auto:
+                self._dial = next_dial(self._dial, rep, auto_floor=AUTO_FLOOR)
+        if self.on_rep is not None:
+            self.on_rep(rep)
+
+    # ------------------------------------------------------------------ armtest (isometric)
+
+    def _tick_test(self, state, t_arm, t, pos, force, occupied, s, near_start, dial, dt_tick) -> None:
+        """Isometric strength test. During a push the target is the start pose. From the first
+        try to the last the reach axis is at the arm's k_max and the other axes at K_WALL;
+        before and after, the arm is in the ordinary soft hold. "out" = push now, "back" = rest.
+
+        When a push ends the target is put on the hand and walked back to the start at
+        TEST_RETURN_SPEED, so the stretched spring does not snap the handle back when the
+        person relaxes (in the sim that reached 0.46 m/s and tripped the speed limit)."""
+        p = self.preset
+        if self._phase == "idle" and not self._limit_reached():
+            # the first try waits for a hand on the handle at the start, like any rep
+            if near_start and occupied:
+                if self._near_since is None:
+                    self._near_since = t_arm
+                if t_arm - self._near_since >= ARM_DWELL_S:
+                    self._begin_try(t_arm, t, dial)
+            else:
+                self._near_since = None
+
+        label_phase, label_idx = self._phase, self._rep_idx
+        if self._phase == "out":
+            if not self._out_t or t > self._out_t[-1]:
+                self._out_t.append(t)
+                self._out_pos.append(_tup3(pos))
+                self._out_force.append(_tup3(force))
+            pushed_too_far = abs(s) * self.reach_m > p.max_disp_m
+            if t_arm - self._phase_t0 >= p.push_s or pushed_too_far:
+                self._test_offset = float(np.clip(s * self.reach_m, -p.max_disp_m, p.max_disp_m))
+                self._finish_try(aborted=False)
+                if self._limit_reached():
+                    self._phase = "idle"
+                else:
+                    self._phase, self._phase_t0 = "back", t_arm
+        elif self._phase == "back":
+            if t_arm - self._phase_t0 >= p.rest_s:
+                self._begin_try(t_arm, t, dial)
+
+        if self._phase in ("out", "back"):
+            k = [float(controller.K_WALL)] * 3
+            k[self.reach_axis] = float(self.arm.limits.k_max)
+            k = (k[0], k[1], k[2])
+        else:
+            kh = float(self.arm.limits.k_hold)
+            k = (kh, kh, kh)
+        if label_phase == "out":                # a push tick (the last one included): start pose
+            if self._phase == "out":
+                self._test_offset = 0.0
+            start = _tup3(self.path.point_at(0.0))
+        else:                                   # walk the target back to the start pose
+            step = TEST_RETURN_SPEED * dt_tick
+            self._test_offset -= float(np.clip(self._test_offset, -step, step))
+            start = _tup3(np.asarray(self.path.start) + self._test_offset * self.path.axis())
+        self._send(start, k)
+        self._emit(t, state, start, dial, label_phase,
+                   label_idx if label_phase == "out" else -1, force)
+
+    def _begin_try(self, t_arm: float, t: float, dial: float) -> None:
+        self._begin_rep(t_arm, t, dial)
+
+    def _finish_try(self, aborted: bool) -> None:
+        """One RepResult per try: mode "isometric", forces along the reach axis (push direction)."""
+        p = self.preset
+        t = np.asarray(self._out_t)
+        pos = np.asarray(self._out_pos)
+        force = np.asarray(self._out_force)
+        rep_dial, rep_t0 = self._rep_dial, self._rep_t0
+        self._clear_rep()
+        self._sim_cue("rest")
+        if len(t) < 2:
+            return
+        start, end = self.path.start, self.path.end
+        along_f = force[:, self.reach_axis] * self.reach_sign          # N, + = pushing along the reach
+        along_d = (pos - np.asarray(start))[:, self.reach_axis] * self.reach_sign
+        peak = float(max(along_f.max(), 0.0))
+        err_mean, err_max = path_error(pos, start, end)
+        rep = RepResult(
+            session_id=self.session_id, idx=self.rep_count, mode="isometric", dial=float(rep_dial),
+            t_start=float(rep_t0), duration_s=float(t[-1] - t[0]),
+            rom_m=float(np.abs(along_d).max()), path_err_mean_m=err_mean, path_err_max_m=err_max,
+            sparc=0.0, peak_force_n=peak, mean_force_n=float(along_f.mean()), contribution=1.0,
+            completed=bool(not aborted and peak > p.min_peak_n), simulated=self.simulated,
+            rescued=False)
+        self._record(rep)
+
+    # ------------------------------------------------------------------ circle (guided, robot-led)
+
+    def _circle_point(self, theta: float) -> np.ndarray:
+        """Point on the circle at angle theta. theta = 0 is the start pose; the circle lies in
+        the plane of the reach axis and world z, its centre one radius along the reach."""
+        r = self.preset.radius_m
+        c = np.asarray(self.path.start, dtype=float).copy()
+        c[self.reach_axis] += self.reach_sign * r
+        pt = c.copy()
+        pt[self.reach_axis] -= self.reach_sign * r * np.cos(theta)
+        pt[2] += r * np.sin(theta)
+        return pt
+
+    def _tick_guided(self, state, t_arm, t, pos, force, occupied, near_start, dial, dt_tick) -> None:
+        """Robot-led circle. The target moves round the circle at a fixed pace with the same
+        stiffness on every axis; it waits while the hand is more than MAX_LEAD behind, and an
+        empty handle ends the circle and stops the target (hands-off rule)."""
+        p = self.preset
+        kiso = (float(p.stiffness),) * 3
+        if self._phase in ("out", "back") and not occupied:
+            self._finish_circle(completed=False)
+            self._phase = "idle"
+            self._near_since = None
+
+        if self._phase == "idle":
+            if near_start and occupied and not self._limit_reached():
+                if self._near_since is None:
+                    self._near_since = t_arm
+                if t_arm - self._near_since >= ARM_DWELL_S:
+                    self._begin_rep(t_arm, t, dial)
+                    self._theta = 0.0
+            else:
+                self._near_since = None
+
+        if self._phase not in ("out", "back"):
+            kh = float(self.arm.limits.k_hold)
+            if occupied:
+                self._latch = None
+                target = _tup3(self.path.point_at(0.0) if near_start else self._on_line(pos))
+            else:
+                if self._latch is None:
+                    self._latch = self._on_line(pos)
+                target = _tup3(self._latch)
+            self._send(target, (kh, kh, kh))
+            self._emit(t, state, target, dial, "idle", -1, force)
+            return
+
+        self._latch = None
+        if not self._out_t or t > self._out_t[-1]:
+            self._out_t.append(t)
+            self._out_pos.append(_tup3(pos))
+            self._out_force.append(_tup3(force))
+            self._out_robot.append(self._spring_force(pos))
+        label_phase, label_idx = self._phase, self._rep_idx
+        if float(np.linalg.norm(self._circle_point(self._theta) - pos)) <= controller.MAX_LEAD:
+            self._theta += 2.0 * np.pi * dt_tick / p.period_s
+        if self._theta >= 2.0 * np.pi:
+            self._finish_circle(completed=True)
+            if self._limit_reached():
+                self._phase = "idle"
+                self._near_since = None
+            else:                                   # straight into the next circle
+                self._begin_rep(t_arm, t, dial)
+                self._theta = 0.0
+        else:
+            self._phase = "out" if self._theta < np.pi else "back"
+        target = _tup3(self._circle_point(self._theta if self._phase != "idle" else 0.0))
+        self._send(target, kiso)
+        self._emit(t, state, target, dial, label_phase, label_idx, force)
+
+    def _finish_circle(self, completed: bool) -> None:
+        """One RepResult per circle: mode "guided". Path error is the distance from the circle
+        (constant vertical sag removed, as for the line)."""
+        t = np.asarray(self._out_t)
+        pos = np.asarray(self._out_pos)
+        force = np.asarray(self._out_force)
+        robot = np.asarray(self._out_robot)
+        rep_dial, rep_t0 = self._rep_dial, self._rep_t0
+        self._clear_rep()
+        if len(t) < 2:
+            return
+        r = self.preset.radius_m
+        a = self.reach_axis
+        other = 1 - a if a in (0, 1) else 0          # the horizontal axis across the circle's plane
+        c = self._circle_point(0.0)
+        c[a] += self.reach_sign * r                   # centre
+        d = pos - c
+        radial = np.hypot(d[:, a], d[:, 2])
+        scale = np.where(radial > 1e-9, r / np.maximum(radial, 1e-9), 0.0)
+        err = np.zeros_like(d)
+        err[:, a] = d[:, a] * (1.0 - scale)
+        err[:, 2] = d[:, 2] * (1.0 - scale)
+        err[:, other] = d[:, other]
+        err[:, 2] -= err[:, 2].mean()
+        dist = np.linalg.norm(err, axis=1)
+        vel = np.gradient(pos, t, axis=0)
+        dt = float(np.median(np.diff(t)))
+        try:
+            smooth = sparc(np.linalg.norm(vel, axis=1), 1.0 / dt)
+        except ValueError:
+            smooth = 0.0
+        wp = float(np.sum(np.maximum(0.0, np.sum(force * vel, axis=1))) * dt)
+        wr = float(np.sum(np.maximum(0.0, np.sum(robot * vel, axis=1))) * dt)
+        peak, mean = force_stats(force)
+        rep = RepResult(
+            session_id=self.session_id, idx=self.rep_count, mode="guided", dial=float(rep_dial),
+            t_start=float(rep_t0), duration_s=float(t[-1] - t[0]),
+            rom_m=float(np.ptp(pos[:, a])), path_err_mean_m=float(dist.mean()),
+            path_err_max_m=float(dist.max()), sparc=float(smooth), peak_force_n=peak,
+            mean_force_n=mean, contribution=(wp / (wp + wr)) if (wp + wr) > 1e-6 else 0.0,
+            completed=bool(completed), simulated=self.simulated, rescued=False)
+        self._record(rep)
 
     def _rescue_dial(self, dial: float, t_arm: float) -> tuple[float, bool]:
         """(dial, rescued) for controller.command. Resist-side rescue ramps the dial to 0."""
@@ -486,6 +801,7 @@ class Engine:
         self._rep_idx = self.rep_count
         self._rep_dial = dial
         self._rep_t0 = t
+        self._sim_cue("out")
 
     def _emit(self, t: float, state, target, dial: float, phase: str, rep_idx: int,
               force) -> None:

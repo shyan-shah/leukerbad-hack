@@ -130,6 +130,8 @@ class SimArm:
         self.reach_axis = 0
         self.reach_sign = 1
         self.reach_m = 0.30
+        self.reach_origin = None      # where the patient's reach starts; None = start_pos (set by the engine)
+        self.auto_cue = True          # False: only cue() moves the patient (engine presets pull, armtest)
 
         self._lock = threading.RLock()
         self._connected = False
@@ -328,13 +330,28 @@ class SimArm:
         self._cued = True
         self._set_intent("out")
 
+    def cue(self, intent: str) -> None:
+        """Explicit cue for the simulated patient: "out" (reach or push now), "rest" (aim at
+        the start of the reach) or "back" (move smoothly from where the hand is to the start
+        of the reach). Used by the engine's exercise presets."""
+        if intent not in ("out", "rest", "back"):
+            raise ValueError(f'intent must be "out", "rest" or "back", got {intent!r}')
+        with self._lock:
+            self._cued = True
+            if intent == "back":
+                self._s_from = self._progress(self._pos)
+            self._set_intent(intent)
+
+    def _origin(self) -> np.ndarray:
+        return np.array(self.start_pos if self.reach_origin is None else self.reach_origin, dtype=float)
+
     def _progress(self, pos: np.ndarray) -> float:
         d = self._reach_vector()
-        return float((pos - np.array(self.start_pos)) @ d / (d @ d))
+        return float((pos - self._origin()) @ d / (d @ d))
 
     def _goal(self, t: float) -> np.ndarray:
         """Where the simulated person is aiming at time t (no state change)."""
-        start = np.array(self.start_pos)
+        start = self._origin()
         d = self._reach_vector()
         tau = t - self._intent_t0
         if self._intent == "out":
@@ -406,7 +423,7 @@ class SimArm:
                 was_hold = self._at_hold_stiffness()
                 self._k = self._k_pending[0]
                 self._k_pending = None
-                if was_hold and not self._at_hold_stiffness():
+                if self.auto_cue and was_hold and not self._at_hold_stiffness():
                     self._cue_reach()
             self._update_intent()
             if self._mode in ("compliant", "hold"):
