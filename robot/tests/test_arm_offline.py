@@ -618,3 +618,89 @@ def test_set_stiffness_still_passes_its_values_through_unchanged(arm):
     a.set_stiffness(200.0, 500.0, 500.0)
     time.sleep(0.2)
     assert robot.last("SetCartesianImpedance")[0][:3] == [200.0, 500.0, 500.0]
+
+
+# --------------------------------------------------------------------------- move_to(): home()'s ramp to another point
+
+class FollowingRobot(FakeRobot):
+    """A FakeRobot whose hand goes where the last target was sent."""
+
+    def SendCartesianMotionForce(self, pose, *a):
+        self.calls.append(("SendCartesianMotionForce", (list(pose), *a)))
+        self.pos, self.quat = list(pose[:3]), list(pose[3:7])
+
+
+def _move_arm(tmp_path):
+    from robot.arm import CONFIG_PATH
+    raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    raw["placeholders"] = [k for k in raw.get("placeholders", []) if k != "start_pose"]
+    raw["start_pose"] = {"tcp_pose": [*START, 0.0, 0.0, 1.0, 0.0], "q": None}
+    p = tmp_path / "config.json"
+    p.write_text(json.dumps(raw), encoding="utf-8")
+    a = Arm("Rizon4-TEST01", config_path=p)
+    robot = FollowingRobot()
+    a._attach(robot, FAKE_RDK, K_NOM)
+    return a, robot
+
+
+def test_move_to_ramps_in_a_straight_line_at_home_speed_and_keeps_the_box(tmp_path):
+    from robot.arm import HOME_SPEED, TICK_S
+    a, robot = _move_arm(tmp_path)
+    try:
+        goal = (START[0] - 0.10 if a.reach_axis == 0 else START[0], START[1] - (0.10 if a.reach_axis == 1 else 0.0), START[2])
+        a.move_to(goal)
+        sends = [args[0] for name, args in robot.calls if name == "SendCartesianMotionForce"]
+        assert len(sends) in (200, 201)                                 # 0.10 m at 0.05 m/s, 100 Hz
+        steps = [math.dist(p[:3], q[:3]) for p, q in zip(sends, sends[1:])]
+        assert 0.99 * HOME_SPEED * TICK_S <= min(steps) and max(steps) <= HOME_SPEED * TICK_S + 1e-9     # never faster
+        assert max(steps) == pytest.approx(min(steps), rel=1e-6)        # one continuous move, no stops
+        assert sends[-1][:3] == pytest.approx(goal) and all(s[3:7] == pytest.approx([0.0, 0.0, 1.0, 0.0]) for s in sends)
+        assert robot.last("SetCartesianImpedance")[0] == list(K_NOM)    # nominal stiffness, as home()
+        assert robot.last("SetMaxContactWrench")[0][0] == LIM.max_contact_n
+        assert a.get_state().mode == "idle"
+        assert a.start_pos == pytest.approx(START)                      # the box stays round the start pose
+        a.start_compliance()
+        assert a.start_pos == pytest.approx(START) and a.get_state().mode == "compliant"
+    finally:
+        a.close()
+
+
+def test_move_to_refuses_a_goal_outside_the_box_and_sends_nothing(tmp_path):
+    a, robot = _move_arm(tmp_path)
+    try:
+        for goal in ((START[0], START[1], START[2] + 0.15), (START[0] + 0.5, START[1] + 0.5, START[2]),
+                     (float("nan"), 0.0, 0.3)):
+            with pytest.raises(ValueError):
+                a.move_to(goal)
+        assert robot.count("SendCartesianMotionForce") == 0 and robot.count("SwitchMode") == 0
+    finally:
+        a.close()
+
+
+def test_hold_during_move_to_ends_it(tmp_path):
+    import threading
+    from robot.arm import HomeInterrupted
+    a, robot = _move_arm(tmp_path)
+    out = {}
+    goal = list(START)
+    goal[a.reach_axis] += 0.20
+
+    def run():
+        try:
+            a.move_to(goal)
+            out["result"] = "finished"
+        except Exception as e:      # noqa: BLE001
+            out["result"] = e
+    th = threading.Thread(target=run, daemon=True)
+    try:
+        th.start()
+        _wait_for_sends(robot, 100)
+        a.hold()
+        n = robot.count("SendCartesianMotionForce")
+        th.join(timeout=0.5)
+        assert not th.is_alive() and isinstance(out["result"], HomeInterrupted) and "move_to()" in str(out["result"])
+        time.sleep(0.1)
+        assert robot.count("SendCartesianMotionForce") == n and a.get_state().mode == "hold"
+        assert 0.04 < abs(robot.pos[a.reach_axis] - START[a.reach_axis]) < 0.08     # held part-way
+    finally:
+        a.close()

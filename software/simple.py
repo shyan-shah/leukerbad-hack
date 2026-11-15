@@ -118,6 +118,8 @@ def _tup3(a) -> tuple[float, float, float]:
 
 
 class BandEngine:
+    GROUP = "push"               # id prefix and app card. software/simple_more.py subclasses this for Row.
+
     def __init__(self, arm, session_id: str, patient_id: str, simulated: bool,
                  reach_axis: int = 0, reach_sign: int = 1, reach_m: float | None = None,
                  dial: float | None = None, auto: bool | None = None,
@@ -138,7 +140,7 @@ class BandEngine:
         self.arm = arm
         self.session_id, self.patient_id = str(session_id), str(patient_id)
         self.simulated = bool(simulated)
-        self.exercise = f"push_{lv}"
+        self.exercise = f"{self.GROUP}_{lv}"
         self.axis = int(reach_axis)
         self.sign = 1.0 if reach_sign >= 0 else -1.0
         self.reps_target = int(reps) if reps is not None else 10
@@ -290,7 +292,7 @@ class BandEngine:
             end[self.axis] += self.sign * REACH_M
             return d | {
                 "rep_count": self.rep_count, "auto": False, "arm_mode": self._arm_mode,
-                "exercise": self.exercise, "group": "push", "kind": "resist",
+                "exercise": self.exercise, "group": self.GROUP, "kind": "resist",
                 "level": self._level, "level_force_n": LEVELS[self._level],
                 "reps_target": self.reps_target, "done": self.done,
                 "message": self._message, "countdown_s": self._countdown,
@@ -536,7 +538,7 @@ class BandEngine:
             self._ramp = (self._k_now, LEVELS[req] / LEAD_M, t)
             with self._lock:
                 self._level = req
-                self.exercise = f"push_{req}"
+                self.exercise = f"{self.GROUP}_{req}"
         if self._ramp is not None:
             # RAMP_STEPS commands, LEVEL_RAMP_S / RAMP_STEPS apart: the arm applies a stiffness 50 to 200 ms
             # after the call and only the latest one, so sending every tick would end as one late step

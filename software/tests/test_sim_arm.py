@@ -361,3 +361,35 @@ def test_test_limits_restored_to_default(how):
 
 def test_set_test_limits_signature_matches_arm():
     assert inspect.signature(SimArm.set_test_limits) == inspect.signature(Arm.set_test_limits)
+
+
+# --------------------------------------------------------------------------- move_to (as robot.arm.Arm.move_to)
+
+def test_move_to_carries_the_handle_at_5_cm_per_s_and_hold_ends_it():
+    from software.sim_arm import MOVE_SPEED, SimArm
+    from software.sim_patient import SimPatient
+    arm = SimArm(SimPatient(), start_pos=(0.45, 0.0, 0.30), realtime=False)
+    arm.patient.present = False
+    arm.connect()
+    assert not arm.moving
+    arm.move_to((0.65, 0.0, 0.30))
+    assert arm.moving and arm.get_state().mode == "idle"
+    for _ in range(100):
+        arm.step(0.01)
+    st = arm.get_state()
+    assert st.pos[0] == pytest.approx(0.50, abs=1e-6) and st.vel[0] == pytest.approx(MOVE_SPEED)
+    for _ in range(310):
+        arm.step(0.01)
+    assert not arm.moving and arm.get_state().pos == pytest.approx((0.65, 0.0, 0.30)) and arm.get_state().vel[0] == 0.0
+    assert arm.start_pos == (0.45, 0.0, 0.30)                    # the box has not moved
+    arm.move_to((0.45, 0.0, 0.30))
+    for _ in range(100):
+        arm.step(0.01)
+    arm.hold()
+    assert not arm.moving and arm.get_state().mode == "hold"
+    here = arm.get_state().pos[0]
+    for _ in range(100):
+        arm.step(0.01)
+    assert arm.get_state().pos[0] == pytest.approx(here, abs=1e-3) and here == pytest.approx(0.60, abs=1e-3)
+    with pytest.raises(ValueError):
+        arm.move_to((0.45, 0.0, 0.50))                           # outside the box

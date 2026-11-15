@@ -101,6 +101,7 @@ __all__ = ["SimArm"]
 
 TICK_S = 0.01                    # realtime thread period, 100 Hz
 MAX_SUBSTEP_S = 0.005            # integration substep
+MOVE_SPEED = 0.05                # m/s, move_to() (robot.arm HOME_SPEED)
 STIFFNESS_LATENCY_S = 0.05       # set_stiffness takes effect after this (real arm: about 100 ms max)
 EMPTY_FORCE_REF_SPEED = 0.10     # m/s at which the moving empty-handle reading reaches its high value
 EMPTY_FORCE_ONSET_SPEED = 0.005  # m/s below which the moving reading fades linearly to zero
@@ -200,6 +201,7 @@ class SimArm:
 
         self._running = False
         self._thread: threading.Thread | None = None
+        self._move_goal: np.ndarray | None = None     # move_to() under way: the hand is carried there
 
     # ------------------------------------------------------------------ connection and setup
 
@@ -242,6 +244,38 @@ class SimArm:
             self._vel = np.zeros(3)
             self._target = self._pos.copy()
 
+    @property
+    def moving(self) -> bool:
+        """True while a move_to() is under way."""
+        return self._move_goal is not None
+
+    def move_to(self, pos) -> None:
+        """Like robot.arm.Arm.move_to: the handle is carried in a straight line to `pos` at MOVE_SPEED
+        (0.05 m/s, position-controlled: a hand on it does not stop it, but its force is read). Leaves mode
+        "idle". hold(), stop() and start_compliance() end the move where it is.
+        realtime=True: blocks until the move is over and raises RuntimeError if it was ended early.
+        realtime=False: returns at once; step() carries the handle, `moving` tells when it is done."""
+        self._require_connected()
+        goal = np.array([float(v) for v in pos], dtype=float).reshape(3)
+        if not np.all(np.isfinite(goal)):
+            raise ValueError(f"move_to() needs 3 finite numbers, got {pos!r}")
+        half = np.array(self.limits.box_half_m, dtype=float)
+        if np.any(np.abs(goal - np.array(self.start_pos)) > half + 1e-9):
+            raise ValueError(f"move_to() goal {tuple(goal)} is outside the workspace box around {self.start_pos}")
+        with self._lock:
+            self._k_pending = None
+            self._test_limits_on = False
+            self._mode = "idle"
+            self._vel = np.zeros(3)
+            self._move_goal = goal
+        if not self.realtime:
+            return
+        while self.moving:
+            time.sleep(TICK_S)
+        with self._lock:
+            if float(np.linalg.norm(self._pos - goal)) > 1e-3:
+                raise RuntimeError(f"move_to() interrupted; arm mode is {self._mode!r}")
+
     # ------------------------------------------------------------------ limits: default and test profile (as robot.arm.Arm)
 
     @property
@@ -276,6 +310,7 @@ class SimArm:
         """Hold the current pose at k_hold and accept commands. Re-arms after a trip."""
         self._require_connected()
         with self._lock:
+            self._move_goal = None
             self._test_limits_on = False
             self._k_pending = None
             self._k = np.full(3, float(self.limits.k_hold))
@@ -334,6 +369,7 @@ class SimArm:
             self._hold_locked()
 
     def _hold_locked(self) -> None:
+        self._move_goal = None            # a move_to() ends where it is
         self._test_limits_on = False      # hold, trip, close: back to the default profile
         self._k_pending = None
         self._target = self._pos.copy()
@@ -348,6 +384,7 @@ class SimArm:
     def stop(self) -> None:
         """Hard stop: the hand is frozen in place, mode "idle"."""
         with self._lock:
+            self._move_goal = None
             self._test_limits_on = False
             self._k_pending = None
             self._vel = np.zeros(3)
@@ -539,6 +576,14 @@ class SimArm:
                     v = np.zeros(3) if speed <= dv else v * (1.0 - dv / speed)
                 self._vel = v
                 self._pos = self._pos + self._vel * h
+            elif self._move_goal is not None:  # move_to(): carried at MOVE_SPEED, whatever presses on it
+                d = self._move_goal - self._pos
+                dist = float(np.linalg.norm(d))
+                if dist <= MOVE_SPEED * h:
+                    self._pos, self._vel, self._move_goal = self._move_goal.copy(), np.zeros(3), None
+                else:
+                    self._vel = d / dist * MOVE_SPEED
+                    self._pos = self._pos + self._vel * h
             else:  # idle (before compliance or after stop): the robot holds the hand still
                 self._vel = np.zeros(3)
             self._t += h

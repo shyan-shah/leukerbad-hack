@@ -499,7 +499,42 @@ class Arm:
         if self.config.is_placeholder("start_pose"):
             raise RuntimeError("start_pose in robot/config.json is a placeholder; record it in K0/K4 first")
         goal_pos = self.config.start_tcp_pose[:3]
-        goal_quat = _normalize(self.config.start_tcp_pose[3:7])
+        goal_quat = self._ramp_to(goal_pos, _normalize(self.config.start_tcp_pose[3:7]), "home()", "start pose")
+        self.start_pos = tuple(float(v) for v in goal_pos)  # type: ignore[assignment]
+        self.start_quat = tuple(goal_quat)  # type: ignore[assignment]
+
+    def move_to(self, pos: Sequence[float]) -> None:
+        """Slow straight-line move of the handle to `pos` (base frame). Nobody holding. Blocking.
+
+        The same ramp as home(): HOME_SPEED (0.05 m/s), nominal stiffness, interruptible by hold() or
+        stop() from another thread (raises HomeInterrupted), leaves mode "idle". The orientation is the
+        one the arm holds (start_quat; the current one if there is none yet). `pos` must lie inside the
+        workspace box around the start pose (start_pos; the start pose from robot/config.json before
+        start_pos is set, which then becomes start_pos). start_pos is not moved: the box stays where it is.
+        """
+        self._require_connected()
+        goal = tuple(float(v) for v in pos)
+        if not _finite3(goal):
+            raise ValueError(f"move_to() needs 3 finite numbers, got {pos!r}")
+        ref = self.start_pos
+        if ref is None:
+            if self.config.is_placeholder("start_pose"):
+                raise RuntimeError("move_to() before the start pose is known: home() or start_compliance() first")
+            ref = tuple(float(v) for v in self.config.start_tcp_pose[:3])
+        for i, (g, r, h) in enumerate(zip(goal, ref, self.limits.box_half_m)):
+            if abs(g - r) > h + 1e-9:
+                raise ValueError(f"move_to() goal is {abs(g - r) * 100:.1f} cm from the start pose on axis "
+                                 f"{'xyz'[i]}, outside the workspace box ({h * 100:.0f} cm)")
+        quat = self._ramp_to(goal, self.start_quat, "move_to()", "goal")
+        if self.start_pos is None:
+            self.start_pos = ref  # type: ignore[assignment]
+        if self.start_quat is None:
+            self.start_quat = tuple(quat)  # type: ignore[assignment]
+
+    def _ramp_to(self, goal_pos: Sequence[float], goal_quat: Sequence[float] | None, what: str,
+                 name: str) -> tuple[float, ...]:
+        """The move behind home() and move_to(). `goal_quat` None keeps the orientation the arm has now.
+        Returns the goal orientation used."""
         with self._lock:
             self._test_limits_on = False     # _enter_cartesian() below sends the default contact limit
             self._gen += 1
@@ -511,7 +546,9 @@ class Arm:
             p0, q0, *_ = self._read()
             dist = math.dist(p0, goal_pos)
             if dist > HOME_MAX_DISTANCE:
-                raise RuntimeError(f"start pose is {dist:.2f} m away; jog closer before home()")
+                raise RuntimeError(f"{name} is {dist:.2f} m away; jog closer before {what}")
+            if goal_quat is None:
+                goal_quat = q0
             # From here until the move ends, any hold(), stop(), trip, fault or other mode change
             # bumps _gen. The loop below checks that under the lock before every target it sends.
             my_gen = self._home_gen = self._gen
@@ -524,10 +561,10 @@ class Arm:
             for i in range(1, n + settle + 1):
                 with self._lock:
                     if self._gen != my_gen:     # checked and sent under one lock: nothing is streamed after a hold
-                        raise HomeInterrupted(f"home() interrupted after {min(i - 1, n)} of {n} steps; "
+                        raise HomeInterrupted(f"{what} interrupted after {min(i - 1, n)} of {n} steps; "
                                               f"arm mode is {self._mode!r}")
                     if self._robot.fault():
-                        self._mode, self._fault = "fault", "robot fault during home()"
+                        self._mode, self._fault = "fault", f"robot fault during {what}"
                         raise RuntimeError(self._fault)
                     if i <= n:                  # after the ramp: 1 s to settle, still interruptible
                         a = i / n
@@ -543,9 +580,8 @@ class Arm:
             p_end, *_ = self._read()
         err = math.dist(p_end, goal_pos)
         if err > 0.02:
-            raise RuntimeError(f"home() ended {err * 100:.1f} cm from the start pose")
-        self.start_pos = tuple(float(v) for v in goal_pos)  # type: ignore[assignment]
-        self.start_quat = tuple(goal_quat)  # type: ignore[assignment]
+            raise RuntimeError(f"{what} ended {err * 100:.1f} cm from the {name}")
+        return tuple(goal_quat)
 
     def start_compliance(self) -> None:
         """Enter Cartesian mode holding the current pose at k_hold; records start_pos.
