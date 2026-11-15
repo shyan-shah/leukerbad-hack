@@ -3,7 +3,7 @@
 Presets live in `software/exercises.py` (`EXERCISES`, `LIVE`); the engine applies one with
 `Engine(..., exercise="<id>", reps=None)`. The app ids are those of `context/EXERCISE_MAP.md`.
 All numbers are team-chosen starting values, not clinical prescriptions. Everything below was
-tested on `SimArm` only (`software/tests/test_exercises.py`, 39 tests, reach along x and along y as in Layout B; `software/tests/test_real_arm_effects.py`, 153 tests with the real arm's friction and force-reading errors simulated); nothing here has run on the real arm yet.
+tested on `SimArm` only (`software/tests/test_exercises.py`, 39 tests, reach along x and along y as in Layout B; `software/tests/test_real_arm_effects.py`, 178 tests with the real arm's friction and force-reading errors simulated); nothing here has run on the real arm yet.
 
 `LIVE = ("reach", "push", "pull", "armtest")`. `circle` is implemented but not live.
 
@@ -131,7 +131,7 @@ Now `start()` puts **any** exercise into `setup` when the handle is more than 3 
 
 ## Telling a hand from an empty handle (15 Nov)
 
-The arm has no wrist sensor. On 14 Nov the reading with nothing on the flange changed by up to 3 N with pose (0.7 to 3.2 N) and read 3 to 7 N while the arm moved. With the old rule (over 1.5 N = a hand) a moving empty handle counts as held: in the sim an empty handle was carried 12 to 18 cm on the assist side, a let-go in push tripped the speed limit, and a pull never left setup.
+The arm has no wrist sensor. On 14 Nov the reading with nothing on the flange changed by up to 3 N with pose (0.7 to 3.2 N) and read 3 to 7 N while the arm moved. On 15 Nov (Shyan, `server/hw/results/drift_check_2026-11-15.json`: zeroed at the start pose, 0.30 m along the reach at 5 cm/s and nominal stiffness) it read 0.04 to 2.76 N standing, mostly sideways and down (across the reach), at most 3.39 N while moving, and 0.95 N back at the start. With the old rule (over 1.5 N = a hand) a moving empty handle counts as held: in the sim an empty handle was carried 12 to 18 cm on the assist side, a let-go in push tripped the speed limit, and a pull never left setup.
 
 | Constant (`software/engine.py`) | Value | Meaning |
 |---|---|---|
@@ -153,9 +153,9 @@ The arm has no wrist sensor. On 14 Nov the reading with nothing on the flange ch
 
 **What a person has to do to count as "on the handle":** rest or press with more than 4.5 N in any direction while still, and while moving with more than 4.5 N across the motion or more than 11.5 N along it. The simulated limb rests 8 N on the handle (5.7 N for a strong patient who half-carries their own arm), so the sim passes with 1.2 to 3.5 N to spare. **Whether a real relaxed hand reads over 4.5 N is not known.**
 
-### Measured in the sim with the effects on (`software/tests/test_real_arm_effects.py`, 153 tests)
+### Measured in the sim with the effects on (`software/tests/test_real_arm_effects.py`, 178 tests)
 
-SimArm options, all off by default: `empty_force_pose_n_per_m`, `empty_force_moving_n` (with `empty_force_moving_dir`: `"against"` the motion, `"with"` it, or a fixed direction), `friction_n`. "Real" below = 3 N across the reach, 3 to 7 N against the motion, 4.5 N friction; "noise" adds 0.3 N sensor noise and 200 ms stiffness latency.
+SimArm options, all off by default: `empty_force_pose_n_per_m`, `empty_force_moving_n` (with `empty_force_moving_dir`: `"against"` the motion, `"with"` it, or a fixed direction), `friction_n`. "Real" below = 3 N over the length of the reach, 3 to 7 N against the motion, 4.5 N friction; "noise" adds 0.3 N sensor noise and 200 ms stiffness latency. A sixth set ("real-across": the pose reading pointing sideways and down, as measured on 15 Nov, plus noise) gives the same results as "Real + noise" in every row.
 
 | Check | Effects off | Readings only (no friction) | Friction only | Real | Real + noise |
 |---|---|---|---|---|---|
@@ -175,7 +175,7 @@ SimArm options, all off by default: `empty_force_pose_n_per_m`, `empty_force_mov
 
 ### Limits (say these out loud)
 
-1. **Direction of the moving reading.** The rule assumes it lies along the motion (either sign). If it points **across** the motion, an empty handle reads as held: in the sim it was carried 19 cm (limit 8 cm) and a let-go in push tripped the speed limit, as with the old rule (`test_known_limit_a_moving_reading_across_the_motion_defeats_the_rule`). No threshold fixes that without also dropping real hands; it would need a calibration sweep of the empty arm or a better tool model.
+1. **Direction of the moving reading.** At 5 cm/s the real reading stayed under 3.4 N in total (15 Nov), which is under the 4.5 N threshold whatever its direction, so at that speed the rule holds on the real numbers. At rep speed (14 cm/s) it has not been measured; 14 Nov saw up to 7 N at 10 cm/s. The rule assumes the part above 4.5 N lies along the motion (either sign). If it points **across** the motion, an empty handle reads as held: in the sim it was carried 19 cm (limit 8 cm) and a let-go in push tripped the speed limit, as with the old rule (`test_known_limit_a_moving_reading_across_the_motion_defeats_the_rule`). No threshold fixes that without also dropping real hands; it would need a calibration sweep of the empty arm or a better tool model.
 2. **A reading with the motion** (the arm appears to be pushed along): reach, push and pull behave the same (7.6 cm), but with no friction in the sim, armtest tries by a strong simulated patient were cut short as let-gos (their limb reads 5.7 N, and the reading jitters as the handle settles); with friction on they completed. Rep metrics are also inflated: a limp arm scored 0.86 contribution and the auto dial fell to +0.4.
 3. **Very weak patients and friction.** Someone who cannot push 4.5 N cannot slide the handle when the reach axis is free: they cannot do setup, push or pull (sim: strength under 0.2 stalls). The operator moves the handle for them, or they do `reach` only.
 4. **Force numbers include the arm's own reading error**, up to 7 N while moving. Peak force in push and pull is that much uncertain; armtest is read near standstill, so it is off by the pose change only (up to 3 N).

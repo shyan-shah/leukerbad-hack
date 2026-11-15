@@ -19,7 +19,8 @@ from software.sim_patient import SimPatient
 
 START = (0.45, 0.0, 0.30)
 POSE = (10.0, 0.0, 0.0)          # N/m: 3 N across a 0.30 m reach, along the reach axis
-POSE_Z = (0.0, 0.0, 10.0)        # the same size, across the reach
+POSE_ACROSS = (0.0, -6.5, -7.5)  # N/m: 3 N across the reach, lying across it (sideways and down), as measured on
+                                 # 15 Nov (server/hw/results/drift_check_2026-11-15.json: up to 2.76 N, mostly y and z)
 MOVING = (3.0, 7.0)              # N while moving
 FRICTION = 4.5                   # N
 REAL = dict(empty_force_pose_n_per_m=POSE, empty_force_moving_n=MOVING, friction_n=FRICTION)
@@ -150,8 +151,10 @@ def test_bad_real_arm_options_rejected():
 # Option sets used below. NOISY adds sensor noise and the slowest stiffness latency seen.
 
 NOISY = REAL | dict(force_noise_n=0.3, stiffness_latency_s=0.2)
-SETS = {"off": {}, "artefact": ARTEFACT_ONLY, "friction": dict(friction_n=FRICTION), "real": REAL, "real+noise": NOISY}
-EFFECT_SETS = ["artefact", "friction", "real", "real+noise"]
+ACROSS = NOISY | dict(empty_force_pose_n_per_m=POSE_ACROSS)       # pose reading across the reach, like the real arm
+SETS = {"off": {}, "artefact": ARTEFACT_ONLY, "friction": dict(friction_n=FRICTION), "real": REAL, "real+noise": NOISY,
+        "real-across": ACROSS}
+EFFECT_SETS = ["artefact", "friction", "real", "real+noise", "real-across"]
 
 
 # --------------------------------------------------------------------------- the hand-force rule itself
@@ -210,6 +213,10 @@ def test_start_is_not_refused_on_a_prepared_arm_anywhere_on_the_reach(exercise, 
     if at == "far":
         arm._pos[0] += 0.30
         assert np.linalg.norm(arm._empty_force() - arm._zero_ref) == pytest.approx(3.0)
+        across = sim(**ACROSS)
+        across._pos[0] += 0.30
+        assert np.linalg.norm(across._empty_force()) == pytest.approx(2.98, abs=0.01)
+        assert across._empty_force()[0] == 0.0
     eng = Engine(arm, "s", "p", True, exercise=exercise)
     eng.start()                                                      # no RuntimeError
     assert 0.0 <= np.linalg.norm(eng.force_baseline) < 3.5
