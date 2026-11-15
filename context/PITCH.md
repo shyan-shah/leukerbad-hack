@@ -86,3 +86,20 @@ We built this in 48 hours. Here it is working.
 | 1:38-1:48 | Strength test, number on the phone | "It measures how hard she can push. On this prototype we cap that at 30 newtons for safety." |
 | 1:48-1:56 | Physio screen | "Her physio sees every repetition. Today's session is real. The history behind it is simulated." |
 | 1:56-2:00 | Logo | "Vita. A research prototype, ready for its first pilot." |
+
+## Film v2 (15 Nov, 21:00): matches the final scope (Push with 4 levels; other motions only if they work on the arm)
+
+| Time | Shot | Voice-over |
+|---|---|---|
+| 0:00-0:15 | Montage: Leukerbad, the team at the arm, the handle print timelapse, the first movement. Caption "Built in 48 hours at the Leukerbad Robot Carnival" | "Friday we had an idea and a robot arm. This is Monday." |
+| 0:15-0:25 | The patient sits down and taps the phone on the NFC tag; the app opens with the plan | "This is a Vita station. One tap, and the plan loads." |
+| 0:25-0:35 | Phone close-up: Push, Level 1 chosen, Start, "hands off" countdown | "The specialist sets the exercise. The patient picks it up where they left off." |
+| 0:35-1:00 | Push at Level 1, 4 to 5 reps; the big screen and the phone counting together, 3D figure following the handle | "The arm pushes back like an elastic band. Every repetition is counted and measured: how far, and how hard." |
+| 1:00-1:20 | Tap Level 3 on the phone; 3 reps, visibly more effort; force bar higher | "Stronger today? One tap and the same arm gives more resistance." |
+| 1:20-1:30 | Set ends; hands off; the arm returns to the start by itself | "When the set ends, the arm resets itself for the next exercise." |
+| 1:30-1:45 | Physio screen: today's reps and forces, the session note, history chart labelled SIMULATED | "The physio sees every repetition. Today's session is real. The history behind it is simulated." |
+| 1:45-2:00 | Wide shot of the station, logo | "Vita. A research prototype, ready for its first pilot." |
+
+Optional inserts, only if they run cleanly on the real arm (each replaces 10 s of the Level 1 reps): Row ("the same arm, pulling instead of pushing"), guided reach ("for a weak arm, it does the moving"), strength test ("it measures how hard you can push").
+
+Not in the film any more: the dial falling by itself, the let-go stop, the comfortable-push calibration.
