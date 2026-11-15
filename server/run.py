@@ -5,16 +5,26 @@
   python -m server.run --robot [SERIAL]     Shiv's engine on the real Flexiv (serial from robot/config.json if omitted)
 
 Options: --strength 0.2 (simulated patient), --port 8000, --lan (reachable from other devices,
-control routes then need the printed operator token), --db, --no-export.
-Ctrl+C or any crash: the arm is put in hold, then closed.
+control routes then need the printed operator token), --db, --no-export,
+--reach-m 0.30 and --reach-sign 1|-1 (the reach line; the sign defaults to "reach_sign" in
+robot/config.json, else +1), --tool Flange (--robot: the tool that must be selected on the robot).
+
+--robot never clears faults or enables the robot (server/hw/checked_arm.py): it refuses to
+connect unless the arm is fault-free, operational, in IDLE and has the expected tool selected.
+
+Stopping: Ctrl+C, or `curl -X POST http://127.0.0.1:8000/api/shutdown` from this laptop. Both stop
+the session, put the arm in hold, then close it (nominal stiffness restored, robot stopped).
+Do NOT kill the process or close its window: that leaves the soft stiffness on the robot.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import secrets
 import socket
 import sys
 from functools import partial
+from pathlib import Path
 
 import uvicorn
 
@@ -34,6 +44,26 @@ def _lan_ip() -> str:
         return "127.0.0.1"
 
 
+ROBOT_CONFIG = Path(__file__).resolve().parents[1] / "robot" / "config.json"
+
+
+def config_reach(path: Path | None = None) -> tuple[int, int]:
+    """(reach_axis, reach_sign) from robot/config.json. Sign is +1 unless the file has "reach_sign": -1."""
+    try:
+        raw = json.loads(Path(path or ROBOT_CONFIG).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0, 1
+    return int(raw.get("reach_axis", 0)), (-1 if float(raw.get("reach_sign", 1)) < 0 else 1)
+
+
+def reach_kwargs(a: argparse.Namespace) -> dict:
+    """Engine keyword arguments for the reach line (reach_axis is taken from the arm by the API)."""
+    kw = {"reach_sign": a.reach_sign if a.reach_sign is not None else config_reach()[1]}
+    if a.reach_m is not None:
+        kw["reach_m"] = a.reach_m
+    return kw
+
+
 def build(a: argparse.Namespace):
     """Return (arm_factory, engine_factory or None, label)."""
     if a.mock:
@@ -47,12 +77,14 @@ def build(a: argparse.Namespace):
         except ImportError as e:
             sys.exit(f"--sim needs Shiv's software/ (sim_arm, sim_patient, engine): {e}. Use --mock meanwhile.")
         return (lambda: SimArm(SimPatient(strength=a.strength))), None, "SIM (SIMULATED)"
-    from robot.arm import Arm
+    from .hw.checked_arm import CheckedArm   # connect() never clears faults or enables
     try:
         import software.engine  # noqa: F401
     except ImportError as e:
         sys.exit(f"--robot needs software/engine.py: {e}")
-    return ((lambda: Arm(a.robot)) if a.robot else Arm.from_config), None, "REAL ROBOT"
+    if a.robot:
+        return (lambda: CheckedArm(a.robot, tool=a.tool)), None, "REAL ROBOT"
+    return (lambda: CheckedArm.from_config(tool=a.tool)), None, "REAL ROBOT"
 
 
 def main(argv=None) -> None:
@@ -68,21 +100,40 @@ def main(argv=None) -> None:
     ap.add_argument("--token", default=None, help="operator token for --lan (random if omitted)")
     ap.add_argument("--db", default=db.DEFAULT_PATH)
     ap.add_argument("--no-export", action="store_true", help="do not rewrite server/exports after sessions")
+    ap.add_argument("--reach-m", type=float, default=None,
+                    help="reach length in metres (default: the engine's 0.30)")
+    ap.add_argument("--reach-sign", type=int, choices=(1, -1), default=None,
+                    help='direction of the reach along the reach axis (default: "reach_sign" in '
+                         "robot/config.json, else +1)")
+    ap.add_argument("--tool", default="Flange",
+                    help="--robot: tool that must be selected on the robot (default Flange = nothing mounted)")
     a = ap.parse_args(argv)
+    if a.reach_m is not None and not 0.02 <= a.reach_m <= 0.35:
+        ap.error("--reach-m must be between 0.02 and 0.35 m (the workspace box is 0.35 m along the reach)")
 
     arm_factory, engine_factory, label = build(a)
     token = (a.token or secrets.token_urlsafe(6)) if a.lan else None
+    engine_kwargs = reach_kwargs(a)
     app = create_app(arm_factory, a.db, engine_factory=engine_factory,
-                     exports_dir=None if a.no_export else DEFAULT_OUT, control_token=token)
+                     exports_dir=None if a.no_export else DEFAULT_OUT, control_token=token,
+                     engine_kwargs=engine_kwargs)
     host = "0.0.0.0" if a.lan else "127.0.0.1"
+    server = uvicorn.Server(uvicorn.Config(app, host=host, port=a.port, log_level="warning"))
+    app.state.request_exit = lambda: setattr(server, "should_exit", True)   # used by POST /api/shutdown
     print(f"\n  Rehab station server: {label}")
+    if not a.mock:
+        axis = config_reach()[0] if a.robot is not None else 0
+        print(f"  Reach      axis {'xyz'[axis]}, sign {engine_kwargs['reach_sign']:+d}, "
+              f"length {engine_kwargs.get('reach_m', 0.30):.2f} m"
+              + (f"   (tool must be {a.tool})" if a.robot is not None else ""))
     print(f"  API        http://127.0.0.1:{a.port}/api/health")
     print(f"  Live feed  ws://127.0.0.1:{a.port}/ws/live    (terminal view: python -m server.watch)")
     if a.lan:
         print(f"  On the LAN http://{_lan_ip()}:{a.port}   operator token for control routes: {token}")
-    print("  Ctrl+C holds then closes the arm.\n", flush=True)
+    print(f"  Stop       Ctrl+C here, or: curl -X POST http://127.0.0.1:{a.port}/api/shutdown")
+    print("  Both hold then close the arm. Never kill this process or close the window.\n", flush=True)
     try:
-        uvicorn.run(app, host=host, port=a.port, log_level="warning")
+        server.run()
     finally:
         app.state.hub.shutdown()   # idempotent; covers crashes outside the lifespan
 

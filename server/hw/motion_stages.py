@@ -1,11 +1,12 @@
 """Staged first-motion test (stages 1 to 4) on top of robot/arm.py. MOVES THE ARM.
 
-    python -m server.hw.motion_stages <1|2|3|4> [--serial Rizon4-062157] [--sim] [--force-trip]
+    python -m server.hw.motion_stages <1|2|3|4> [--serial Rizon4-062157] [--axis x|y] [--sim] [--force-trip]
 
   1  HOLD        5 s at nominal stiffness, expect no motion (pass: drift under 2 mm)
   2  TINY MOVE   2 cm towards the base at 0.03 m/s and back, 600 N/m (pass: ends within 3 mm)
   3  SOFT HOLD   20 s at 300 N/m; push the flange about 2 cm by hand and let go (pass: back within 5 mm)
-  4  FREE AXIS   20 s with 0 N/m on the world axis closest to "towards base", 500 N/m on the others
+  4  FREE AXIS   20 s with 0 N/m on the reach axis (reach_axis in robot/config.json, or --axis x|y),
+                 500 N/m on the others; slide it by hand
 
 Safety, enforced here on top of Arm's own clamps, trips and watchdog:
   - never calls Enable() or ClearFault(); aborts unless no fault, operational, IDLE, tool Flange
@@ -31,7 +32,7 @@ import threading  # noqa: E402
 import time  # noqa: E402
 
 from robot.arm import Limits  # noqa: E402
-from server.hw._common import attach_arm, connect_checked, flag, out_dir, positional, sim_arm  # noqa: E402
+from server.hw._common import attach_arm, connect_checked, flag, option, out_dir, positional, sim_arm  # noqa: E402
 
 TRIP_SPEED = 0.25      # m/s
 TRIP_DFORCE = 25.0     # N from baseline
@@ -51,7 +52,7 @@ def norm(v):
     return math.sqrt(sum(x * x for x in v))
 
 
-def run(stage: int, sim: bool, force_trip: bool) -> dict:
+def run(stage: int, sim: bool, force_trip: bool, axis: str | None = None) -> dict:
     cfg = STAGE_CFG[stage]
     limits = Limits(k_max=cfg["k_max"], k_hold=cfg["k_hold"], max_lead_m=0.05,
                     max_linear_vel=0.05, max_linear_acc=0.3, trip_speed=TRIP_SPEED, trip_force=40.0,
@@ -94,7 +95,8 @@ def run(stage: int, sim: bool, force_trip: bool) -> dict:
         p0 = arm.get_state().pos
         r = math.hypot(p0[0], p0[1])
         to_base = (-p0[0] / r, -p0[1] / r, 0.0)
-        free_axis = 0 if abs(to_base[0]) >= abs(to_base[1]) else 1
+        # stage 4 frees the session's reach axis (robot/config.json), not "towards base"
+        free_axis = "xy".index(axis) if axis else int(getattr(arm, "reach_axis", 0))
         print(f"start pos {[round(v, 4) for v in p0]}  baseline force {[round(v, 2) for v in base]} N "
               f"(|F| {norm(base):.2f})  towards-base {[round(v, 3) for v in to_base]}")
         result.update(start_pos=p0, baseline=base, to_base=to_base)
@@ -236,9 +238,20 @@ def analyse(stage: int, rows: list, result: dict) -> None:
         tail = [d for d, tt in zip(dist, t) if tt > t[-1] - 1.0]
         end_mm = sum(tail) / len(tail) * 1000
         ratio = fpk / (k * dpk) if dpk > 1e-4 else float("nan")
+        # per axis: N per m at the peak (only where that axis moved over 5 mm), and where it ended
+        d_pk = [P[i][j] - start[j] for j in range(3)]
+        n_tail = max(1, len(tail))
+        end_axis_mm = [sum(p[j] - start[j] for p in P[-n_tail:]) / n_tail * 1000 for j in range(3)]
+        k_axis = [abs(F[i][j] / d_pk[j]) if abs(d_pk[j]) > 0.005 else None for j in range(3)]
         result.update(peak_disp_mm=dpk * 1000, force_at_peak=fpk, expected_force=k * dpk, ratio=ratio,
-                      peak_force=max(norm(f) for f in F), end_mm=end_mm)
+                      peak_force=max(norm(f) for f in F), end_mm=end_mm,
+                      peak_disp_axis_mm=[v * 1000 for v in d_pk], force_at_peak_axis=list(F[i]),
+                      n_per_m_axis=k_axis, end_axis_mm=end_axis_mm)
         result["pass"] = ok and end_mm < 5.0
+        print("STAGE 3 per axis (x, y, z): displacement at peak "
+              f"{[round(v * 1000, 1) for v in d_pk]} mm; force there {[round(v, 2) for v in F[i]]} N; "
+              f"measured N/m {[None if v is None else round(v) for v in k_axis]} (commanded {k:.0f}); "
+              f"return error {[round(v, 2) for v in end_axis_mm]} mm")
         print(f"STAGE 3: peak displacement {dpk * 1000:.1f} mm at t={t[i]:.1f} s; force there {fpk:.2f} N vs "
               f"k*d = {k * dpk:.2f} N (ratio {ratio:.2f}); peak force {result['peak_force']:.2f} N; "
               f"end {end_mm:.2f} mm from start (pass < 5 mm) -> {'PASS' if result['pass'] else 'FAIL'}")
@@ -256,8 +269,7 @@ def analyse(stage: int, rows: list, result: dict) -> None:
         print(f"STAGE 4: free axis {result['free_axis']}; travel {result['free_travel_min_mm']:.1f} .. "
               f"{result['free_travel_max_mm']:.1f} mm; drag while moving mean {result['drag_mean_n']} N peak "
               f"{result['drag_peak_n']} N; other axes max {result['other_axes_max_mm']:.1f} mm; ended at "
-              f"{result['end_free_mm']:.1f} mm; towards-base sign on this axis: "
-              f"{'-' if u[ax] < 0 else '+'} -> {'PASS' if result['pass'] else 'FAIL (tripped)'}")
+              f"{result['end_free_mm']:.1f} mm -> {'PASS' if result['pass'] else 'FAIL (tripped)'}")
 
 
 def main() -> int:
@@ -265,7 +277,11 @@ def main() -> int:
     if not pos or pos[0] not in ("1", "2", "3", "4"):
         print(__doc__)
         return 1
-    result = run(int(pos[0]), flag("--sim"), flag("--force-trip"))
+    axis = option("--axis")
+    if axis not in (None, "x", "y"):
+        print("--axis must be x or y")
+        return 1
+    result = run(int(pos[0]), flag("--sim"), flag("--force-trip"), axis)
     return 0 if result.get("tripped") is None else 6
 
 

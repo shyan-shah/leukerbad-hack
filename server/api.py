@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -62,6 +62,7 @@ class DialBody(BaseModel):
     auto: bool | None = None
 
 
+LOCAL_CLIENTS = ("127.0.0.1", "::1", "localhost", "testclient")   # "testclient": FastAPI's TestClient
 PREPARE_SAMPLES = 30        # get_state() readings averaged for the empty-handle force
 PREPARE_SAMPLE_DT = 0.01    # s between readings
 
@@ -109,6 +110,7 @@ class Hub:
         self.pending: list[dict] = []
         self.pending_lock = threading.Lock()
         self.clients: set[WebSocket] = set()
+        self.closed = False                     # shutdown() has held and closed the arm
 
     # -- engine callbacks (engine thread): must be fast
     def on_sample(self, s: Sample) -> None:
@@ -175,12 +177,14 @@ class Hub:
         try:
             self.stop_session()
         finally:
-            if self.arm is not None:
+            if self.arm is not None and not self.closed:
+                self.closed = True
                 for m in ("hold", "close"):
                     try:
                         getattr(self.arm, m, lambda: None)()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"[api] arm.{m}() raised during shutdown: {e!r}", flush=True)
+                print("[api] arm held and closed", flush=True)
 
     async def broadcast_loop(self) -> None:
         while True:
@@ -218,7 +222,7 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     arm_factory()      -> arm object (connected on first session start)
     engine_factory(**) -> engine with the MASTER_PLAN 4.4 interface (default software.engine.Engine)
     exports_dir        -> if set, exports are rewritten after every session stop
-    control_token      -> if set, POST start/stop/dial/go and arm/prepare need header `x-operator-token`.
+    control_token      -> if set, POST start/stop/dial/go, arm/prepare and shutdown need header `x-operator-token`.
                           /api/hold never does.
     """
     conn = db.connect(db_path)
@@ -298,7 +302,10 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
         with hub.ctl_lock:
             if hub.session is not None:
                 raise HTTPException(409, "a session is already running; stop it first")
-            arm = hub.get_arm()
+            try:
+                arm = hub.get_arm()
+            except Exception as e:
+                raise HTTPException(503, f"arm not connected: {e}")
             sim = hub.simulated
             if not sim and not hub.prepared:
                 raise HTTPException(409, "prepare the arm first: POST /api/arm/prepare with nobody "
@@ -357,6 +364,21 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     def hold():
         hub.hold()
         return {"ok": True, "arm": None if hub.arm is None else "held"}
+
+    @app.post("/api/shutdown")
+    def shutdown(request: Request, x_operator_token: str | None = Header(default=None)):
+        """Clean exit, from this laptop only: stop the session, then let the server exit so the arm is
+        put in hold and closed (nominal stiffness restored). Same end state as Ctrl+C."""
+        host = request.client.host if request.client else ""
+        if host not in LOCAL_CLIENTS:
+            raise HTTPException(403, "shutdown is only accepted from the laptop running the server")
+        guard(x_operator_token)
+        request_exit = getattr(app.state, "request_exit", None)
+        if request_exit is None:
+            raise HTTPException(501, "this server was not started by server.run; stop it with Ctrl+C")
+        s = hub.stop_session()
+        request_exit()      # uvicorn leaves its loop; the lifespan then runs hub.shutdown()
+        return {"ok": True, "stopped_session": None if s is None else s.session_id}
 
     @app.post("/api/go")
     def go(x_operator_token: str | None = Header(default=None)):

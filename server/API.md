@@ -113,11 +113,14 @@ Field meanings are the same as in `server/exports/README.md` (range of motion, p
 | `/api/dial` | `{"dial": 0.4, "auto": false}` | sets the dial by hand (`auto: false`) or hands it back to auto (`auto: true`) |
 | `/api/hold` | none | soft stop of the arm, any time |
 | `/api/go` | none | only used if the arm cannot tell when the handle is held; may return 501 |
+| `/api/shutdown` | none | **from the arm laptop only.** Stops any session, then the server exits cleanly: the arm is put in hold and closed (its normal stiffness restored). Returns `{"ok": true, "stopped_session": "..." or null}`. 403 from any other device. Use this (or Ctrl+C) instead of closing the server window |
 | `/api/arm/prepare` | none | **real arm only, nobody touching the handle.** Checks the arm is connected and has no fault, zeroes the force reading, and returns the empty-handle force. Needed once after the server starts, before the first real session; safe to repeat between sessions |
 
 Errors are JSON with a `detail` field: 409 `{"detail": "no session running"}` or "a session is already running", 404 for unknown ids, 422 for a bad body (for example dial above 1).
 
-**Starting can be refused (409).** Show the `detail` text to the operator; nothing is running afterwards.
+**Starting can be refused (409 or 503).** Show the `detail` text to the operator; nothing is running afterwards.
+
+- 503 `"arm not connected: arm not ready: ..."`: the real arm is faulted, not enabled, not in IDLE, has its e-stop pressed or has the wrong tool selected. The server never clears faults or enables the robot by itself; fix it on the robot (see `robot/RUNBOOK.md`) and try again.
 
 - `"prepare the arm first: POST /api/arm/prepare with nobody touching the handle"`: real arm, and prepare has not succeeded since the server started.
 - `"session not started: ..."`: the engine refused, usually because the empty handle reads more than 3 N (someone is touching it, or the tool setting on the robot is wrong). Let go and call prepare again.
@@ -137,7 +140,17 @@ Real arm:
 - 409 if a session is running or the arm reports a fault; 503 if the arm cannot be reached.
 - It does not move the arm. Moving to the start pose (`home`) is not part of this route.
 
-**On the venue network** the server is started with `--lan`. It then prints its address (for example `http://192.168.1.23:8000`, which a phone on the same Wi-Fi can open) and an operator token. Start, stop, dial, go and arm/prepare then need the header `x-operator-token: <token>`, so nobody else on the Wi-Fi can drive the arm. Reading routes, the live feed and `/api/hold` stay open.
+**On the venue network** the server is started with `--lan`. It then prints its address (for example `http://192.168.1.23:8000`, which a phone on the same Wi-Fi can open) and an operator token. Start, stop, dial, go, arm/prepare and shutdown then need the header `x-operator-token: <token>`, so nobody else on the Wi-Fi can drive the arm. Reading routes, the live feed and `/api/hold` stay open.
+
+**Real-arm options of `python -m server.run --robot [SERIAL]`** (operator only):
+
+| Option | Meaning |
+|---|---|
+| `--reach-m 0.10` | length of the reach line in metres (default 0.30, allowed 0.02 to 0.35) |
+| `--reach-sign -1` | direction of the reach along the reach axis. Default: `"reach_sign"` in `robot/config.json` if present, else +1. The axis itself is `reach_axis` in that file |
+| `--tool Flange` | tool that must be selected on the robot (default `Flange`, meaning nothing mounted); the server refuses to connect otherwise |
+
+`--reach-m` and `--reach-sign` also work with `--sim` and `--mock`. Stop the server with Ctrl+C in its window or `curl -X POST http://127.0.0.1:8000/api/shutdown`; never by closing the window, which would leave the arm soft.
 
 ## 5. Ideas that the data already supports
 

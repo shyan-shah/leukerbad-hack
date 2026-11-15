@@ -37,6 +37,7 @@ In Auto (Remote) mode the robot comes up already enabled (`operational()` is tru
 | `motion_stages.py` | **yes** | Stages 1 to 4 of the first-motion test: hold, 2 cm move, soft hold, free axis. |
 | `demo_motion.py` | **yes, larger and faster** | Continuous translation-only motion for videos, 4 minutes by default. |
 | `run_studio.sh` | no | Starts Flexiv Elements Studio (Linux build) in WSL. PC-side app only. |
+| `checked_arm.py` | not a script | `CheckedArm`, the arm class `python -m server.run --robot` uses. Same as `robot.arm.Arm`, but `connect()` never clears faults or enables: it refuses unless the robot is fault-free, operational, in IDLE, e-stop released and the expected tool (`--tool`, default `Flange`) is selected. |
 
 ### Read-only
 
@@ -66,7 +67,7 @@ C:\venvs\flexiv17\Scripts\python -m server.hw.motion_stages 1 --serial Rizon4-06
 | 1 | hold 5 s at nominal stiffness | drift under 2 mm |
 | 2 | 2 cm towards the base at 0.03 m/s and back, 600 N/m | ends within 3 mm |
 | 3 | soft hold 20 s at 300 N/m; push the flange about 2 cm by hand and let go | returns within 5 mm |
-| 4 | 20 s with 0 N/m on the world axis closest to "towards base", 500 N/m on the others; slide it by hand about 3 cm | no trip |
+| 4 | 20 s with 0 N/m on the reach axis (`reach_axis` in `robot/config.json`; override with `--axis x` or `--axis y`), 500 N/m on the others; slide it by hand about 3 cm | no trip |
 
 Limits enforced in the script, on top of `Arm`'s own clamps and watchdog:
 
@@ -76,6 +77,8 @@ Limits enforced in the script, on top of `Arm`'s own clamps and watchdog:
 - a hard time limit, and nominal stiffness restored on exit.
 
 In stages 3 and 4, do not push further than about 4 cm or the box trip stops the run.
+
+Stage 3 prints, per world axis, the displacement and force at the furthest point, the measured N/m (to compare with the commanded 300) and how far from the start it settled. Stage 4 prints the travel on the free axis, the drag force while it was moving and how far the two held axes moved.
 
 ### Video run
 

@@ -41,7 +41,7 @@ def positional(argv: list[str] | None = None) -> list[str]:
     for a in args:
         if skip:
             skip = False
-        elif a in ("--serial", "--seconds", "--scale", "--tries"):
+        elif a in ("--serial", "--seconds", "--scale", "--tries", "--axis"):
             skip = True
         elif not a.startswith("--"):
             out.append(a)
