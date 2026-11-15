@@ -59,6 +59,15 @@ def test_a_fail_on_the_real_path_stops_and_closes():
     assert not any(n == "SwitchMode" for n, _ in robot.calls)
 
 
+def test_tune_sim_dry_run_completes(tmp_path, capsys):
+    pytest.importorskip("numpy")
+    from robot import tune
+    assert tune.main(["--sim", "--out", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "crashed" not in out and "tripped" not in out
+    assert len(list(tmp_path.glob("tune_*_sim.json"))) == 1
+
+
 def test_tool_hint_directions():
     assert tool_hint((0.3, -0.2, 0.9)).startswith("OK")
     assert "TOO HIGH" in tool_hint((0.0, 0.0, 12.6)) and "1284 g" in tool_hint((0.0, 0.0, 12.6))

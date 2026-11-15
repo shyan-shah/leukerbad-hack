@@ -1,100 +1,135 @@
 # Run book: Flexiv Rizon 4 rehab arm
 
-Owner: Kian. Package K5. **Stub until K2 (safety sign-off) is done**; every line marked `TODO(confirm on arm)` must be checked on the real robot and the marker removed.
+Owner: Kian. Package K5. Updated 15 Nov with what happened on the arm on 14-15 Nov.
+Lines still marked `TODO(confirm on arm)` have not been seen on the robot yet.
 
 Read this out loud, step by step, every time the arm is switched on. Nobody skips steps because "it worked last time".
 
-## Roles (fill in before every session)
+**Two rules above all others**
 
-| Role | Name | Job |
-|------|------|-----|
-| E-stop holder | TODO(confirm on arm) | Hand on the physical e-stop **whenever the arm is enabled**. Does nothing else. Presses on any doubt, no discussion. |
-| Operator | TODO(confirm on arm) | At the laptop. Runs the commands below. Calls each step out loud. |
-| Technician | TODO(confirm on arm) | Flexiv/organiser technician. Required for first power-on of the day, any fault that does not clear, and any change to Elements limits. |
-| Person at the handle | healthy team member only | Never someone injured or impaired. Is an actor in the demo, described as one. |
+1. **The arm is live as soon as it is powered.** In Auto (Remote) mode it can come up already
+   enabled with no command from us (seen 14 Nov). E-stop holder in place before power-on, not
+   before "go".
+2. **One laptop drives the arm at a time.** Say out loud who has it. Nobody else opens an RDK
+   connection, not even a read-only one, until they hear "arm is free".
 
-E-stop location: TODO(confirm on arm) (from `robot/BRINGUP.md` answer 8).
+## Roles for the pitch and every session
+
+PROPOSED 15 Nov, to confirm at the first rehearsal (change the names here if they change).
+One person holds one role at a time. The presenter is not in this table and never touches the arm.
+
+| Role | Name | Backup | Job |
+|------|------|--------|-----|
+| Operator | Shyan | Kian | At the arm laptop. Runs the commands below and calls each step out loud. Says "go" and "stop". |
+| E-stop holder | Kian | Shiv | Hand on the physical e-stop **whenever the arm is powered**. Does nothing else, does not watch the screen. Presses on any doubt, no discussion. |
+| Patient actor | Shiv | Gio | Healthy team member, introduced as "a team member acting as a patient". Takes the handle only when the operator says "go". Lets go at once on "stop" or on any surprise. |
+| Technician | organiser's Flexiv technician | none | Required for the handle mounting, the safety checks (`robot/SAFETY.md`), any fault that does not clear, and any change to Elements limits. |
+
+If a backup steps in, their own role goes to their backup first. If that cannot be filled, no session.
+
+Nobody injured or impaired ever holds the handle. Nobody holds it at all until `robot/SAFETY.md` is signed.
+
+E-stop location: TODO(confirm on arm). Write it here before the first session and make sure both e-stop holders have pressed and released it once with the arm in a safe state.
 
 ## Fixed facts
 
-- Robot: Rizon 4, serial `Rizon4-XXXXXX` TODO(confirm on arm), robot software TODO(confirm on arm).
-- RDK: `flexivrdk==1.9.x` pinned in `robot/requirements.txt` (never a plain `pip install flexivrdk`). Python 3.12.
-- Laptop network: static IP `192.168.2.x`, netmask `255.255.255.0`, no gateway. Python allowed through the Windows firewall.
-- Elements limits set by the technician (speed, force, safety plane): see `robot/SAFETY.md`. TODO(confirm on arm)
-- In-code limits: `robot/arm.py` `Limits` (MASTER_PLAN 4.2). The caller cannot override them.
+- Robot: Rizon 4, serial `Rizon4-062157` (Elements shows `A02L-07-M2-062157`), robot software v3.9.3, licence RDK-Professional.
+- RDK: `flexivrdk==1.7.0` (never a plain `pip install flexivrdk`; 1.9.x and 2.x do not match this robot). Python 3.12.
+- Arm laptop: Shyan's. Venv `C:\venvs\flexiv17`. Ethernet static `192.168.2.110`, mask `255.255.255.0`, no gateway. Controller `192.168.2.100`.
+- `K_x_nom = [10000, 10000, 10000, 1500, 1500, 1500]`.
+- **No wrist force/torque sensor.** Force is estimated from the joint torques, so it is only right when the active tool's mass and centre of mass are right. Tool for sessions: `RehabHandle` (`robot/tool_handle.md`). With nothing mounted the tool must be `Flange`.
+- Elements Studio 3.9.3 on the arm laptop: double-click **`Start Flexiv Studio.bat`** on the desktop, then REFRESH, then Connect. Decline every "update robot" prompt.
+- **Motion Bar switch: up = Auto (Remote), down = Manual.** Our code only works in Auto (Remote).
+- Elements limits set by the technician (speed, force, safety plane): `robot/SAFETY.md`.
+- In-code limits: `robot/arm.py` `Limits`. The caller cannot override them and nobody loosens them.
 
 ## 1. Power-on to ready
 
+Cold start: once `Start Demo.bat` exists on the arm laptop's desktop, steps 6 to 12 are "double-click `Start Demo.bat`" (it does not exist yet, 15 Nov; until then type the commands).
+
 1. **Area check.** Workspace clear, chair at the marked position (`robot/SETUP.md`), nobody within reach of the arm.
-2. **Roles.** E-stop holder named and at the e-stop. Operator named. Say both names out loud.
-3. **Power on** the control box. TODO(confirm on arm): switch location and boot time.
-4. **Elements.** On the teach pendant / Elements: robot is in **Remote mode, Ethernet**; no fault shown; note the robot software version. If Remote mode had to be changed, power cycle. TODO(confirm on arm)
-5. **E-stop release.** E-stop holder releases the e-stop, then keeps a hand on it from here on.
-6. **Laptop.** Ethernet cable plugged in; IP is `192.168.2.x`. Open a terminal at the repo root, activate the venv:
-   `C:\venvs\leukerbad\Scripts\activate` (outside the repo and OneDrive; setup and firewall steps in `robot/SETUP.md`).
-7. **Status check** (changes nothing):
-   `python robot/recover.py --check`
-   Expect `connected True`, `fault False`. If it cannot connect, see **Faults: cannot connect**.
-8. **Recover / enable.** Nobody touching the arm:
-   `python robot/recover.py`
-   Type `yes`. Expect `READY`. This clears any fault, enables, and restores nominal stiffness.
-9. **Handle and tool.** Handle mounted and tight. Tool (handle mass and CoM) set in IDLE mode, as in `robot/BRINGUP.md`. TODO(confirm on arm): whether the tool must be re-selected after each power cycle.
-10. **Home and zero.** Nobody touching. Operator runs `home()` then `zero_force()` (through `robot.arm`, or the server start-up if it does it). TODO(confirm on arm): exact command once K1/Y2 land. Then check force reads about 0 N with nobody touching (`python robot/recover.py --check`, `ext_wrench_in_world` within about ±1 N TODO(confirm on arm)).
-11. **First touch of the day.** Technician pushes the handle first at soft hold (`k_hold`, 300 N/m) and confirms it feels soft and stable.
-12. **Start the app:**
-    `python -m server.run --robot Rizon4-XXXXXX`
-    and in a second terminal `python -m server.watch`. Watch shows `arm_mode` and no SIMULATED tag.
-13. **Start a session** (from the demo page or curl, see `server/API.md`). The person takes the handle only when the operator says "go".
+2. **Roles.** E-stop holder at the e-stop, operator at the laptop. Say both names out loud. From here on treat the arm as live.
+3. **Cables.** Arm cable seated at BOTH ends (arm base and control box), Ethernet from the control box to the laptop.
+4. **Power on** the control box. Motion Bar switch **up (Auto / Remote)**. TODO(confirm on arm): boot time.
+5. **Elements.** Open Studio (`Start Flexiv Studio.bat`, REFRESH, Connect). Check, in this order:
+   - No "Robot and Control Box are disconnected" message (if there is, see Faults).
+   - Bell icon: no fault listed.
+   - Settings → Remote Mode = **Ethernet**. If you had to change it, **reboot the robot**; it does not take effect until then.
+   - If the robot is not enabled: press **Servo ON**. It may already be enabled; that is normal.
+6. **Laptop.** Terminal at the repo root. Use the arm venv: `C:\venvs\flexiv17\Scripts\activate`.
+7. **Status check** (changes nothing): `python robot/recover.py --check`
+   Expect `connected True`, `fault False`, `operational True`, mode IDLE. If it cannot connect, see Faults.
+8. **Tool.** `python robot/read_tool_force.py` (read-only, nobody touching). Expect tool `RehabHandle` and an empty force under about 2 N. If the tool is wrong or the force is high, fix it in Elements (`robot/tool_handle.md`) before going on. TODO(confirm on arm): whether the selected tool survives a power cycle.
+9. **Handle.** Mounted, four M6 screws hand-tight plus a quarter turn, grip does not rotate.
+10. **Start the app:**
+    `python -m server.run --robot Rizon4-062157 --tool RehabHandle`
+    (add `--reach-sign` only if `robot/config.json` does not have the right direction). The server refuses to start unless the robot is fault-free, operational, in IDLE, e-stop released and the tool matches. It never enables the robot or clears a fault. Second terminal: `python -m server.watch`. Watch shows `arm_mode` and no SIMULATED tag.
+11. **Prepare.** Nobody touching: operator screen "Prepare", or `curl -X POST localhost:8000/api/arm/prepare`. It checks the arm and reads the empty-handle force. Sessions are refused (409) until this has succeeded.
+12. **First touch of the day.** The technician (or, after sign-off, the operator) pushes the handle at soft hold and confirms it feels soft and springs back.
+13. **Start a session** (operator screen or `server/API.md`). The patient actor takes the handle only when the operator says "go".
 
 Ready = steps 1 to 12 done, e-stop holder in place.
 
+`python robot/recover.py` (without `--check`) is only for recovery: it clears a fault, enables if needed and restores nominal stiffness. Nobody touching, type `yes`.
+
 ## 2. During a session
 
-- Operator watches `server.watch`: dial, force, `arm_mode`. Any `hold` with a `fault` text: say it out loud, the person lets go.
-- Soft stop at any time: `curl -X POST localhost:8000/api/hold`, or Ctrl+C in the `server.run` terminal (leaves the arm in hold).
+- Operator watches `server.watch`: dial, force, `arm_mode`. Any `hold` with a `fault` text: say it out loud, the patient actor lets go.
+- Soft stop at any time: `curl -X POST localhost:8000/api/hold`, or Ctrl+C in the `server.run` terminal (hold, then a clean close).
 - Hard stop: **e-stop**. Anyone may call "stop"; the e-stop holder presses.
 - Swapping people at the handle: soft stop first, then swap, then start a new session.
+- Between sets, with nobody touching: run Prepare again (the empty-handle force drifts).
+- `armtest` (push and hold): push gently. Above about 30 N the handle gives way by design and at 40 N the arm drops into hold (`robot/SAFETY.md` finding 2).
+- `push` and `pull`: do not let go mid-rep on purpose. The band pulls the empty handle back and the speed trip may put the arm in hold (safe; the session then needs a restart).
 
 ## 3. Faults
 
-General rule: **person lets go first, then diagnose.** If in doubt, e-stop.
+General rule: **the person lets go first, then diagnose.** If in doubt, e-stop.
 
-| What you see | Likely cause | What to do |
+| What you see | Cause | What to do |
 |---|---|---|
-| `arm_mode: hold`, `fault: "speed ..."` | Software trip: hand moved faster than `trip_speed` (0.40 m/s) | Person lets go. Normal, not a robot fault. Start a new session (calls `start_compliance()` again). If it repeats, slow down or report for K3 tuning. |
-| `arm_mode: hold`, `fault: "force ..."` | Software trip: force above `trip_force` (40 N) | Person lets go. Check nobody is leaning on the handle. New session. Repeats: stop and tell Kian. |
-| `arm_mode: hold`, `fault: "outside box ..."` | Hand more than 2 cm outside the workspace box | Person lets go. Check chair position against `robot/SETUP.md`. `home()` with nobody holding, new session. |
-| `arm_mode: hold`, `fault: "watchdog ..."` | No target for 0.2 s: engine stalled, laptop busy, or server crashed | Person lets go. Check the `server.run` terminal for a traceback. Restart the server, run `python robot/recover.py`, new session. |
-| Arm stops, Elements shows a fault (e.g. contact wrench / collision) | Robot-side safety (`SetMaxContactWrench` 30 N or Elements limits) | Person lets go. `python robot/recover.py`. If it reports `FAULT DID NOT CLEAR`, call the technician. TODO(confirm on arm): which faults ClearFault can clear. |
-| E-stop pressed | Someone pressed it | Find out why before releasing. Person away from the arm. Release e-stop, `python robot/recover.py`, then step 10 (home, zero) again. TODO(confirm on arm): whether e-stop release needs extra steps in Elements. |
-| Laptop / Ethernet lost | Cable, laptop sleep, crash | Robot stops and holds by itself. Person lets go. Reconnect, `python robot/recover.py`, restart the server. Disable laptop sleep. |
-| `recover.py` says `CANNOT CONNECT` | Network, firewall, Remote mode, licence, serial | Check cable and IP `192.168.2.x`, firewall rule for Python, Elements in Remote mode (power cycle after changing), serial string exact. Still failing: technician. |
-| `recover.py` says `NOT OPERATIONAL` | E-stop still pressed, not in Remote mode, brakes | Release e-stop, check Elements, run again. |
-| `SwitchMode` error / licence error | RDK licence or mode not enabled | Technician. Nothing we can fix in code. |
+| Elements: **"Robot and Control Box are disconnected"** | Loose arm cable (14 Nov) | Power OFF the control box. Reseat the arm cable at both ends. Power on. Do not reseat a cable with the power on. |
+| RDK "Failed to connect" every time, ping works | Remote Mode is not Ethernet, or it was changed without a reboot (14 Nov) | Elements → Settings → Remote Mode = Ethernet, **then reboot the robot**. |
+| `operational False`, no fault | Not enabled, e-stop pressed, or Motion Bar switch down (Manual) | Release the e-stop, switch up (Auto / Remote), press **Servo ON** in Elements. |
+| **Critical fault** (bell icon red, arm will not enable) | Robot-side fault | **Read the bell first** and write down what it says (LOG.md). Then **reboot the robot**. `recover.py` will not clear a critical fault. If it returns after the reboot: technician. |
+| `arm_mode: hold`, `fault: "speed ..."` | Software trip: hand faster than 0.40 m/s (also after letting go against the band) | Person lets go. Not a robot fault. Start a new session. If it repeats, slow down and tell Kian. |
+| `arm_mode: hold`, `fault: "force ..."` | Software trip: force above 40 N | Person lets go. Check nobody is leaning on the handle. New session. Repeats: stop and tell Kian. |
+| `arm_mode: hold`, `fault: "hand ... outside workspace box"` | Hand more than 2 cm outside the box | Person lets go. Check the chair position against `robot/SETUP.md`. New session from the start pose. |
+| `arm_mode: hold`, `fault: "watchdog ..."` | No target for 0.2 s: engine stalled, laptop busy, server crashed | Person lets go. Read the `server.run` terminal. Restart the server, then Prepare. |
+| Arm stops, Elements shows a fault (contact / collision) | Robot-side limit (`SetMaxContactWrench` 30 N or Elements limits) | Person lets go. Read the bell. `python robot/recover.py`. `FAULT DID NOT CLEAR`: reboot, then technician. TODO(confirm on arm): which faults ClearFault clears. |
+| Server refuses to start: "arm not ready: ..." | Fault, not operational, not IDLE, e-stop, or wrong tool | Do what the message says. "not IDLE" usually means another laptop or script is driving the arm. Wrong tool: `robot/tool_handle.md`. |
+| Session refused: "prepare the arm first" or "run zero_force" | Not prepared, or the empty handle reads over 3 N | Nobody touching, run Prepare. Still over 3 N: `python robot/read_tool_force.py` and follow its hint (tool mass or CoM is off, or something is resting on the handle). |
+| E-stop pressed | Someone pressed it | Find out why before releasing. Person away from the arm. Release, Servo ON in Elements if needed, `python robot/recover.py`, then from step 7. TODO(confirm on arm): exact release steps. |
+| Laptop / Ethernet lost | Cable, laptop sleep, crash | The robot stops and holds by itself. Person lets go. Reconnect, `python robot/recover.py`, restart the server. Laptop sleep must be disabled. |
 | Handle feels floppy or too stiff with no program running | Stiffness left on the robot by a crashed program | `python robot/recover.py` (restores `K_x_nom`). |
-| Force reads non-zero with nobody touching | Sensor drift, tool settings wrong, handle loose | Tighten handle, check tool settings, `zero_force()` with nobody touching. |
-| Vibration or buzzing at the handle | Stiffness too high or bad tuning | Soft stop. Report to Kian for K3. Do not continue with a person on it. |
+| Force reads non-zero with nobody touching | Wrong tool selected, tool mass/CoM off, handle loose | `python robot/read_tool_force.py`. Tighten the handle, fix the tool in Elements. On 14 Nov a wrong tool gave 12.6 N. |
+| Free axis drifts by itself | Tool mass/CoM off | Stop. Fix the tool. Nobody on the handle until `read_tool_force.py` is under 2 N. |
+| Vibration or buzzing at the handle | Stiffness or tuning | Soft stop. Tell Kian (`robot/TUNING.md`). Do not continue with a person on it. |
 | Anything unexpected | | E-stop. Person away. Technician. |
 
 ## 4. Shutdown
 
-1. Person lets go and steps back.
-2. Stop the session (demo page or `curl -X POST localhost:8000/api/session/stop`). Exports are written.
-3. Ctrl+C `server.run`. It calls `hold()` then `close()`, which restores nominal stiffness and stops the robot.
-4. If the server crashed instead of closing cleanly: `python robot/recover.py` (restores nominal stiffness, leaves the robot in IDLE).
-5. Optional: `home()` with nobody touching, so the arm is parked for the next team. TODO(confirm on arm): agreed park pose with the technician.
-6. E-stop holder presses the e-stop. Then (and only then) the e-stop holder may leave.
-7. Power off the control box per the technician. TODO(confirm on arm): Elements shutdown sequence.
-8. Append to `context/LOG.md` anything that faulted, and to `robot/SAFETY.md` any safety event.
+1. The person lets go and steps back.
+2. Stop the session (operator screen or `curl -X POST localhost:8000/api/session/stop`). Exports are written.
+3. Ctrl+C `server.run`. It calls `hold()` then `close()`, which restores nominal stiffness and stops the robot (IDLE).
+4. If the server crashed instead of closing cleanly: `python robot/recover.py`.
+5. E-stop holder presses the e-stop. Only then may the e-stop holder leave.
+6. Say "arm is free" to the team, or power off the control box per the technician. TODO(confirm on arm): Elements shutdown sequence and the park pose for the next team.
+7. Append to `context/LOG.md` anything that faulted, and to `robot/SAFETY.md` any safety event.
 
-## 5. To confirm on the arm (checklist for K2)
+## 5. Confirmed on the arm, and still open
 
-- [ ] Names for e-stop holder, operator, technician; e-stop location.
-- [ ] Serial, robot software version, pinned RDK version.
-- [ ] Power-on, Elements Remote mode and shutdown sequence.
-- [ ] `recover.py`: which RDK getters exist; `ClearFault()` return type; time to operational; `SwitchMode` holds pose with no jump; nominal stiffness persists after `Stop()`.
-- [ ] Which faults `ClearFault()` clears and which need a power cycle or the technician.
+Confirmed 14-15 Nov: serial, robot software and RDK version; Remote Mode = Ethernet needs a
+reboot; the arm can be enabled at power-on; RDK getters used by `recover.py` exist in 1.7.0;
+`SwitchMode` to Cartesian mode holds the pose (0.15 mm drift in 5 s); nominal stiffness is
+restored by `close()` and the robot ends in IDLE without a fault; the loose-cable message.
+
+Still open:
+
+- [ ] E-stop location, and both e-stop holders have tried it.
+- [ ] Boot time; Elements shutdown sequence; park pose.
+- [ ] Which faults `ClearFault()` clears (it has not been called on this arm yet).
 - [ ] E-stop release procedure.
-- [ ] Tool setting survives a power cycle or not.
-- [ ] Untouched force tolerance after zeroing.
-- [ ] Exact home/zero commands once K1 and Y2 exist.
+- [ ] Whether the selected tool survives a power cycle.
+- [ ] `Start Demo.bat` written and tried from a cold start.
+- [ ] Role names confirmed at a rehearsal.
