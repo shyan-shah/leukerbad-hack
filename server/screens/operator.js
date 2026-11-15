@@ -14,7 +14,7 @@ let latest = null, lastAt = 0;               // newest sample and when it arrive
 let health = null, healthFailed = false;
 let wsStatus = "connecting";
 let exercises = [];
-let starting = false;
+let starting = false, homing = false;
 let dialHoldUntil = 0, dragging = false;     // do not overwrite the slider from the feed while it is in use
 
 // ---------------------------------------------------------------- small helpers
@@ -164,15 +164,17 @@ function showBaseline(r) {
   const f = Array.isArray(r.baseline_force) ? r.baseline_force : null;
   line(fmt.N(r.baseline_n), `baseline force with nobody touching${r.simulated ? " (SIMULATED)" : ""}`);
   if (f) line("", `per axis: x ${fmt.N(f[0])}, y ${fmt.N(f[1])}, z ${fmt.N(f[2])}`);
+  if (typeof r.from_start_m === "number") line("", `handle ${(r.from_start_m * 100).toFixed(1)} cm from the start pose`);
   if (r.zeroed === false) line("", `The robot's own zeroing step failed (${r.zero_error || "no reason given"}). Not fatal: the engine takes its own baseline at session start.`);
   else if (r.zeroed === true) line("", "Force reading zeroed.");
 }
 
 async function doHome() {
-  if (!await ask("Move the arm to the start pose?", "The arm will move by itself. Nobody holds the handle and nobody stands inside its reach.", "Move to home")) return;
-  $("home").disabled = true;
-  const r = await act("Home", $("armMsg"), "/api/arm/home");
-  $("home").disabled = false;
+  if (!await ask("Move the arm to the start pose?",
+    "The arm will move by itself, slowly, to the start pose. Nobody holds the handle and nobody stands inside its reach. HOLD does NOT stop this move: only the e-stop does. Have a hand on the e-stop.", "Move to home")) return;
+  homing = true; render();
+  const r = await act("Home (arm moving; only the e-stop stops it)", $("armMsg"), "/api/arm/home");
+  homing = false; render();
   if (r === undefined) {
     if (act.lastStatus === 404) {
       $("home").hidden = true;
@@ -180,9 +182,14 @@ async function doHome() {
     }
     return;
   }
-  const text = typeof r.detail === "string" ? r.detail : Object.keys(r).length ? JSON.stringify(r) : "";
-  setMsg($("armMsg"), `Home done. ${text}`, "ok");
-  log(`Home done ${text}`);
+  const cm = m => (typeof m === "number" ? `${(m * 100).toFixed(1)} cm` : "?");
+  const text = r.skipped ? `Home skipped: ${r.detail || "nothing to home"}.`
+    : "moved_m" in r ? `Home done: moved ${cm(r.moved_m)}, now ${cm(r.from_start_m)} from the start pose. Prepare again before a session.`
+    : `Home done. ${typeof r.detail === "string" ? r.detail : JSON.stringify(r)}`;
+  $("baseline").hidden = true;                // any earlier baseline no longer applies
+  setMsg($("armMsg"), text, "ok");
+  log(text);
+  pollHealth();
 }
 
 async function doPrepare() {
@@ -360,10 +367,10 @@ function render() {
   simBanner($("badge"), m ? m.simulated : health && health.arm === "flexiv" ? false : health && health.arm === "sim" ? true : undefined);
 
   // controls
-  $("start").disabled = run || starting;
+  $("start").disabled = run || starting || homing;
   for (const id of ["exercise", "reps", "pid", "pname"]) $(id).disabled = run || starting;
-  $("prepare").disabled = run;
-  $("home").disabled = run;
+  $("prepare").disabled = run || homing;
+  $("home").disabled = run || homing;
   $("dial").disabled = !run;
   $("auto").disabled = !run;
   for (const b of $("snaps").children) b.disabled = !run;
@@ -380,7 +387,8 @@ function render() {
   // one line that says what the operator should do next
   const alert = $("alert");
   let text = "", stop = false;
-  if (m && m.arm_mode === "fault") { text = "ARM FAULT. The arm has stopped. Press Stop and save, then see robot/RUNBOOK.md."; stop = true; }
+  if (homing) { text = "ARM MOVING TO THE START POSE. HOLD does not stop this move: use the e-stop if anything is wrong."; stop = true; }
+  else if (m && m.arm_mode === "fault") { text = "ARM FAULT. The arm has stopped. Press Stop and save, then see robot/RUNBOOK.md."; stop = true; }
   else if (m && m.arm_mode === "hold") { text = "Arm is in HOLD. Press Stop and save to end this session; start a new one to continue."; stop = true; }
   else if (m && m.done) text = "Set finished. Press Stop and save.";
   else if (healthFailed && wsStatus !== "live") { text = "The server is not answering. Check its window. If the arm is moving, use the e-stop."; stop = true; }
