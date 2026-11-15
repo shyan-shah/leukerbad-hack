@@ -181,6 +181,8 @@
   nav svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } nav button[aria-current="page"] { color: var(--brand); } nav svg .ac { fill: currentColor; stroke: none; opacity: .4; transition: fill .2s, opacity .2s; } nav button[aria-current="page"] .ac { fill: var(--mint); opacity: 1; }
   .fig path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
   @media (prefers-reduced-motion: reduce) { .cam.on .beam { animation: none; top: 50%; } .bar i { transition: none; } }
+  /* the four resistance levels of Push on the arm */
+  .lvs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .lvs .btn { padding: 10px 2px; font-size: 14px; white-space: nowrap; }
 </style>
 
 <div class="phone3d" id="phone"><span class="keys"></span>
@@ -450,9 +452,31 @@ const PLANS = [
 // The live robot demo plan: only exercises the station's arm runs (context/EXERCISE_MAP.md). Row (pull) is added once the server lists it.
 PLANS.push({ id: 'robot', who: 'Maria', name: 'Arm recovery (robot)', ctx: 'After a stroke · live on the Vita arm', thumb: 'reach', ex: ['reach', 'push', 'armtest'], h1: 'Your arm reaches further every week.', metric: 'Forward reach', unit: 'cm', weeks: [18, 22, 25, 29], axis: [15, 25, 35], rows: [['Help from the arm', '−15%'], ['Smooth movement', '+12%']] });
 // ---------- the robot arm: server/ on the station laptop. Only used when that laptop serves this page at /app/ (same address, so no https-to-http block) ----------
-const ROBOT = { ids: null, token: '', ws: null, cal: new Set() }; let CAP_N = 30;   // CAP_N follows `force_cap_n` when the station sends it (60 N with the test profile);   // the strength test reads up to the robot's 30 N cap
+// Push (robot): one Push card with four fixed resistance levels, offered when the station lists push_1 to push_4. In the app it stays the exercise 'push'; only the id sent to the station changes with the level.
+const PUSHPLAN = { id: 'pushrobot', who: 'Maria', name: 'Push (robot)', ctx: 'Four resistance levels · live on the Vita arm', thumb: 'push', ex: ['push'], h1: 'You get stronger every week.', metric: 'Push strength', unit: 'N', weeks: [48, 53, 57, 62], axis: [40, 55, 70], rows: [['Peak force', '+5 N'], ['Range of the push', '+3 cm']] };
+const LVL = { sel: 1, n: [10, 15, 20, 28], id: [null, null, null, null], busy: false, msg: '', at: 0 }; let WANTPLAN = '';
+const isPushN = (id) => /^push_[1-4]$/.test(id || '');
+const lvOn = (id) => id === 'push' && !!(ROBOT.ids && ROBOT.lv) && (PL.id === 'pushrobot' || !ROBOT.ids.has('push'));   // this Push runs as push_1 to push_4
+const lvId = () => LVL.id[LVL.sel - 1] || 'push_' + LVL.sel, lvText = (n) => n + ' · ' + LVL.n[n - 1] + ' N';
+const lvRow = (on) => !on ? '' : `<div class="lvs" role="group" aria-label="Resistance level">${[1, 2, 3, 4].map((n) => `<button type="button" class="btn${n === LVL.sel ? '' : ' ghost'}" data-level="${n}" aria-pressed="${n === LVL.sel}">${lvText(n)}</button>`).join('')}</div><p class="scanmsg" id="lvmsg" aria-live="polite">${esc(LVL.msg)}</p>`;
+function lvPaint() { document.querySelectorAll('[data-level]').forEach((b) => { const n = +b.dataset.level, on = n === LVL.sel; b.classList.toggle('ghost', !on); b.setAttribute('aria-pressed', on); b.textContent = lvText(n); }); const m = $('#lvmsg'); if (m) m.textContent = LVL.msg; }
+const detailOf = (d, fb) => typeof d.detail === 'string' ? d.detail : d.detail && typeof d.detail.message === 'string' ? d.detail.message : fb;
+// before a session a tap only chooses the level; during one it asks the station, and the old level stays if the station says no
+async function setLevel(n) { const r = S.run; if (n === LVL.sel || LVL.busy) return;
+  if (!armOn(r)) { if (!(r && r.sent && r.robot === 'starting')) { LVL.sel = n; LVL.msg = ''; lvPaint(); } return; }
+  LVL.busy = true; let res = null, d = {};
+  try { res = await robotFetch('/api/level', { level: n }); d = await res.json().catch(() => ({})); } catch (x) { res = null; }
+  LVL.busy = false; LVL.at = performance.now();
+  if (res && res.ok) { LVL.sel = Number.isInteger(d.level) && d.level >= 1 && d.level <= 4 ? d.level : n; if (d.level_force_n > 0) LVL.n[LVL.sel - 1] = d.level_force_n; LVL.msg = ''; }
+  else { const m = LVL.msg = detailOf(d, 'The level did not change.'); setTimeout(() => { if (LVL.msg === m) { LVL.msg = ''; lvPaint(); } }, 4000); }
+  lvPaint(); }
+// what the station asks the person to do right now ("Hands off: zeroing in 3"); the seconds are added when the sentence has no number of its own
+const sayOf = (x) => { const m = typeof x.message === 'string' ? x.message.trim() : ''; return m && Number.isFinite(x.countdown_s) && !/\d/.test(m) ? m + ' · ' + Math.max(0, Math.ceil(x.countdown_s)) + ' s' : m; };
+const exs = (n) => n + (n === 1 ? ' exercise' : ' exercises');
+const ROBOT = { ids: null, token: '', ws: null, cal: new Set(), lv: false, q: Promise.resolve(), stop: null }; let CAP_N = 30;
+const robotQ = (f) => (ROBOT.q = ROBOT.q.then(f, f));   // one start or stop at a time: a stop can take 10 s while the arm returns by itself   // CAP_N follows `force_cap_n` when the station sends it (60 N with the test profile);   // the strength test reads up to the robot's 30 N cap
 try { const u = new URL(location.href), op = u.searchParams.get('op'); if (op) { localStorage.setItem('vita-op', op); u.searchParams.delete('op'); history.replaceState(null, '', u.pathname + u.search + u.hash); } ROBOT.token = localStorage.getItem('vita-op') || ''; } catch (e) {}
-const onRobot = (id) => !!(ROBOT.ids && ROBOT.ids.has(id)), armOn = (r) => !!(r && r.robot && r.robot.sid);
+const onRobot = (id) => !!(ROBOT.ids && (ROBOT.ids.has(id) || lvOn(id))), armOn = (r) => !!(r && r.robot && r.robot.sid);
 const newton = (n) => n >= CAP_N ? CAP_N + ' N+' : Math.round(n) + ' N';
 const robotNote = (id) => !ROBOT.ids ? '' : onRobot(id) ? ' · on the arm' : ' · demo animation';
 function robotFetch(path, body) { const h = { 'Content-Type': 'application/json' }; if (ROBOT.token) h['x-operator-token'] = ROBOT.token;   // operator token: open the app once with ?op=<token> when the server runs with --lan
@@ -460,15 +484,24 @@ function robotFetch(path, body) { const h = { 'Content-Type': 'application/json'
 async function probeRobot() { if (!/^\/app(\/|$)/.test(location.pathname)) return;
   try { const h = await (await fetch('/api/health')).json(); if (!h || !('arm_mode' in h)) return;   // Mat's app backend has /api/health too; arm_mode is ours
     const r = await fetch('/api/exercises'); if (!r.ok) return; let d = await r.json(); if (d && !Array.isArray(d)) d = Array.isArray(d.exercises) ? d.exercises : Object.entries(d).map(([id, v]) => Object.assign({ id }, typeof v === 'object' ? v : {}));
-    ROBOT.ids = new Set(d.filter((x) => typeof x === 'string' || (x && x.live !== false)).map((x) => typeof x === 'string' ? x : x.id)); ROBOT.cal = new Set(d.filter((x) => x && x.calibrates).map((x) => x.id)); } catch (e) { return; }
-  const rp = PLANS.find((p) => p.id === 'robot'); if (ROBOT.ids.has('pull')) rp.ex = ['reach', 'push', 'pull', 'armtest']; if (PL === rp) PLAN = rp.ex.map((k) => EX[k]); if (!S.run) render(); }
-async function robotStart(r, e) { let res = null, d = {};
-  try { res = await robotFetch('/api/session/start', { patient_id: pid().replace(/[^A-Za-z0-9_.-]/g, '-'), display_name: who(), exercise: e.id, reps: e.reps }); d = await res.json().catch(() => ({})); } catch (x) { res = null; }
-  if (S.run !== r) { if (res && res.ok) robotStop(); return; }   // left the screen while the arm was starting
+    ROBOT.ids = new Set(d.filter((x) => typeof x === 'string' || (x && x.live !== false)).map((x) => typeof x === 'string' ? x : x.id)); ROBOT.cal = new Set(d.filter((x) => x && x.calibrates).map((x) => x.id));
+    d.forEach((x) => { const id = typeof x === 'string' ? x : x && x.id; if (!ROBOT.ids.has(id) || !(isPushN(id) || x.group === 'push')) return; const n = x.level >= 1 ? x.level : +String(id).slice(5); if (!Number.isInteger(n) || n < 1 || n > 4) return; LVL.id[n - 1] = id; if (x.level_force_n > 0) LVL.n[n - 1] = x.level_force_n; ROBOT.lv = true; }); } catch (e) { return; }
+  const rp = PLANS.find((p) => p.id === 'robot'); if (ROBOT.ids.has('pull')) rp.ex = ['reach', 'push', 'pull', 'armtest']; if (PL === rp) PLAN = rp.ex.map((k) => EX[k]);
+  if (ROBOT.lv && !PLANS.includes(PUSHPLAN)) { PLANS.push(PUSHPLAN);   // the station runs Push with levels: offer its plan, and land on it when that is all the station runs (or it was the plan last time)
+    if (!S.run && (WANTPLAN === 'pushrobot' || [...ROBOT.ids].every((id) => LVL.id.includes(id)))) { if (WANTPLAN !== 'pushrobot') { S.done = {}; S.rest = null; S.last = null; }
+      PL = PUSHPLAN; S.plan = PL.id; PLAN = PL.ex.map((k) => EX[k]); S.want = null; S.pre = null; if (S.tab === 'rest' || S.tab === 'done') S.tab = 'today'; save(); setTimeout(pullHist, 0); } }
+  if (!S.run) render(); }
+async function robotStart(r, e) { let res = null, d = {}; robotWait(r);
+  await robotQ(async () => { if (S.run !== r) return;   // waits here while an earlier stop is still returning the arm
+    r.sent = true; try { res = await robotFetch('/api/session/start', { patient_id: pid().replace(/[^A-Za-z0-9_.-]/g, '-'), display_name: who(), exercise: r.lv ? lvId() : e.id, reps: e.reps }); d = await res.json().catch(() => ({})); } catch (x) { res = null; }
+    if (S.run !== r && res && res.ok) await robotFetch('/api/session/stop', {}).catch(() => {}); });   // left the screen while the arm was starting: stop it before anything else is sent
+  if (S.run !== r) return;
   if (!res) { r.robot = null; r.t = 0; r.at = performance.now(); render(); return; }   // server gone: the timer takes over
-  if (!res.ok) { r.robot = null; r.err = typeof d.detail === 'string' ? d.detail : 'The arm did not start.'; render(); return; }   // refused: say why, never fake reps
+  if (!res.ok) { r.robot = null; r.err = detailOf(d, 'The arm did not start.'); render(); return; }   // refused: say why, never fake reps
   r.robot = { sid: d.session_id, sim: !!d.simulated, best: 0, peak: 0, f: 0, live: liveNew(r.id) };
   robotSocket(r); render(); }
+// while the arm is starting (or still returning from the last set) there is no live feed yet: ask the station what to tell the person
+async function robotWait(r) { while (S.run === r && r.robot === 'starting') { try { const st = await (await fetch('/api/state')).json(); if (r.robot === 'starting') r.say = sayOf(st || {}); } catch (x) {} await new Promise((f) => setTimeout(f, 400)); } }
 // the live feed. If it drops the picture stops at once (see liveDraw), and the app keeps trying to get it back
 function robotSocket(r) { const R = r.robot, ws = ROBOT.ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/live');
   ws.onopen = () => { if (R.lost) robotBack(r); };
@@ -535,15 +568,16 @@ function liveDraw(fig, r, now) { const R = r.robot, L = R.live, off = !!(R.lost 
   window.vita3d.show(fig, EX[r.id].fig, 0, v); }
 function robotMsg(r, x) { const e = EX[r.id], R = r.robot; if (x.simulated && !R.sim) { R.sim = true; render(); }
   if (x.type === 'rep') { if (x.session_id && x.session_id !== R.sid) return; R.best = Math.max(R.best, x.rom_m || 0); R.peak = Math.max(R.peak, x.peak_force_n || 0); liveRep(R.live, x); return; }
-  if (x.type !== 'sample') return; r.phase = x.phase; r.mode = x.arm_mode; liveSample(r, x); robotCal(r, x);
+  if (x.type !== 'sample') return; r.phase = x.phase; r.mode = x.arm_mode; liveSample(r, x); robotCal(r, x); r.say = sayOf(x);
+  if (r.lv && Number.isInteger(x.level) && x.level >= 1 && x.level <= 4 && x.level !== LVL.sel && !LVL.busy && performance.now() - LVL.at > 1000) { LVL.sel = x.level; lvPaint(); }      // the level was changed somewhere else: follow the station
   const f = Math.hypot(...(x.force || [0])), bar = $('#fbar'), fl = $('#fn'); if (bar) bar.style.width = Math.min(1, f / CAP_N) * 100 + '%'; if (fl) fl.textContent = newton(f);
   if (x.rep_count > r.n) { r.n = x.rep_count; const n = $('#n'), rg = $('#ring'); if (n) { n.textContent = r.n; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); } if (rg) rg.setAttribute('stroke-dashoffset', 100 - Math.min(1, r.n / e.reps) * 100); if (r.n >= e.reps) finish(); } }
-const robotTip = (r, e) => r.robot === 'starting' ? 'Starting the arm…' : r.robot.off ? 'No signal from the arm. The picture is paused.' : r.mode === 'fault' ? 'The arm has stopped. Please tell staff.' : r.mode === 'hold' ? 'The arm is holding still.' : r.phase === 'calibrate' || (!r.phase && ROBOT.cal.has(r.id)) || (r.robot.cal && (r.robot.cal.status === 'waiting' || r.robot.cal.status === 'pushing')) ? CALMSG : r.robot.calAt && performance.now() - r.robot.calAt < 3000 ? calDone(r.robot) : r.n === e.reps - 1 && r.phase !== 'idle' ? 'Last one. Almost there.' : r.phase === 'back' ? e.tips[2] : r.phase === 'out' || !r.n ? e.tips[0] : 'Rest a moment, then the next one.';
+const robotTip = (r, e) => r.robot === 'starting' ? r.say || 'Starting the arm…' : r.robot.off ? 'No signal from the arm. The picture is paused.' : r.mode === 'fault' ? 'The arm has stopped. Please tell staff.' : r.say ? r.say : r.mode === 'hold' ? 'The arm is holding still.' : !r.lv && (r.phase === 'calibrate' || (!r.phase && ROBOT.cal.has(r.id)) || (r.robot.cal && (r.robot.cal.status === 'waiting' || r.robot.cal.status === 'pushing'))) ? CALMSG : r.robot.calAt && performance.now() - r.robot.calAt < 3000 ? calDone(r.robot) : r.n === e.reps - 1 && r.phase !== 'idle' ? 'Last one. Almost there.' : r.phase === 'back' ? e.tips[2] : r.phase === 'out' || !r.n ? e.tips[0] : 'Rest a moment, then the next one.';
 // ---------- the comfortable push: before the first rep of a resisted exercise the patient pushes once and the arm sets its resistance from it (server/API.md section 7) ----------
 const CALMSG = 'Push once at a level that feels comfortable', resN = (n) => (Math.round(n * 10) / 10) + ' N';
 const calDone = (R) => R.res != null ? 'Resistance set: ' + resN(R.res) : 'Resistance not set: ' + ((R.cal && R.cal.reason) || 'the push was skipped') + '.';
 const resLine = (R) => !R || !R.sid ? '' : R.res != null ? 'Resistance set: ' + resN(R.res) + ' · adjusts to you' : R.cal && R.cal.status === 'skipped' ? calDone(R) : '';
-function robotCal(r, x) { const R = r.robot, c = x.calibration || null, a = x.arming; if (x.force_cap_n > 0) CAP_N = x.force_cap_n;
+function robotCal(r, x) { const R = r.robot, c = r.lv ? null : x.calibration || null, a = x.arming;      // Push with levels has no comfortable push if (x.force_cap_n > 0) CAP_N = x.force_cap_n;
   r.arming = a && a.reason && x.phase === 'idle' && !x.done ? String(a.reason) : '';      // why the next rep has not started yet: a small hint
   const was = R.cal && R.cal.status; R.cal = c;
   if (c && c.status !== was) { if (c.status === 'done' && c.resistance_n != null) { R.res = c.resistance_n; R.calAt = performance.now(); } else if (c.status === 'skipped') R.calAt = performance.now();
@@ -552,7 +586,7 @@ function robotCal(r, x) { const R = r.robot, c = x.calibration || null, a = x.ar
 const resCard = () => { const R = hist().resist || {}, k = Object.keys(R).filter((id) => EX[id]); return k.length ? `<div class="card">${k.map((id) => `<div class="kv"><span>Resistance, ${esc(EX[id].name.toLowerCase())}</span><b>${resN(R[id].n)}${R[id].sim ? ' (SIMULATED)' : ''}</b></div>`).join('')}<div class="kv"><span>Set from one comfortable push</span><b>adjusts to you</b></div></div>` : ''; };
 const robotTag = (r) => armOn(r) ? `<span id="rtag" class="rtag ${r.robot.off ? 'off' : r.robot.sim ? 'sim' : 'on'}">${rtagText(r.robot)}</span>` : ROBOT.ids && !onRobot(r.id) ? '<span class="rtag">Demo animation</span>' : !ROBOT.ids && (r.id === 'push' || r.id === 'pull') ? '<span class="rtag">Demo · not connected to a station</span>' : '';
 const robotPanel = (r) => r.err ? `<div class="robot" role="alert"><b>The arm did not start.</b><span>${esc(r.err)}</span></div>` : armOn(r) ? `<div class="robot"><div class="fl"><span>Your force</span><span id="fn">0 N</span></div><div class="fbar"><i id="fbar"></i></div><span class="resn" id="resn">${esc(resLine(r.robot))}</span><span class="hint" id="armhint">${esc(r.arming || '')}</span></div>` : '';
-function robotStop() { if (S.run && S.run.robot) clearTimeout(S.run.robot.retry); if (ROBOT.ws) { ROBOT.ws.onmessage = null; ROBOT.ws.close(); ROBOT.ws = null; } robotFetch('/api/session/stop', {}).catch(() => {}); }
+function robotStop() { if (S.run && S.run.robot) clearTimeout(S.run.robot.retry); if (ROBOT.ws) { ROBOT.ws.onmessage = null; ROBOT.ws.close(); ROBOT.ws = null; } if (!ROBOT.stop) ROBOT.stop = robotQ(() => robotFetch('/api/session/stop', {}).catch(() => {})).finally(() => { ROBOT.stop = null; }); }   // never a second stop while one is pending; the next start waits for it
 function robotResult(r) { const R = r.robot, sim = R && R.sim ? ' (SIMULATED)' : ''; if (!armOn(r)) return undefined;   // undefined: not a robot run, null: the arm measured nothing
   if (r.id === 'reach') return R.best ? ['Forward reach', Math.round(R.best * 100) + ' cm', 'measured by the arm' + sim] : null;
   return R.peak ? [r.id === 'armtest' ? 'Push strength' : 'Peak force', newton(R.peak), (r.id === 'armtest' ? 'best of ' + r.n + ' tries, ' : '') + 'measured by the arm' + sim] : null; }
@@ -561,7 +595,7 @@ const KEY = 'vita-app-v1';
 let S = { tab: 'today', scanned: false, done: {}, share: true, run: null, pre: null, pt: 0, want: null, rest: null, plan: 'mix', last: null, remind: true, big: false, flat: false, out: false, hist: {}, arm: false, station: 2, camOn: false, noCam: false, scanMsg: '', online: null };
 const REST = 180;
 const DAY = new Date().toDateString();      // what you did today is remembered until tomorrow
-try { const o = JSON.parse(localStorage.getItem(KEY)); if (o) { S.share = o.share !== false; if (o.hist && typeof o.hist === 'object') S.hist = o.hist; S.remind = o.remind !== false; S.big = !!o.big; S.flat = !!o.flat; if (PLANS.some((p) => p.id === o.plan)) S.plan = o.plan; if (o.day === DAY) { S.done = o.done || {}; S.scanned = !!o.scanned; if (o.station) S.station = o.station; } } } catch (e) {}
+try { const o = JSON.parse(localStorage.getItem(KEY)); if (o) { S.share = o.share !== false; if (o.hist && typeof o.hist === 'object') S.hist = o.hist; S.remind = o.remind !== false; S.big = !!o.big; S.flat = !!o.flat; if (PLANS.some((p) => p.id === o.plan)) S.plan = o.plan; WANTPLAN = o.plan || ''; if (o.day === DAY) { S.done = o.done || {}; S.scanned = !!o.scanned; if (o.station) S.station = o.station; } } } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ hist: S.hist, share: S.share, remind: S.remind, big: S.big, flat: S.flat, done: S.done, scanned: S.scanned, station: S.station, plan: S.plan, day: DAY })); } catch (e) {} };
 const $ = (s, r = document) => r.querySelector(s), main = $('#main'), esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let PL = PLANS.find((p) => p.id === S.plan), PLAN = PL.ex.map((id) => EX[id]);
@@ -698,7 +732,7 @@ const AUTHV = {
       <p class="scanmsg" id="autherr" aria-live="polite"></p>
       <div class="push"><button type="submit" class="btn">Log in</button><button type="button" class="lnk demo" data-auth="signup">Create an account instead</button></div></form>`,
   pickplan: () => `<div class="view gatev"><div><p class="eyebrow">Hi ${esc(who())}</p><h1>Which plan did your physiotherapist give you?</h1><p class="sub">Pick the one on your physio's letter. You can change it later under Account.</p></div>
-      <div class="list">${PLANS.map((p) => `<button type="button" class="ex" data-plan="${p.id}"><span class="thumb">${pic(p.thumb)}</span><span><b>${esc(p.name)}</b><span class="meta">${esc(p.ctx)} · ${p.ex.length} exercises</span></span><span class="st"><span class="ring"></span></span></button>`).join('')}</div>
+      <div class="list">${PLANS.map((p) => `<button type="button" class="ex" data-plan="${p.id}"><span class="thumb">${pic(p.thumb)}</span><span><b>${esc(p.name)}</b><span class="meta">${esc(p.ctx)} · ${exs(p.ex.length)}</span></span><span class="st"><span class="ring"></span></span></button>`).join('')}</div>
       <p class="fine">Not sure which one? Ask your physiotherapist before you start.</p></div>`,
 };
 const VIEWS = {
@@ -706,7 +740,7 @@ const VIEWS = {
       <div><p class="eyebrow">Today</p><h1>Hi ${esc(who())}. ${allDone() ? 'You are done for today.' : 'Your session is ready.'}</h1></div>
       <button type="button" class="note planbtn" data-go="plans"><span class="tick">✓</span><span><b>${esc(PL.name)}</b><br>Plan set by your specialist</span><span class="chev">Other plans ›</span></button>
       <div class="sum"><div><b>${PLAN.filter((e) => S.done[e.id]).length} of ${PLAN.length}</b> exercises done</div><div>about ${Math.round(PLAN.reduce((a, e) => a + (S.done[e.id] ? 0 : e.reps * 3), 0) / 60) || 0} min left</div><div class="bar"><i style="width:${PLAN.filter((e) => S.done[e.id]).length / PLAN.length * 100}%"></i></div></div>
-      <div class="list">${PLAN.map(exRow).join('')}</div>
+      <div class="list">${PLAN.map(exRow).join('')}</div>${lvRow(lvOn('push') && PLAN.some((e) => e.id === 'push') && !S.done.push)}
       <div class="push">${allDone() ? `<button type="button" class="btn" data-go="report">See this week's report</button>` : S.scanned ? `<button type="button" class="btn" data-start>Start ${esc(nextEx().name.toLowerCase())}</button>` : `<button type="button" class="btn" data-go="scan">Scan the station to start</button>`}
         <p class="fine"><span id="restline">${S.rest && S.rest.left > 0 ? 'Break: ' + Math.floor(Math.ceil(S.rest.left) / 60) + ':' + String(Math.ceil(S.rest.left) % 60).padStart(2, '0') + ' left.' : ''}</span> ${S.scanned ? `Connected to Vita station ${S.station}.` : 'Sit down at any Vita station and scan its code.'}</p></div></div>`,
   scan: () => { const cam = canCam(); return `<div class="view">
@@ -723,7 +757,7 @@ const VIEWS = {
       <div><p class="eyebrow">Exercise ${PLAN.indexOf(e) + 1} of ${PLAN.length}</p><h1>${esc(e.name)}</h1><p class="sub">${esc(e.mode)}</p>${robotTag(S.run)}</div>
       <div class="stagebox" id="fig">${figure(e.id, 0)}</div>
       <div class="meter"><div class="ringc"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="trk" cx="32" cy="32" r="28"/><circle class="arc" id="ring" cx="32" cy="32" r="28" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - S.run.n / e.reps * 100}"/></svg><span id="n">${S.run.n}</span></div><div class="mtxt"><b>of ${e.reps} ${e.unit}</b><p class="coach" id="coach" aria-live="polite">${esc(S.run.robot ? robotTip(S.run, e) : e.tips[0])}</p></div></div>
-      ${robotPanel(S.run)}<div class="push row2">${S.run.err ? `<button type="button" class="btn ghost" data-back>Back</button><button type="button" class="btn" data-begin="${e.id}">Try again</button>` : `${S.run.robot ? '' : `<button type="button" class="btn ghost" data-pause>${S.run.paused ? 'Continue' : 'Pause'}</button>`}<button type="button" class="btn" data-skip>Finish</button>`}</div></div>`; },
+      ${robotPanel(S.run)}${lvRow(S.run.lv)}<div class="push row2">${S.run.err ? `<button type="button" class="btn ghost" data-back>Back</button><button type="button" class="btn" data-begin="${e.id}">Try again</button>` : `${S.run.robot ? '' : `<button type="button" class="btn ghost" data-pause>${S.run.paused ? 'Continue' : 'Pause'}</button>`}<button type="button" class="btn" data-skip>Finish</button>`}</div></div>`; },
   progress: () => { const H = hist(), u = PL.unit, all = H.pts, pts = all.slice(-12), cur = all[all.length - 1], first = all[0], gain = cur - first, n = pts.length, goal = PL.axis[2];
     const lo = Math.min(PL.axis[0], ...pts), hi = Math.max(goal, ...pts), W = 300, x = (i) => (n < 2 ? W / 2 : i * W / (n - 1)), y = (v) => 26 + (hi - v) * 92 / (hi - lo || 1), P = pts.map((v, i) => [x(i), y(v)]), d = 'M' + P.map((q) => q.map((k) => k.toFixed(1)).join(' ')).join(' L');
     const total = Object.values(H.reps).reduce((a2, b2) => a2 + b2, 0), half = Math.round(first + (goal - first) / 2), togo = (t) => fmt(Math.max(0, Math.round((t - cur) * 10) / 10), u) + ' to go';
@@ -745,7 +779,7 @@ const VIEWS = {
   preview: () => { const e = PLAN.find((x) => x.id === S.pre), done = S.done[e.id]; return `<div class="view fit">
       <div><h1>${esc(e.name)}</h1><p class="sub">${e.reps} ${e.unit} · ${esc(e.mode)}${robotNote(e.id)}</p></div>
       <div class="stagebox" id="fig">${figure(e.id, 0)}</div>
-      <div class="card"><div class="kv"><span><b>How</b><br>${esc(e.how)}</span></div><div class="kv"><span><b>Why</b><br>${esc(e.why)}</span></div></div>
+      <div class="card"><div class="kv"><span><b>How</b><br>${esc(e.how)}</span></div><div class="kv"><span><b>Why</b><br>${esc(e.why)}</span></div></div>${lvRow(!done && lvOn(e.id))}
       <div class="row2 wide"><button type="button" class="btn ghost" data-back><span aria-hidden="true">‹</span> Back</button>${done ? `<div class="note"><span class="tick">✓</span><span>Done today</span></div>` : S.scanned ? `<button type="button" class="btn" data-begin="${e.id}">Start</button>` : `<button type="button" class="btn" data-go="scan" data-want="${e.id}">Scan to start</button>`}</div></div>`; },
   rest: () => { const r = S.rest || { left: 0 }, over = r.left <= 0, m = Math.floor(Math.max(0, r.left) / 60), sec = String(Math.ceil(Math.max(0, r.left)) % 60).padStart(2, '0'), nx = nextEx(), lr = S.last && (S.res === undefined ? EX[S.last].result : S.res);
     return `<div class="view fit"><div><p class="eyebrow">Break</p><h1>${over ? 'Ready when you are.' : 'Well done. Take a short break.'}</h1><p class="sub">${lr ? `Measured: ${esc(lr[0].toLowerCase())} ${esc(lr[1])}, ${esc(lr[2])}.` : 'Let your muscles recover before the next exercise.'}</p>${S.resist && S.last ? `<p class="sub">Resistance set: ${resN(S.resist.n)}${S.resist.sim ? ' (SIMULATED)' : ''}. It adjusts to you.</p>` : ''}</div>
@@ -754,7 +788,7 @@ const VIEWS = {
       <div class="push"><button type="button" class="btn${over ? '' : ' ghost'}" data-go="today">${over ? 'Choose my next exercise' : 'I feel ready, choose my next exercise'}</button>
         <p class="fine">Rest longer if you feel tired or dizzy. Stop and tell staff if you feel pain.</p></div></div>`; },
   plans: () => `<div class="view"><div><button type="button" class="back" data-back><span aria-hidden="true">‹</span> Back</button><h1>${live() ? 'Change your plan' : 'One station, many treatments.'}</h1><p class="sub">${live() ? 'Choose the plan your physiotherapist gave you.' : 'Tap a plan to see its exercises.'}</p></div>
-      <div class="list">${PLANS.map((p) => `<button type="button" class="ex${p === PL ? ' next' : ''}" data-plan="${p.id}"><span class="thumb">${pic(p.thumb)}</span><span><b>${esc(p.name)}</b><span>${esc(p.ctx)} · ${p.ex.length} exercises</span></span><span class="st">${p === PL ? '<span class="tick">✓</span>' : ''}</span></button>`).join('')}</div>
+      <div class="list">${PLANS.map((p) => `<button type="button" class="ex${p === PL ? ' next' : ''}" data-plan="${p.id}"><span class="thumb">${pic(p.thumb)}</span><span><b>${esc(p.name)}</b><span>${esc(p.ctx)} · ${exs(p.ex.length)}</span></span><span class="st">${p === PL ? '<span class="tick">✓</span>' : ''}</span></button>`).join('')}</div>
       <p class="fine">${live() ? 'Your progress is kept separately for each plan.' : 'Example plans for this demo. In the real app the specialist sets one plan for each patient.'}</p></div>`,
   account: () => { const sw = (key, title, on, attr) => `<button type="button" class="sw" role="switch" aria-checked="${on}" ${attr || `data-toggle="${key}"`}><span><b>${title}</b></span><span class="tr"></span></button>`;
     if (S.out) return `<div class="view"><div style="text-align:center;margin-top:40px"><span class="avatar big">${esc(who()[0])}</span><h1 style="margin-top:14px">You are signed out.</h1><p class="sub" style="margin-top:6px">Your plan and progress stay safe with your clinic.</p></div>
@@ -771,7 +805,7 @@ const VIEWS = {
       <p class="mehelp">If something hurts, stop and tell the staff. The red button on the station stops the arm at once.</p>
       <div class="melinks">${live() ? '<button type="button" class="lnk" data-go="plans">Change my plan</button>' : ''}<button type="button" class="lnk" data-signout>${live() ? 'Log out' : 'Sign out'}</button></div>
       <p class="fine">Version 0.1 · <button type="button" class="lnk" data-reset>Start the demo again</button></p></div>`; },
-  done: () => `<div class="view"><div style="text-align:center;margin-top:28px"><span class="tick" style="width:72px;height:72px;font-size:38px;margin:0 auto 16px">✓</span><h1>Session complete</h1><p class="sub" style="margin-top:8px">${PLAN.length} exercises, ${PLAN.reduce((a, e) => a + e.reps, 0)} repetitions. Well done, ${esc(who())}.</p></div>
+  done: () => `<div class="view"><div style="text-align:center;margin-top:28px"><span class="tick" style="width:72px;height:72px;font-size:38px;margin:0 auto 16px">✓</span><h1>Session complete</h1><p class="sub" style="margin-top:8px">${exs(PLAN.length)}, ${PLAN.reduce((a, e) => a + e.reps, 0)} repetitions. Well done, ${esc(who())}.</p></div>
       <div class="card">${(() => { const p = hist().pts, c = p[p.length - 1]; return `<div class="kv"><span>${esc(PL.metric)} today</span><b>${fmt(c, PL.unit)}</b></div><div class="kv"><span>Since the start</span><b class="upv">+${fmt(c - p[0], PL.unit)}</b></div>`; })()}${PLAN.filter((e) => e.result).map((e) => `<div class="kv"><span>${esc(e.result[0])}, measured today</span><b>${esc(e.result[1])}</b></div>`).join('')}</div>
       <div class="push"><button type="button" class="btn" data-go="progress">See my progress</button><button type="button" class="btn ghost" data-again>Do another session</button></div></div>`,
 };
@@ -779,7 +813,7 @@ const VIEWS = {
 function render() { const g = authView(), v = g || (S.run ? 'run' : S.pre ? 'preview' : S.tab); document.querySelector('.app').classList.toggle('gate', !!g); main.innerHTML = g ? AUTHV[g]() : VIEWS[v](); const wk = $('#wk'); if (wk) wk.textContent = `Week ${weekNo()} of 8`; main.scrollTop = 0; attachCam(); if (v === 'account') checkServer(); const fg = $('#fig'); document.querySelector('.app').classList.toggle('bigtext', S.big); if (fg && use3d()) draw(fg, S.run ? S.run.id : S.pre, S.run ? S.run.t : S.pt);
   document.querySelectorAll('nav button').forEach((b) => { if (b.dataset.tab === S.tab && !S.run && !S.pre) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }); }
 function go(tab) { if (armOn(S.run)) robotStop(); S.arm = false; if (tab !== 'scan') camOff(); if (tab === 'progress' || tab === 'report') setTimeout(pullHist, 0); S.run = null; S.pre = null; S.tab = tab; render(); }
-function start(id) { const e = PLAN.find((x) => x.id === id) || nextEx(); if (!e) return; S.pre = null; S.rest = null; S.run = { id: e.id, n: 0, t: 0, paused: false, tip: 0, at: performance.now() }; if (onRobot(e.id)) { S.run.robot = 'starting'; robotStart(S.run, e); } render(); }
+function start(id) { const e = PLAN.find((x) => x.id === id) || nextEx(); if (!e) return; S.pre = null; S.rest = null; S.run = { id: e.id, n: 0, t: 0, paused: false, tip: 0, at: performance.now(), lv: lvOn(e.id) }; if (onRobot(e.id)) { S.run.robot = 'starting'; robotStart(S.run, e); } render(); }
 function finish() { if (armOn(S.run)) robotStop(); S.done[S.run.id] = true; S.last = S.run.id; S.res = robotResult(S.run); S.resist = armOn(S.run) && S.run.robot.res != null ? { n: S.run.robot.res, sim: !!S.run.robot.sim } : null; if (S.resist) { const H = hist(); (H.resist = H.resist || {})[S.run.id] = S.resist; } record(EX[S.run.id], S.run.robot); if (allDone()) hist().ses++; pushHist(); S.run = null; save(); if (allDone()) { S.tab = 'done'; render(); } else { S.rest = { left: REST }; S.tab = 'rest'; render(); } }
 
 // if the page is refreshed in place, the old copy of this script must stop listening, or one tap would count several times
@@ -792,7 +826,7 @@ document.addEventListener('submit', async (ev) => { const f = ev.target.closest(
   if (!r.ok) { err.textContent = r.data.error || 'Something went wrong. Try again.'; btn.disabled = false; btn.textContent = label; return; }
   signedIn(r.data); }, { signal: AC.signal });
 document.addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (!b) return; const d = b.dataset;
-  if (d.tab) { S.want = null; go(d.tab); } else if (d.go) { S.want = d.want || null; go(d.go); } else if (d.plan) setPlan(d.plan);
+  if (d.tab) { S.want = null; go(d.tab); } else if (d.go) { S.want = d.want || null; go(d.go); } else if (d.plan) setPlan(d.plan); else if (d.level) setLevel(+d.level);
   else if ('scan' in d) { camOff(); const cam = $('#cam'); if (cam) cam.classList.add('on'); b.disabled = true; b.textContent = 'Scanning…'; setTimeout(() => { if (S.tab !== 'scan' || S.run) { S.scanned = true; save(); return; } connect(S.station || 2); }, 1500); }
   else if ('camon' in d) camOn(); else if ('camoff' in d) { camOff(); render(); }
   else if ('unscan' in d) { S.scanned = false; save(); render(); }
@@ -824,7 +858,9 @@ function tick(now) { if (AC.signal.aborted) return; requestAnimationFrame(tick);
 render(); requestAnimationFrame(tick); if (live()) loadMe(); else pullHist();
 { const q = new URLSearchParams(location.search), st = +q.get('station');
   if (q.has('api') || st) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
-  if (st) { S.tab = 'scan'; connect(st); } }
+  // ?station=N (NFC tag or a QR code opened by the phone camera): on the station laptop open the arm's plan, then land on Today
+  // with one Start button. Opening a link never starts the arm by itself; the patient presses Start (context/NFC.md).
+  if (st) { if (!HOSTED && !live() && /^\/app(\/|$)/.test(location.pathname) && S.plan !== 'robot') setPlan('robot'); S.tab = 'today'; S.want = null; connect(st); } }
 addEventListener('vita3d', () => render(), { signal: AC.signal });
 addEventListener('pagehide', () => { if (armOn(S.run)) robotStop(); }, { signal: AC.signal });
 probeRobot();

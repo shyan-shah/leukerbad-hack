@@ -7,7 +7,7 @@ from __future__ import annotations
 from statistics import fmean
 
 from .contract import RepResult, SessionSummary
-from .exercises import canonical
+from .exercises import BAND_LEVELS, band_level, canonical
 from .stats import METRICS, mode_of, session_means
 
 HEADER = "Drafted automatically from device data for therapist review. Not a clinical assessment."
@@ -55,10 +55,22 @@ def _change(metric: str, now: float, before: float) -> str:
     return f"{sign}{d:.{dec}f}{u} ({'better' if better else 'worse'})"
 
 
+def _exercise_line(ex: str) -> str:
+    lv = band_level(ex)
+    if lv:
+        return (f"push forward against a constant resistance of {BAND_LEVELS[lv]:.0f} N (level {lv} of 4), "
+                "straight line on the robot arm; reps counted from the handle position")
+    return EXERCISE_LINE.get(ex, ex)
+
+
 def _summary_line(ex: str, reps: list[RepResult], m: dict) -> str:
     """One line per exercise: reps, range, peak force, then contribution (reach) or resistance (push, pull)."""
     head = (f"Summary: {len(reps)} reps, range {m['mean_rom_m'] * 100:.1f} cm (mean), "
             f"peak force {max(r.peak_force_n for r in reps):.1f} N (best)")
+    lv = band_level(ex)
+    if lv:
+        return head + (f", resistance level {lv} ({BAND_LEVELS[lv]:.0f} N constant band), "
+                       f"mean force {m['mean_mean_force_n']:.1f} N")
     if ex in ("push", "pull"):
         return head + (f", resistance level {max(-m['mean_dial'], 0.0) * 100:.0f}% of maximum "
                        f"(mean dial {m['mean_dial']:+.2f}), mean force {m['mean_mean_force_n']:.1f} N")
@@ -100,7 +112,7 @@ def session_note(summary: SessionSummary, reps: list[RepResult],
         "",
         f"Patient: {summary.patient_id}    Session: {summary.session_id}",
         f"Started: {summary.started_at}    Ended: {summary.ended_at or 'in progress'}",
-        f"Exercise: {EXERCISE_LINE.get(ex, ex)}",
+        f"Exercise: {_exercise_line(ex)}",
         "",
     ]
     if not reps:

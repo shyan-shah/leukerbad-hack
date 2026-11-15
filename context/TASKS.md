@@ -32,6 +32,7 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | Y5 `server/API.md` handover for Mat and Gio | Shyan | server/ | Done |
 | L0 `/screens/` mount, common.js, style.css | Shyan | server/ | Done |
 | L1 Patient screen | Shyan | server/ | Done (small fix: hand dot overlaps track-end labels) |
+| N1 NFC tag opens the patient app for the pitch film (`context/NFC.md`, one edit in `demo/app/index.html`) | Kian | context/, demo/app | In progress (app side done and tested against `--mock --lan`; tag not yet written or tested on the phone) |
 | L2 Physio screen (swap: Kian builds it, only server/screens/physio.*) | Kian | server/ | Done against `--mock` in headless Chrome at 1600x900 and 360 px (`/screens/physio.html`); not yet seen on a real phone or with real-arm data |
 | L3 Operator console (swap: Kian builds it, only server/screens/operator.*) | Kian | server/ | Done against `--mock` and `--mock --lan` in headless Chrome (`/screens/operator.html`); Home button waits for `POST /api/arm/home`; not yet used with the real arm |
 | Y6 `POST /api/arm/prepare` (fault check + zero_force before the first real session; no home) | Shyan | server/ | Done |
