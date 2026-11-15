@@ -248,3 +248,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 
 **2026-11-15 · Shyan · name**
 - Product name is **Vita** everywhere (site, app, deck, screens, pitch). "The dial" still means the control. Mat/Gio: trademark and domain check (IGE, EUIPO, UK IPO) is still unverified.
+
+**2026-11-15 · Shiv · E2 started: the interface the server will assume from E1 (for Shyan)**
+- `software.exercises.LIVE`: the ids the robot can run now (set, list or dict keys). Until the file exists the server uses `{"reach"}`.
+- Registry: the server looks for a dict or list named `EXERCISES`, `REGISTRY`, `PRESETS` or `PROGRAMMES`, with entries (dicts or objects) holding `id`, `name`, `kind` and `reps` (or `default_reps`). Anything missing falls back to the server's own table, so any of those names works.
+- Engine: `Engine(..., exercise="push", reps=10)`. The server always sends a rep count (the caller's, else the registry default; `reps=None` only when the caller asks for no limit). `dial` and `auto` are passed only when the caller sent them, so the preset's own dial applies otherwise. `reach_sign`/`reach_m` from `server.run` are passed as today; please treat `reach_sign` as the push direction and reverse it inside the `pull` preset.
+- The server adds `exercise` and `reps_target` to state, sample and rep messages itself (from the session), so the engine doesn't need to emit them. If E1 differs from any of this, tell me and I'll change the adapter (server/exercises.py).
