@@ -1,0 +1,7 @@
+// Patient app on app.vitarehab.org (static assets only, Cloudflare Workers free plan).
+{
+  "name": "vitarehab-app",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./app" },
+  "routes": [{ "pattern": "app.vitarehab.org", "custom_domain": true }]
+}

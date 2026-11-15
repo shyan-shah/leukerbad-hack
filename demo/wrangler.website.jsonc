@@ -1,0 +1,10 @@
+// Marketing site on vitarehab.org (static assets only, Cloudflare Workers free plan).
+{
+  "name": "vitarehab-site",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./website", "not_found_handling": "404-page" },
+  "routes": [
+    { "pattern": "vitarehab.org", "custom_domain": true },
+    { "pattern": "www.vitarehab.org", "custom_domain": true }
+  ]
+}
