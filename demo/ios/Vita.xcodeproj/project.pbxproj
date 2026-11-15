@@ -1,0 +1,512 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		11FF5145043A5C41316CAA02 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 535C2AB9C357D727AD7AA8D1 /* Theme.swift */; };
+		25CCA889B841BA493F2FF97E /* ExercisesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8876C4EDE033D7293B2563A /* ExercisesView.swift */; };
+		3198109F216DE358589FA57C /* QRScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA21043067E7A70053042426 /* QRScanner.swift */; };
+		3D261F871307F63C13BEB904 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87FAD60F71B86BB544E92045 /* HomeView.swift */; };
+		41B34F60AFC9141A3D779950 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6EA919B08B24BCD29FF37A /* RootView.swift */; };
+		588D3E3E0EBA565C6374B1EA /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65965AC18BD2AF502073302C /* Keychain.swift */; };
+		5D3C79BF45F687834E60D884 /* Inter-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3782996F9E27C1E437A8F26D /* Inter-Regular.ttf */; };
+		69D8C2531731C64043CED6B9 /* ProgressTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97783049191B534BDDA3BF9 /* ProgressTab.swift */; };
+		69E6249AB6A54EB2ADCAE623 /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 885D2007D07BD24FBFD58D95 /* ScanView.swift */; };
+		78EDF658EABE09860951F286 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2979095B247123D2BEB65D1D /* SessionView.swift */; };
+		855544312E714F1E7D3AE744 /* Inter-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6BB0A539C6984AFD1DC539ED /* Inter-Bold.ttf */; };
+		908FF860DD46C7327CFC248C /* Activation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8900AD0B081D69B8DB816E /* Activation.swift */; };
+		986034CABBE18C8011F8450C /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13195E3E8DEC2FFBEBF78D3E /* APIClient.swift */; };
+		B7CD2A38877E9FAB90E90EEC /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A9DA093B8C5EE55C6586584 /* AppModel.swift */; };
+		D9A80FBA04E12365E2D590F7 /* BricolageGrotesque-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8BAC81B74B1B1BF9EDB0B275 /* BricolageGrotesque-ExtraBold.ttf */; };
+		DB3E12B06D8A9A3BED3E4F95 /* Inter-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A3A18003A7DEFCC0C133BE6A /* Inter-Medium.ttf */; };
+		E09D3BC8D44D20F963D965CB /* MeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87821AC03080DD3613D2209 /* MeView.swift */; };
+		E7E56C872988CD7B10D50F65 /* VitaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D10097BD2AC95442EA4DFB8 /* VitaApp.swift */; };
+		F94CCB840D8CA652E6BEE598 /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 36D004D4CBE6DEFBE46F5E75 /* Inter-SemiBold.ttf */; };
+		FDCBF5A3525532DB5543984F /* ActivationCodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 740E4931ED38FF3B0BF92ADB /* ActivationCodeTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		ED8A3D78A43D6A915CB8F95F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B7222326E306A54325532463 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BFA1D49EE4F57CEBC9F0A793;
+			remoteInfo = Vita;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		13195E3E8DEC2FFBEBF78D3E /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		2979095B247123D2BEB65D1D /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
+		36D004D4CBE6DEFBE46F5E75 /* Inter-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-SemiBold.ttf"; sourceTree = "<group>"; };
+		3782996F9E27C1E437A8F26D /* Inter-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Regular.ttf"; sourceTree = "<group>"; };
+		535C2AB9C357D727AD7AA8D1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		5D9CB4DE2045301BEBF4C466 /* Vita.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Vita.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5EB565E808B59EBCC1434B1E /* VitaTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VitaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		65965AC18BD2AF502073302C /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		6BB0A539C6984AFD1DC539ED /* Inter-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Bold.ttf"; sourceTree = "<group>"; };
+		740E4931ED38FF3B0BF92ADB /* ActivationCodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivationCodeTests.swift; sourceTree = "<group>"; };
+		87FAD60F71B86BB544E92045 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		885D2007D07BD24FBFD58D95 /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
+		8A9DA093B8C5EE55C6586584 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		8BAC81B74B1B1BF9EDB0B275 /* BricolageGrotesque-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BricolageGrotesque-ExtraBold.ttf"; sourceTree = "<group>"; };
+		9D10097BD2AC95442EA4DFB8 /* VitaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VitaApp.swift; sourceTree = "<group>"; };
+		A3A18003A7DEFCC0C133BE6A /* Inter-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Medium.ttf"; sourceTree = "<group>"; };
+		A87821AC03080DD3613D2209 /* MeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeView.swift; sourceTree = "<group>"; };
+		AA21043067E7A70053042426 /* QRScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanner.swift; sourceTree = "<group>"; };
+		CB8900AD0B081D69B8DB816E /* Activation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Activation.swift; sourceTree = "<group>"; };
+		CF6EA919B08B24BCD29FF37A /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		D97783049191B534BDDA3BF9 /* ProgressTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressTab.swift; sourceTree = "<group>"; };
+		F7A8F071818DB110F6CEC267 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F8876C4EDE033D7293B2563A /* ExercisesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisesView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		4EEE079DE01DC96BE49EF252 = {
+			isa = PBXGroup;
+			children = (
+				B1F436C93553F739BC96D961 /* Vita */,
+				E7FA967D00E8BC431356E602 /* VitaTests */,
+				6204DBEBF53789D5A4A1032A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6204DBEBF53789D5A4A1032A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5D9CB4DE2045301BEBF4C466 /* Vita.app */,
+				5EB565E808B59EBCC1434B1E /* VitaTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B1F436C93553F739BC96D961 /* Vita */ = {
+			isa = PBXGroup;
+			children = (
+				CB8900AD0B081D69B8DB816E /* Activation.swift */,
+				13195E3E8DEC2FFBEBF78D3E /* APIClient.swift */,
+				8A9DA093B8C5EE55C6586584 /* AppModel.swift */,
+				F7A8F071818DB110F6CEC267 /* Info.plist */,
+				65965AC18BD2AF502073302C /* Keychain.swift */,
+				AA21043067E7A70053042426 /* QRScanner.swift */,
+				535C2AB9C357D727AD7AA8D1 /* Theme.swift */,
+				9D10097BD2AC95442EA4DFB8 /* VitaApp.swift */,
+				BD0920284E17AE315A60DE7E /* Fonts */,
+				B62217547AC0C02D776D6A95 /* Views */,
+			);
+			path = Vita;
+			sourceTree = "<group>";
+		};
+		B62217547AC0C02D776D6A95 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F8876C4EDE033D7293B2563A /* ExercisesView.swift */,
+				87FAD60F71B86BB544E92045 /* HomeView.swift */,
+				A87821AC03080DD3613D2209 /* MeView.swift */,
+				D97783049191B534BDDA3BF9 /* ProgressTab.swift */,
+				CF6EA919B08B24BCD29FF37A /* RootView.swift */,
+				885D2007D07BD24FBFD58D95 /* ScanView.swift */,
+				2979095B247123D2BEB65D1D /* SessionView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		BD0920284E17AE315A60DE7E /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				8BAC81B74B1B1BF9EDB0B275 /* BricolageGrotesque-ExtraBold.ttf */,
+				6BB0A539C6984AFD1DC539ED /* Inter-Bold.ttf */,
+				A3A18003A7DEFCC0C133BE6A /* Inter-Medium.ttf */,
+				3782996F9E27C1E437A8F26D /* Inter-Regular.ttf */,
+				36D004D4CBE6DEFBE46F5E75 /* Inter-SemiBold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		E7FA967D00E8BC431356E602 /* VitaTests */ = {
+			isa = PBXGroup;
+			children = (
+				740E4931ED38FF3B0BF92ADB /* ActivationCodeTests.swift */,
+			);
+			path = VitaTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A5A2DFB960E367F5631835FC /* VitaTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EF7A18E3053F6BE2FFCF996B /* Build configuration list for PBXNativeTarget "VitaTests" */;
+			buildPhases = (
+				F0D328C7D8F7D6B3E9D73AEE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A13EEE07174FB2698AF3B9A8 /* PBXTargetDependency */,
+			);
+			name = VitaTests;
+			packageProductDependencies = (
+			);
+			productName = VitaTests;
+			productReference = 5EB565E808B59EBCC1434B1E /* VitaTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		BFA1D49EE4F57CEBC9F0A793 /* Vita */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 88EFA83A7E2E8334A5BFFBA9 /* Build configuration list for PBXNativeTarget "Vita" */;
+			buildPhases = (
+				584F9EE95DB7ABB70CC2578D /* Sources */,
+				ED557130D982A9565A78EFE5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Vita;
+			packageProductDependencies = (
+			);
+			productName = Vita;
+			productReference = 5D9CB4DE2045301BEBF4C466 /* Vita.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B7222326E306A54325532463 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					A5A2DFB960E367F5631835FC = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					BFA1D49EE4F57CEBC9F0A793 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 9584184AAC888103D861E8AF /* Build configuration list for PBXProject "Vita" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4EEE079DE01DC96BE49EF252;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 6204DBEBF53789D5A4A1032A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BFA1D49EE4F57CEBC9F0A793 /* Vita */,
+				A5A2DFB960E367F5631835FC /* VitaTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		ED557130D982A9565A78EFE5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D9A80FBA04E12365E2D590F7 /* BricolageGrotesque-ExtraBold.ttf in Resources */,
+				855544312E714F1E7D3AE744 /* Inter-Bold.ttf in Resources */,
+				DB3E12B06D8A9A3BED3E4F95 /* Inter-Medium.ttf in Resources */,
+				5D3C79BF45F687834E60D884 /* Inter-Regular.ttf in Resources */,
+				F94CCB840D8CA652E6BEE598 /* Inter-SemiBold.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		584F9EE95DB7ABB70CC2578D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				986034CABBE18C8011F8450C /* APIClient.swift in Sources */,
+				908FF860DD46C7327CFC248C /* Activation.swift in Sources */,
+				B7CD2A38877E9FAB90E90EEC /* AppModel.swift in Sources */,
+				25CCA889B841BA493F2FF97E /* ExercisesView.swift in Sources */,
+				3D261F871307F63C13BEB904 /* HomeView.swift in Sources */,
+				588D3E3E0EBA565C6374B1EA /* Keychain.swift in Sources */,
+				E09D3BC8D44D20F963D965CB /* MeView.swift in Sources */,
+				69D8C2531731C64043CED6B9 /* ProgressTab.swift in Sources */,
+				3198109F216DE358589FA57C /* QRScanner.swift in Sources */,
+				41B34F60AFC9141A3D779950 /* RootView.swift in Sources */,
+				69E6249AB6A54EB2ADCAE623 /* ScanView.swift in Sources */,
+				78EDF658EABE09860951F286 /* SessionView.swift in Sources */,
+				11FF5145043A5C41316CAA02 /* Theme.swift in Sources */,
+				E7E56C872988CD7B10D50F65 /* VitaApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F0D328C7D8F7D6B3E9D73AEE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FDCBF5A3525532DB5543984F /* ActivationCodeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A13EEE07174FB2698AF3B9A8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BFA1D49EE4F57CEBC9F0A793 /* Vita */;
+			targetProxy = ED8A3D78A43D6A915CB8F95F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		146C1FA41F7EBCD10442D1EC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.vita.patient.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Vita.app/Vita";
+			};
+			name = Debug;
+		};
+		3DC81BCAF82B52D272983553 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Vita/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Vita;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Vita uses the camera to scan the code on your rehab arm, so the arm knows it is you.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Vita talks to your rehab arm on your home network.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.vita.patient;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		8CB2218A4FC3FFEC3D6FB62C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.vita.patient.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Vita.app/Vita";
+			};
+			name = Release;
+		};
+		B03648FF2DC04168C429DD95 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Vita/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Vita;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Vita uses the camera to scan the code on your rehab arm, so the arm knows it is you.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Vita talks to your rehab arm on your home network.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.vita.patient;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		C834645F87440E662AB00C7E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		EC9C1E40D933BAEF0DD10FBA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		88EFA83A7E2E8334A5BFFBA9 /* Build configuration list for PBXNativeTarget "Vita" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3DC81BCAF82B52D272983553 /* Debug */,
+				B03648FF2DC04168C429DD95 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9584184AAC888103D861E8AF /* Build configuration list for PBXProject "Vita" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C834645F87440E662AB00C7E /* Debug */,
+				EC9C1E40D933BAEF0DD10FBA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EF7A18E3053F6BE2FFCF996B /* Build configuration list for PBXNativeTarget "VitaTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				146C1FA41F7EBCD10442D1EC /* Debug */,
+				8CB2218A4FC3FFEC3D6FB62C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = B7222326E306A54325532463 /* Project object */;
+}

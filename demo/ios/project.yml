@@ -1,0 +1,55 @@
+name: Vita
+options:
+  bundleIdPrefix: app.vita
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    # Set your team in Xcode (Signing & Capabilities); leave empty here so the project builds for anyone.
+    DEVELOPMENT_TEAM: ""
+targets:
+  Vita:
+    type: application
+    platform: iOS
+    sources: [Vita]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.vita.patient
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Vita
+        INFOPLIST_KEY_NSCameraUsageDescription: Vita uses the camera to scan the code on your rehab arm, so the arm knows it is you.
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: Vita talks to your rehab arm on your home network.
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UIUserInterfaceStyle: Light
+    info:
+      path: Vita/Info.plist
+      properties:
+        NSAppTransportSecurity:
+          # Plain http is allowed only on the local network (a robot on the home Wi-Fi). Internet servers must use https.
+          NSAllowsLocalNetworking: true
+        # The website's typefaces (SIL Open Font License), cut to Latin from the site's web fonts.
+        UIAppFonts: [Inter-Regular.ttf, Inter-Medium.ttf, Inter-SemiBold.ttf, Inter-Bold.ttf, BricolageGrotesque-ExtraBold.ttf]
+  VitaTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [VitaTests]
+    dependencies:
+      - target: Vita
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.vita.patient.tests
+schemes:
+  Vita:
+    build:
+      targets:
+        Vita: all
+        VitaTests: [test]
+    test:
+      targets: [VitaTests]
