@@ -85,15 +85,17 @@ def no_calibrate_for(a: argparse.Namespace) -> bool:
 def exercise_sets(a: argparse.Namespace) -> tuple[list[str] | None, list[str] | None]:
     """(what this server can run, what it offers at start-up). None, None: software.exercises.LIVE decides.
 
-    --robot: what the band engines run: Push and Row at four fixed levels (push_1 .. push_4, row_1 .. row_4)
-    and the strength test (strength). With --push-only: push_1 .. push_4 and nothing else. The older
-    exercises (reach, push, pull, armtest) are offered only when named in --exercises.
-    --sim: the older exercises as before; the band-engine ids can be named in --exercises.
+    --robot: Push at four fixed levels (push_1 .. push_4, the band engine) and nothing else.
+    --robot --with-row-strength: also Row at the same levels (row_1 .. row_4) and the strength test
+    (strength). Without that flag they cannot be started on the real arm, not even through --exercises:
+    they have not passed their real-arm checks (context/LOG.md). The older exercises (reach, push, pull,
+    armtest) are offered only when named in --exercises.
+    --sim: the older exercises as before; every band-engine id can be named in --exercises.
     --mock: everything the mock can play.
-    A caller without a ``push_only`` attribute (from before Row and the strength test existed) gets what it
-    got then: Push only."""
+    --push-only is accepted and does nothing (Push only is the default)."""
     from . import exercises as ex
-    band = list(ex.BAND_IDS) if getattr(a, "push_only", True) else list(ex.BAND_ENGINE_IDS)
+    more = getattr(a, "with_row_strength", False) or a.robot is None       # no robot: nothing to protect
+    band = list(ex.BAND_ENGINE_IDS) if more else list(ex.BAND_IDS)
     wanted = None
     if a.exercises is not None:
         wanted = [x.strip() for x in a.exercises.split(",") if x.strip()]
@@ -174,8 +176,12 @@ def main(argv=None) -> None:
                          "robot/config.json, else +1)")
     ap.add_argument("--tool", default="Flange",
                     help="--robot: tool that must be selected on the robot (default Flange = nothing mounted)")
+    ap.add_argument("--with-row-strength", action="store_true",
+                    help="--robot: also offer Row (row_1 .. row_4) and the strength test (strength). Off by "
+                         "default: with --robot only Push (push_1 .. push_4) runs. Sim and mock only so far; "
+                         "pass it for their real-arm checks (context/LOG.md)")
     ap.add_argument("--push-only", action="store_true",
-                    help="--robot: offer only Push (push_1 .. push_4), not Row and the strength test")
+                    help="does nothing: Push only is already the default with --robot (kept so old commands still start)")
     ap.add_argument("--exercises", default=None, metavar="IDS",
                     help="comma list of exercise ids offered at start-up (default: all the robot can run); "
                          "enable more later with POST /api/exercises/enable")
@@ -220,9 +226,13 @@ def main(argv=None) -> None:
                              + ("; THE ENGINE RAISES THE ARM'S LIMITS DURING IT" if a.robot is not None else "")))
     if live is not None and not a.mock:
         print(f"  Exercises  can run: {', '.join(live)}"
-              + (("   (Push at 4 fixed levels; the older ones only with --exercises)" if a.push_only else
-                  "   (Push and Row at 4 fixed levels, strength test; --push-only for Push alone; "
+              + (("   (Push and Row at 4 fixed levels, strength test: --with-row-strength is ON; "
+                  "the older ones only with --exercises)" if a.with_row_strength else
+                  "   (Push at 4 fixed levels; Row and the strength test only with --with-row-strength; "
                   "the older ones only with --exercises)") if a.exercises is None else ""))
+        if a.robot is not None and a.with_row_strength:
+            print("  NOTE       Row and the strength test have NOT passed their real-arm checks (context/LOG.md). "
+                  "Tester only, hands off whenever the screen says the arm is moving.")
     if enabled is not None:
         print(f"  Exercises enabled now: {', '.join(enabled)}   (more: POST /api/exercises/enable)")
     print(f"  API        http://127.0.0.1:{a.port}/api/health")

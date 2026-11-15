@@ -540,8 +540,8 @@ so a handle that is let go glides back slowly instead of snapping. Readings stop
 Sim and mock only so far: not yet run on the real arm. Same routes and fields as Push (section 8).
 
 Ids: `row_1` .. `row_4` (the levels and newtons of Push, `group` "row") and `strength` (`group` "strength",
-`kind` "test", `reps` 3, `level` and `level_force_n` null). `--robot` offers `push_1..4`, `row_1..4` and
-`strength`; `--push-only` offers Push alone. `GET /api/exercises` lists them with `group`, `level`,
+`kind` "test", `reps` 3, `level` and `level_force_n` null). `--robot` offers `push_1..4` only; `--robot --with-row-strength`
+also offers `row_1..4` and `strength` (off by default until their real-arm checks pass). `GET /api/exercises` lists them with `group`, `level`,
 `level_force_n`. `--mock` plays all of them.
 
 `POST /api/level {"level": n}` keeps the exercise: `row_2` becomes `row_n`, `push_2` becomes `push_n`.

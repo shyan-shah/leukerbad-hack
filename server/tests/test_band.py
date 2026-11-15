@@ -199,16 +199,39 @@ def test_exercise_list_has_all_nine_with_group_and_level(tmp_path):
     assert out["push_2"]["group"] == "push" and out["push_2"]["level"] == 2
 
 
-def test_robot_offers_push_row_and_strength_and_push_only_is_a_flag(monkeypatch):
+def test_robot_offers_row_and_strength_only_with_the_flag(monkeypatch):
     monkeypatch.setattr(exercises, "live_ids", lambda: ["reach", "push", "pull", "armtest"])
-    assert exercise_sets(_ns(robot="", push_only=False)) == (NINE, None)
-    assert exercise_sets(_ns(robot="", push_only=True)) == (BAND, None)
-    live, enabled = exercise_sets(_ns(robot="", push_only=False, exercises="row_2,strength"))
+    assert exercise_sets(_ns(robot="")) == (BAND, None)                                   # the default: Push only
+    assert exercise_sets(_ns(robot="", with_row_strength=False)) == (BAND, None)
+    assert exercise_sets(_ns(robot="", with_row_strength=True)) == (NINE, None)
+    assert exercise_sets(_ns(robot="", push_only=True)) == (BAND, None)                   # --push-only does nothing
+    assert exercise_sets(_ns(robot="", push_only=True, with_row_strength=True)) == (NINE, None)
+    live, enabled = exercise_sets(_ns(robot="", with_row_strength=True, exercises="row_2,strength"))
     assert enabled == ["row_2", "strength"] and set(NINE) <= set(live)
-    live, enabled = exercise_sets(_ns(mock=True, push_only=False))
-    assert set(NINE) <= set(live) and "reach" in live
-    live, enabled = exercise_sets(_ns(sim=True, push_only=False, exercises="row_1"))
-    assert enabled == ["row_1"]
+    for ids in ("row_2", "strength", "push_1,row_1"):                                     # not through --exercises either
+        with pytest.raises(ValueError):
+            exercise_sets(_ns(robot="", exercises=ids))
+    live, enabled = exercise_sets(_ns(mock=True))
+    assert set(NINE) <= set(live) and "reach" in live                                     # the mock plays everything
+    live, enabled = exercise_sets(_ns(sim=True, exercises="row_1"))
+    assert enabled == ["row_1"]                                                           # the sim needs no flag
+
+
+def test_the_command_line_default_is_push_only(monkeypatch):
+    """What `python -m server.run --robot` really parses: neither flag set unless typed."""
+    import sys
+    from server import run as run_mod
+    seen = {}
+
+    def fake_sets(a):
+        seen["a"] = a
+        raise SystemExit(0)
+    monkeypatch.setattr(run_mod, "exercise_sets", fake_sets)
+    for argv, want in ((["--mock"], False), (["--mock", "--with-row-strength"], True), (["--mock", "--push-only"], False)):
+        monkeypatch.setattr(sys, "argv", ["server.run", *argv])
+        with pytest.raises(SystemExit):
+            run_mod.main()
+        assert seen["a"].with_row_strength is want
 
 
 def test_mock_plays_row_with_the_move_to_the_far_end_and_levels_stay_in_the_group(tmp_path):
