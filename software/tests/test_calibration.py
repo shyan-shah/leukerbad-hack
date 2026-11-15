@@ -75,7 +75,7 @@ def test_easy_set_raises_the_next_fraction_and_a_hard_one_lowers_it():
     run_until(eng2, lambda: cal(eng2)["status"] == "done")
     assert cal(eng2)["fraction"] == up["fraction"]                    # the next session uses it
     run_until(eng2, lambda: eng2.phase == "out")
-    eng2.run_for(1.0)
+    run_until(eng2, lambda: eng2._progress(arm2.get_state().pos) * eng2.reach_m > 0.06)   # past 5 cm: a let-go before that is cancelled, not a rep
     arm2.patient.present = False                                      # a hard set: the rep is not completed
     eng2.run_for(3.0)
     eng2.stop()

@@ -336,7 +336,12 @@ def assist_let_go(arm_kw, strength, frac):
 def test_assist_side_let_go_stops_within_8cm(name, strength, frac):
     eng, arm, travel, idle_after, after = assist_let_go(SETS[name], strength, frac)
     assert travel < 0.08                                              # measured: 7.6 cm at most (limp, 30%, no friction)
-    assert idle_after <= engine_mod.OCCUPIED_WINDOW_S + 3 * DT        # detection is no slower than before
+    # 15 Nov evening: a handle still travelling with no pull from the arm counts as held (a real hand moving it
+    # freely reads under the motion allowance), so a handle that coasts on is seen as empty up to NOPULL_S later.
+    # The 8 cm above is unchanged.
+    # (only without friction: with it the handle stops at once and detection is at most 0.1 s later)
+    slack = engine_mod.NOPULL_S if name in ("off", "artefact") else 0.1
+    assert idle_after <= engine_mod.OCCUPIED_WINDOW_S + slack + 3 * DT
     assert eng.phase == "idle" and arm.get_state().fault is None
     assert np.linalg.norm(after[-1].vel) < 0.025      # 15 Nov: the empty handle is walked back to the start at 2 cm/s
     late = after[int(1.0 / DT):]

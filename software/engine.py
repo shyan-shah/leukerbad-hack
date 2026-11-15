@@ -55,6 +55,24 @@ For ``SimArm`` the simulated patient keeps hands off while the baseline is taken
   rep ends now as not completed and the phase goes to idle. While the handle is empty the
   target is latched at the point where the hand was when it became empty (``K_HOLD``), so an
   empty handle is never driven along the path.
+- A real hand (15 Nov evening, see DECISIONS.md; software/tests/test_real_hand.py). On the
+  assist side an unoccupied handle in "out" no longer ends the rep at once. Before the hand is
+  ``MIN_REP_M`` from the start the rep waits with the target on the hand (nothing is driven)
+  for up to ``START_WAIT_S`` and is then cancelled: no RepResult, no count
+  (``cancelled_reps``). Past ``MIN_REP_M`` it waits in the idle hold for ``PAUSE_S`` (Samples
+  labelled "idle") and then ends as before. A hand force, or the handle travelling
+  ``WAIT_MOVE_M`` outward, carries the same rep on from where the hand is. A handle that
+  travels in the phase's direction with no pull from the arm for ``NOPULL_S`` counts as held
+  (``_moved_by_hand``). A rep the hands-off rule ends in "back" keeps ``completed``. On the
+  resist side a let-go before ``MIN_REP_M`` is cancelled in the same way.
+- Idle, line reps: with a hand on the handle the idle target stays on the path segment and
+  is commanded at most ``IDLE_LEAD_M`` from the hand along the reach (so the let-go rule reads
+  the pull the arm really applies, and the hold across the path is kept). Over the last
+  ``END_ZONE_M`` before the path end next to the workspace box the hold stiffens with position
+  from ``k_hold`` to ``k_max`` (13.5 to 27 N); in a rep the reach axis is at ``k_max`` beyond
+  that end. On the assist side a handle moving outward past ``MIN_REP_M`` in idle with a hand
+  force on it, and by then past ``FIRM_EXIT_M``, starts a rep from where it is
+  (``_reach_in_progress``).
 - Hands-off rule, resist side (dial < 0) and the strength test (see DECISIONS.md, 15 Nov):
   the band and the test hold are loaded springs, so on a let-go (``_let_go``) the rep or try
   ends, the target is put on the hand at once, the reach-axis stiffness ramps to zero over
@@ -161,6 +179,22 @@ CAL_START_N = 2.0            # N along the push direction: the push has begun
 CAL_WINDOW_S = 1.0           # s, comfort force = mean over the steadiest window of this length
 CAL_MIN_N = 5.0              # N, a comfortable push under this gives the lightest resistance
 CAL_WAIT_S = 20.0            # s without a push: give up, lightest resistance
+MIN_REP_M = 0.05             # m along the reach: a rep that the hands-off rule ends before this was not a rep (not recorded)
+START_WAIT_S = 3.0           # s a just-armed assist rep waits, undriven, for the hand to be seen again before it is cancelled
+PAUSE_S = 1.5                # s an assist rep past MIN_REP_M waits in the idle hold for the hand to be seen again before it ends
+TAKEOVER_V = 0.02            # m/s outward: a held handle moving this fast in idle for TAKEOVER_S past MIN_REP_M, and now past FIRM_EXIT_M, is a reach
+TAKEOVER_S = 0.25            # s
+NOPULL_S = 0.5               # s without any pull by the arm in the direction of travel before motion that way counts as a hand
+PULL_EPS_N = 0.05            # N: a commanded spring pull above this is "the arm is pulling"
+WAIT_MOVE_M = 0.015          # m outward from where a just-armed, waiting rep's handle stood: moved that far, undriven, it is a hand
+PAUSE_MOVE_M = 0.03          # m, the same for a rep paused later in the reach (an empty handle coasted 0.7 cm at most in the sim)
+IDLE_LEAD_M = 0.045          # m along the reach: the idle target is commanded no further than this from the hand (the arm clamps the
+                             # 3D lead to 5 cm: a target further behind left nothing across the path, and a limb's weight sank 8 cm)
+IDLE_REL_MIN_S = 0.3         # s a let-go of the idle hold stands before a hand force can undo it
+END_STEPS = 6                # the hold stiffens from k_hold to k_max in this many steps across END_ZONE_M (by position, not by time)
+TAKEOVER_EASE_S = 0.5        # s over which the idle hold's pull is taken off after such a rep starts (no lurch)
+END_ZONE_M = 0.06            # m before the box-side path end over which the idle hold on a held handle stiffens to k_max
+FOLLOW_IN_M = 0.01           # m: an idle target left this far behind a handle that is nearer the start goes with it
 SETUP_DWELL_S = 1.0          # s at the far end before a "far" exercise (pull) leaves the setup phase
 EXERCISE = "reach_line"      # SessionSummary.exercise for the default "reach" preset (unchanged)
 
@@ -226,6 +260,7 @@ class Engine:
         self._latest: Sample | None = None
         self._arm_mode: str | None = None
         self.rep_count = 0
+        self.cancelled_reps = 0              # armed, then ended by the hands-off rule before MIN_REP_M: not recorded
         self.reps: list[RepResult] = []
         self.started_at: str | None = None
         self.error: BaseException | None = None
@@ -236,6 +271,7 @@ class Engine:
         self._explicit_cues = False          # simulated patient cued by the engine (set in start())
 
         self.path: LinePath | None = None
+        self._box_at_end = True
         self._t0: float | None = None
         self.force_baseline = np.zeros(3)   # N, empty-handle sensor reading (set by start())
         self._f_filt: np.ndarray | None = None
@@ -298,6 +334,10 @@ class Engine:
         end = start.copy()
         end[self.reach_axis] += self.reach_sign * self.reach_m
         self.path = LinePath(_tup3(start), _tup3(end))
+        # which end of the path is the one near the workspace box edge (the far end from the
+        # arm's start pose): the path end for reach and push, the path start for pull
+        home = float(self.arm.start_pos[self.reach_axis])
+        self._box_at_end = abs(end[self.reach_axis] - home) >= abs(start[self.reach_axis] - home)
         if abs(self._progress(self.arm.get_state().pos)) * self.reach_m > NEAR_START_M:
             # The handle is not at this exercise's start (pull: the far end; any other exercise
             # after a pull, or when the handle was left out): the person brings it there first.
@@ -624,12 +664,25 @@ class Engine:
         self._firm = False                   # idle: holding the start at k_max
         self._arm_acc = 0.0                  # s of arming force collected
         self._firm_t0 = 0.0
+        self._out_acc = 0.0                  # idle: s of outward motion with a hand on the handle
+        self._idle_released = False          # idle: the hold was let go; the target may sit beyond the path ends
+        self._idle_rel_t = 0.0
+        self._end_n = 0                      # idle: stiffening step (0..END_STEPS) of the hold near the box-side path end
+        self._ease: tuple[float, float] | None = None   # (arm time, N along the reach) pull being taken off
         self._clear_rep()
 
     def _clear_rep(self) -> None:
         self._rep_idx = -1
         self._rep_dial = 0.0
         self._rep_t0 = 0.0
+        self._rep_max_m = 0.0                # furthest the hand got along the reach in this rep
+        self._wait_since: float | None = None   # just armed, hand not seen: waiting undriven since
+        self._armed_t = 0.0
+        self._wait_x0 = 0.0
+        self._wait_near = True               # the wait began before MIN_REP_M (undriven) / after it (idle hold)
+        self._pull_t = 0.0                   # arm time of the last pull by the arm in the direction of travel
+        self._move_acc = 0.0                 # s of continuous motion in the direction of travel
+        self._move_dir = 1
         self._rescued = False
         self._rescued_at = 0.0
         self._stall_since: float | None = None
@@ -701,6 +754,9 @@ class Engine:
         reach_only = self.preset.kind == "guided"
         if self._hand_on(force, vel, reach_only) and self._hand_on(self._f_filt, vel, reach_only):
             self._last_force_t = t_arm
+        elif (self._phase in ("out", "back") and dial > 0 and self.preset.kind in ("assist", "resist")
+              and self._moved_by_hand(t_arm, pos, dt_tick)):
+            self._last_force_t = t_arm           # assist side: the handle travels and the arm is not pulling it
         occupied = (self._last_force_t is not None
                     and t_arm - self._last_force_t <= OCCUPIED_WINDOW_S)
         # follow slow sensor drift while the handle is empty, at rest, and nothing is happening
@@ -755,37 +811,97 @@ class Engine:
 
         # hands-off rule, resist side: the band is a loaded spring, so letting go must not let
         # it throw the handle back. End the rep and release the spring gently.
+        if self._phase == "out":
+            self._rep_max_m = max(self._rep_max_m, s * self.reach_m)
         if self._phase in ("out", "back") and dial < 0 and self._let_go(force, pos, occupied):
-            self._finish_rep(dial, aborted=True)
+            self._finish_rep(dial, aborted=True, hands_off=True)
             self._begin_release(t_arm, pos)
             self._tick_release(state, t_arm, t, pos, force, occupied, dial, dt_tick)
             return
 
         # hands-off rule, assist side
+        # It does not end the rep at once (real arm, 15 Nov: reps ended 0.5 s after arming at 1 to
+        # 2 cm, and the reach then happened in idle). A real hand that moves the handle pushes
+        # with less than the motion allowance and reads as "no hand". The rep waits instead, and
+        # an empty handle is never driven meanwhile:
+        # - before MIN_REP_M (just armed): target on the hand, reference clock held at zero, up
+        #   to START_WAIT_S; then, or if the handle leaves the start still unseen, the rep is
+        #   cancelled without a RepResult;
+        # - after MIN_REP_M: the ordinary idle hold where the hand is, up to PAUSE_S; then the
+        #   rep ends as before (not completed).
+        # A hand force, or the handle travelling WAIT_MOVE_M outward against nothing but that
+        # hold, carries the rep on from where the hand is.
+        paused = False
+        x_now = s * self.reach_m
+        if (self._phase == "out" and dial > 0 and not occupied and self._wait_since is not None
+                and x_now - self._wait_x0 >= (WAIT_MOVE_M if self._wait_near else PAUSE_MOVE_M)
+                and float(vel[self.reach_axis]) * self.reach_sign >= TAKEOVER_V):
+            self._last_force_t = t_arm
+            occupied = True
         if self._phase in ("out", "back") and dial > 0 and not occupied:
-            self._finish_rep(dial, aborted=True)
-            self._phase = "idle"
-            self._near_since = None
+            if self._phase == "out" and self._wait_since is None:
+                self._wait_since, self._wait_x0 = t_arm, x_now
+                self._wait_near = self._rep_max_m < MIN_REP_M
+                self._latch, self._firm = None, False
+            near = self._wait_near
+            waiting = (self._phase == "out" and (not near or self._rep_max_m < MIN_REP_M)
+                       and t_arm - self._wait_since < (START_WAIT_S if near else PAUSE_S))
+            if waiting and near:
+                self._phase_t0 = t_arm           # reference, hand-over and time-out start when the hand is seen
+                self._rep_t0 = t
+                self._stall_since = None
+                del self._out_t[:], self._out_pos[:], self._out_force[:], self._out_robot[:]
+            elif waiting:
+                paused = True
+                self._stall_since = None
+            else:
+                # (in "back" the reach itself is over: a rep that got to OUT_DONE stays completed)
+                self._finish_rep(dial, aborted=self._phase == "out", hands_off=True)
+                self._phase = "idle"
+                self._near_since = None
+        elif self._phase == "out" and self._wait_since is not None:
+            if not self._wait_near:
+                # seen again after a pause: carry on from where the hand is, easing the hold off
+                self._phase_t0 = t_arm - self._ref_time(s)
+                self._ease = (t_arm, float(self._spring_force(pos)[self.reach_axis]))
+                self._pull_t, self._move_acc = t_arm - NOPULL_S, 0.0
+                self._latch = None
+            self._wait_since = None
 
         # idle -> out (firm hold at the start, hand force for ARM_HOLD_S; see _idle_hold)
         idle_cmd = None
         if self._phase == "idle":
             tgt_i, k_i, armed = self._idle_hold(t_arm, pos, occupied, dt_tick, not self._limit_reached())
             idle_cmd = (tgt_i, k_i)
-            if armed:
-                self._begin_rep(t_arm, t, dial)
+            # (assist side only: on the resist side the one-tick let-go test cut such a rep
+            # short 0.5 s later, a counted rep of 3 cm)
+            takeover = (not armed and dial > 0 and not self._limit_reached()
+                        and self._reach_in_progress(pos, s, occupied, dt_tick))
+            if armed or takeover:
+                pull = float(self._spring_force(pos)[self.reach_axis])
+                self._begin_rep(t_arm, t, dial, cue=not takeover)
                 self._last_force_t = t_arm       # the arming force is a hand: occupied from here
                 occupied = True
+                if takeover:
+                    # a reach already under way in idle: the rep starts where the hand is. The
+                    # reference starts at the hand, and the hold's pull is eased off, not dropped.
+                    self._phase_t0 = t_arm - self._ref_time(s)
+                    self._rep_max_m = s * self.reach_m
+                    self._ease = (t_arm, pull)
+                    self._pull_t = t_arm - NOPULL_S      # the idle hold was pulling towards the start
+                    self._firm, self._arm_acc, self._go_at = False, 0.0, None
+                    self._arming = {"progress": 1.0, "reason": None}
 
         # record the out slice (strictly increasing time only)
-        if self._phase == "out" and (not self._out_t or t > self._out_t[-1]):
+        if self._phase == "out" and not paused and (not self._out_t or t > self._out_t[-1]):
             self._out_t.append(t)
             self._out_pos.append(_tup3(pos))
             self._out_force.append(_tup3(force))
             self._out_robot.append(self._spring_force(pos))
         # the Sample is labelled with the phase it was recorded in (the tick that reaches
         # OUT_DONE is the last "out" sample, the tick that gets back to the start the last "back")
-        label_phase, label_idx = self._phase, self._rep_idx
+        # (a paused rep is in the idle hold: its Samples are labelled "idle", like a release)
+        label_phase, label_idx = ("idle", -1) if paused else (self._phase, self._rep_idx)
 
         # phase transitions on progress / time
         if self._phase == "out":
@@ -793,6 +909,7 @@ class Engine:
             if s >= OUT_DONE or t_in >= OUT_TIMEOUT_S:
                 self._completed = s >= OUT_DONE
                 self._phase, self._phase_t0, self._stall_since = "back", t_arm, None
+                self._pull_t, self._move_acc = t_arm, 0.0
         elif self._phase == "back":
             t_in = t_arm - self._phase_t0
             # back at the start: inside HOLD_START_M, or inside NEAR_START_M and no longer moving
@@ -804,7 +921,7 @@ class Engine:
                 self._near_since = None
 
         # stall rescue
-        if self._phase in ("out", "back") and dial != 0 and not self._rescued:
+        if self._phase in ("out", "back") and dial != 0 and not self._rescued and not paused:
             v_along = float(state.vel[self.reach_axis]) * self.reach_sign
             prog = s if self._phase == "out" else 1.0 - s
             if abs(v_along) < STALL_SPEED and prog < STALL_MAX_PROGRESS:
@@ -818,7 +935,9 @@ class Engine:
                 self._stall_since = None
 
         # command
-        if self._phase in ("out", "back"):
+        if self._phase == "out" and paused:
+            target, k = self._idle_hold(t_arm, pos, occupied, dt_tick, False)[:2]
+        elif self._phase in ("out", "back"):
             self._latch = None
             d_cmd, rescued_cmd = self._rescue_dial(dial, t_arm)
             target, k = controller.command(d_cmd, self._phase, s, t_arm - self._phase_t0,
@@ -830,8 +949,18 @@ class Engine:
                 # (along the reach only: the walls keep carrying the limb's weight)
                 tg = np.array(target, dtype=float)
                 tg[self.reach_axis] = pos[self.reach_axis]
+                if self._past_box_end(s):
+                    tg = self._on_segment(tg)            # (never beyond the box-side path end)
                 target = _tup3(tg)
+            target = self._eased(target, k, pos, t_arm)
+            if self._past_box_end(s):
+                # beyond the box-side path end (the workspace box is 5 cm past it): whatever the
+                # dial, the reach axis holds at k_max there. The target is on the segment already.
+                kk = list(k)
+                kk[self.reach_axis] = max(kk[self.reach_axis], float(self.arm.limits.k_max))
+                k = (kk[0], kk[1], kk[2])
         else:
+            self._ease = None
             if idle_cmd is None:                 # the rep ended on this tick
                 idle_cmd = self._idle_hold(t_arm, pos, occupied, dt_tick, False)[:2]
             target, k = idle_cmd
@@ -839,6 +968,91 @@ class Engine:
         self._send(target, k)
         self._emit(t, state, target, dial, label_phase,
                    label_idx if label_phase != "idle" else -1, force)
+
+    def _moved_by_hand(self, t_arm, pos, dt_tick) -> bool:
+        """In a rep on the assist side: True when the handle has travelled in the phase's direction
+        (outward in "out", back in "back") faster than TAKEOVER_V for TAKEOVER_S while the arm has
+        not pulled that way at all for NOPULL_S. The force reading cannot show this hand: a hand
+        that moves the handle freely pushes with less than the motion allowance. An empty handle
+        only moves that way when the arm pulls it (it coasts to a stop within NOPULL_S)."""
+        d = 1 if self._phase == "out" else -1
+        if d != self._move_dir:
+            self._move_dir, self._move_acc, self._pull_t = d, 0.0, t_arm
+        a = self.reach_axis
+        sgn = self.reach_sign * d
+        if float(self._spring_force(pos)[a]) * sgn > PULL_EPS_N:
+            self._pull_t = t_arm
+        if float(self._vel[a]) * sgn >= TAKEOVER_V:
+            self._move_acc = min(TAKEOVER_S, self._move_acc + dt_tick)
+        else:
+            self._move_acc = 0.0
+        return self._move_acc >= TAKEOVER_S - 1e-9 and t_arm - self._pull_t >= NOPULL_S
+
+    def _reach_in_progress(self, pos, s, occupied, dt_tick) -> bool:
+        """Idle, line reps: True when a hand is plainly reaching already: the handle is occupied,
+        the smoothed force along the reach is above GO_MIN_N, it has moved outward faster than
+        TAKEOVER_V for TAKEOVER_S while past MIN_REP_M, and it is now past FIRM_EXIT_M (where
+        the hold at the start is given up) and short of OUT_DONE. The idle hold only ever pulls
+        towards the start, so an empty handle cannot do this. (Not at MIN_REP_M itself: a hand
+        gripping 18 N at the start slides to 5.7 cm in the hold while it is still stiffening and
+        stops there; that is not a reach.)"""
+        a = self.reach_axis
+        x = s * self.reach_m
+        v_out = float(self._vel[a]) * self.reach_sign
+        f_out = float(self._f_filt[a]) * self.reach_sign
+        if occupied and x >= MIN_REP_M and v_out >= TAKEOVER_V and f_out > GO_MIN_N:
+            self._out_acc = min(TAKEOVER_S, self._out_acc + dt_tick)
+        else:
+            self._out_acc = 0.0
+        return self._out_acc >= TAKEOVER_S - 1e-9 and x >= FIRM_EXIT_M and s < OUT_DONE
+
+    @staticmethod
+    def _ref_time(s: float) -> float:
+        """Time into the out phase at which the min-jerk reference is at progress ``s``."""
+        lo, hi = 0.0, float(controller.T_OUT_S)
+        s = float(np.clip(s, 0.0, 1.0))
+        for _ in range(30):
+            mid = 0.5 * (lo + hi)
+            if controller.reference_progress("out", mid) < s:
+                lo = mid
+            else:
+                hi = mid
+        return 0.5 * (lo + hi)
+
+    def _eased(self, target, k, pos, t_arm):
+        """After a take-over from idle: the pull the idle hold had on the hand (towards the start)
+        is taken off linearly over TAKEOVER_EASE_S instead of at once (a hand pushing 20 N against
+        a hold that vanishes lurches forward). The command pulls outward no more than that allows."""
+        if self._ease is None:
+            return target
+        t0, pull = self._ease
+        a = self.reach_axis
+        el = t_arm - t0
+        kax = float(k[a])
+        back = max(0.0, -pull * self.reach_sign)         # N towards the start
+        if el >= TAKEOVER_EASE_S or back <= 0.0:
+            self._ease = None
+            return target
+        if kax <= 0.0:
+            return target
+        tg = np.array(target, dtype=float)
+        out_now = kax * (tg[a] - pos[a]) * self.reach_sign          # N outward the command would pull
+        out_max = -back * (1.0 - el / TAKEOVER_EASE_S)
+        if out_now > out_max:
+            lead = float(np.clip(out_max / kax, -controller.MAX_LEAD, controller.MAX_LEAD))
+            tg[a] = pos[a] + self.reach_sign * lead
+        return _tup3(tg)
+
+    def _past_box_end(self, s: float) -> bool:
+        """True when progress ``s`` is beyond the path end that lies next to the workspace box."""
+        return s > 1.0 if self._box_at_end else s < 0.0
+
+    def _on_segment(self, p) -> np.ndarray:
+        """``p`` with its coordinate along the reach clamped to the path segment."""
+        q = np.asarray(p, dtype=float).copy()
+        sp = float(np.clip(self._progress(q), 0.0, 1.0))
+        q[self.reach_axis] = self.path.point_at(sp)[self.reach_axis]
+        return q
 
     def _idle_hold(self, t_arm, pos, occupied, dt_tick, can_arm):
         """Idle command and arming for line reps and tries (15 Nov). Returns (target, k, armed).
@@ -885,6 +1099,38 @@ class Engine:
                 self._firm = False
                 self._latch = np.asarray(pos, dtype=float).copy()
                 self._arm_acc = 0.0
+                self._idle_released, self._idle_rel_t = True, t_arm
+        # Line reps: the idle target never leaves the path segment while a hand is on the handle
+        # (real arm, 15 Nov: it trailed the hand out to the workspace box, which tripped). Only a
+        # handle that was let go keeps its target where it is (beyond the end too) until a hand
+        # is seen again, IDLE_REL_MIN_S later at the earliest.
+        line = self.preset.kind in ("assist", "resist")
+        if (self._idle_released and self._last_force_t is not None and self._last_force_t > self._idle_rel_t
+                and t_arm - self._idle_rel_t >= IDLE_REL_MIN_S):
+            self._idle_released = False
+        if line:
+            x = self._progress(pos) * self.reach_m
+            # The hold stiffens with position over the last END_ZONE_M before the box-side path
+            # end (and beyond either end), so its pull grows from 13.5 N to 27 N the further the
+            # hand pushes and the handle settles instead of being carried on. In steps, with
+            # 0.3 of a step of hysteresis. (By time, as the firm hold at the start does it, the
+            # hold pushed a 20 N hand back out of the zone, softened, and let it in again.)
+            short = self.reach_m - x if self._box_at_end else x      # m short of the box-side end
+            beyond = max(x - self.reach_m, -x)                        # m beyond either end
+            held = occupied and not self._idle_released
+            if not held:
+                self._end_n = 0
+            else:
+                zone = END_ZONE_M if self._box_at_end else 0.0       # (pull: the firm hold covers the start itself)
+                r = END_STEPS if beyond > 0.0 and short < HOLD_START_M else (
+                    END_STEPS * float(np.clip((zone - short) / END_ZONE_M, 0.0, 1.0)) if zone > 0.0 else 0.0)
+                if beyond > HOLD_START_M:
+                    r = END_STEPS
+                while self._end_n < END_STEPS and r >= self._end_n + 1:
+                    self._end_n += 1
+                while self._end_n > 0 and r < self._end_n - 0.3:
+                    self._end_n -= 1
+                self._latch = self._on_segment(self._latch)
         ok = False
         if self._firm:
             ok = near and HAND_ON_N < f <= ARM_MAX_N and speed < ARM_MAX_SPEED
@@ -899,12 +1145,21 @@ class Engine:
             kf = kh + (km - kh) * (int(el / FIRM_STEP_S + 1e-9) * FIRM_STEP_S / FIRM_RAMP_S)
             k = (kf, kf, kf)
         else:
-            if occupied and dist > FIRM_EXIT_M:
-                cand = self._beside_hand(pos)
+            if occupied and dist > FIRM_EXIT_M and not self._idle_released:
+                cand = self._on_segment(self._beside_hand(pos)) if line else self._beside_hand(pos)
                 if np.linalg.norm(cand - start) < np.linalg.norm(self._latch - start):
                     self._latch = cand
                 reason = "return to start"
             else:
+                if line:
+                    # a handle that is nearer the start than the target is being brought back by
+                    # a hand the force reading does not show: the target goes with it at once.
+                    # (left behind, it pulled the hand outward with up to 15 N and then jumped
+                    # onto it when the hand was seen: 0.45 m/s and a trip in the sim)
+                    cand = self._on_segment(self._beside_hand(pos))
+                    if (np.linalg.norm(cand - start) + FOLLOW_IN_M
+                            < np.linalg.norm(self._on_segment(self._latch) - start)):
+                        self._latch = cand
                 d = start - self._latch
                 left = float(np.linalg.norm(d))
                 step_m = TEST_RETURN_SPEED * dt_tick
@@ -921,8 +1176,16 @@ class Engine:
                     self._latch = self._latch + d / left * step_m
                 reason = ("too far from start" if not near else
                           "return to start" if dist > NEAR_START_M else "hold still")
-            target = _tup3(self._latch)
+            tg = np.asarray(self._latch, dtype=float).copy()
             kh = float(self.arm.limits.k_hold)
+            if line:
+                # (the let-go rule above reads the commanded spring: a target left 10 cm behind
+                # read as a 30 N pull the arm never applied, the rule fired, and the target hopped
+                # after the hand all the way to the workspace box: real arm, 15 Nov)
+                a = self.reach_axis
+                tg[a] = pos[a] + float(np.clip(tg[a] - pos[a], -IDLE_LEAD_M, IDLE_LEAD_M))
+                kh += (float(self.arm.limits.k_max) - kh) * self._end_n / END_STEPS
+            target = _tup3(tg)
             k = (kh, kh, kh)
         armed = False
         with self._lock:
@@ -972,7 +1235,7 @@ class Engine:
         A person who is still holding on, even one moving with the band, is not "let go"."""
         if not occupied:
             return True
-        if self._phase == "out" and self._last_tick_t is not None and self._last_tick_t - self._phase_t0 < ARM_GRACE_S:
+        if self._phase == "out" and self._last_tick_t is not None and self._last_tick_t - self._armed_t < ARM_GRACE_S:
             # just armed: the hand is changing from pressing to pushing and its force passes
             # through small values (a rep was ended 30 ms after it was armed). The 0.5 s
             # occupancy rule above still applies.
@@ -1315,15 +1578,20 @@ class Engine:
         target, k = self._cmd
         return _tup3(k * (target - np.asarray(pos, dtype=float)))
 
-    def _begin_rep(self, t_arm: float, t: float, dial: float) -> None:
+    def _begin_rep(self, t_arm: float, t: float, dial: float, cue: bool = True) -> None:
         self._clear_rep()
         self._phase = "out"
         self._phase_t0 = t_arm
+        self._armed_t = t_arm
+        self._pull_t, self._move_acc, self._move_dir = t_arm, 0.0, 1
+        self._out_acc = 0.0
+        self._ease = None
         self._near_since = None
         self._rep_idx = self.rep_count
         self._rep_dial = dial
         self._rep_t0 = t
-        self._sim_cue("out")
+        if cue:
+            self._sim_cue("out")
 
     def _emit(self, t: float, state, target, dial: float, phase: str, rep_idx: int,
               force) -> None:
@@ -1368,8 +1636,16 @@ class Engine:
             sparc=0.0, peak_force_n=0.0, mean_force_n=0.0, contribution=0.0, completed=False,
             simulated=self.simulated, rescued=False)
 
-    def _finish_rep(self, dial_now: float, aborted: bool) -> None:
-        """Close the current rep: RepResult, on_rep, auto dial. Aborted reps are not completed."""
+    def _finish_rep(self, dial_now: float, aborted: bool, hands_off: bool = False) -> None:
+        """Close the current rep: RepResult, on_rep, auto dial. Aborted reps are not completed.
+        ``hands_off``: ended by a hands-off rule. Such a rep that never got MIN_REP_M from the
+        start, or was still waiting for the hand, was not a rep: no RepResult, no count, no dial
+        step (``cancelled_reps`` counts them)."""
+        if hands_off and self._rep_idx >= 0 and (
+                self._rep_max_m < MIN_REP_M or (self._wait_since is not None and self._wait_near)):
+            self._clear_rep()
+            self.cancelled_reps += 1
+            return
         m = self._out_metrics()
         completed = self._completed and not aborted
         rescued = self._rescued

@@ -1,5 +1,9 @@
 """Every way a rep, try or circle can end emits exactly one RepResult and counts once (15 Nov);
-a grab-and-shove in idle does not end the session. SimArm only."""
+a grab-and-shove in idle does not end the session. SimArm only.
+
+One exception since 15 Nov evening (real arm: "phantom" reps): a line rep that the hands-off rule
+ends before the hand is 5 cm from the start (``MIN_REP_M``) was not a rep. It gets no RepResult
+and no count; ``Engine.cancelled_reps`` counts it. So: begun == recorded + cancelled."""
 from __future__ import annotations
 
 import numpy as np
@@ -38,8 +42,18 @@ def until_phase(eng, phase, max_s=40.0):
     raise AssertionError(f"phase {phase!r} not reached (is {eng.phase!r})")
 
 
-def check(eng, reps, begun, n=None):
-    assert len(begun) == len(reps) == eng.rep_count, (len(begun), len(reps), eng.rep_count)
+def past(eng, arm, m=0.06, max_s=10.0):
+    """Run until the hand is ``m`` along the reach (past MIN_REP_M: a let-go from here is a rep)."""
+    for _ in range(int(max_s / DT)):
+        if eng._progress(arm.get_state().pos) * eng.reach_m >= m:
+            return
+        eng.run_for(DT)
+    raise AssertionError("the hand never got there")
+
+
+def check(eng, reps, begun, n=None, cancelled=0):
+    assert eng.cancelled_reps == cancelled
+    assert len(begun) - cancelled == len(reps) == eng.rep_count, (len(begun), len(reps), eng.rep_count)
     assert [r.idx for r in reps] == list(range(len(reps)))
     if n is not None:
         assert len(reps) == n
@@ -53,7 +67,8 @@ def recover(eng, arm):
     assert arm.get_state().mode == "compliant"
 
 
-ENDINGS = ["completed", "out_timeout", "let_go", "trip", "hold", "stop", "trip_first_tick", "resume_mid_rep"]
+ENDINGS = ["completed", "out_timeout", "let_go", "let_go_at_start", "trip", "hold", "stop", "trip_first_tick",
+           "resume_mid_rep"]
 
 
 @pytest.mark.parametrize("exercise", ["reach", "push", "pull", "armtest"])
@@ -75,8 +90,18 @@ def test_each_ending_emits_exactly_one_rep_result(exercise, ending):
         arm.cue("rest")
         eng.run_until_reps(1, max_s=40.0)
     elif ending == "let_go":
+        if exercise != "armtest":
+            past(eng, arm)
         arm.patient.present = False
         eng.run_for(3.0)
+    elif ending == "let_go_at_start":
+        arm.patient.present = False                  # 0.6 s after arming, under 5 cm out
+        eng.run_for(5.0)
+        if exercise != "armtest":                    # line reps: cancelled, not a rep (a try is always a try)
+            assert eng._progress(arm.get_state().pos) * eng.reach_m < 0.05
+            check(eng, reps, begun, 0, cancelled=1)
+            assert eng.phase in ("idle", "release")
+            return
     elif ending == "trip":
         arm._trip("test trip")
         eng.run_for(0.5)
@@ -89,7 +114,7 @@ def test_each_ending_emits_exactly_one_rep_result(exercise, ending):
         eng.resume()
         eng.run_for(0.2)
     check(eng, reps, begun, 1)
-    if ending in ("let_go", "trip", "hold", "stop", "resume_mid_rep") and exercise != "armtest":
+    if ending in ("let_go", "let_go_at_start", "trip", "hold", "stop", "resume_mid_rep") and exercise != "armtest":
         assert not reps[0].completed                 # (an armtest try cut short still counts its peak)
 
 
@@ -99,8 +124,9 @@ def test_many_reps_with_mixed_endings_count_once_each():
         until_phase(eng, "out")
         eng.run_for(0.8)
         if i % 3 == 1:
+            past(eng, arm)
             arm.patient.present = False
-            eng.run_for(2.0)
+            eng.run_for(2.5)
             arm.cue("rest")              # the hand comes back calmly (a sim patient still "reaching" hauls the handle at 0.45 m/s)
             arm.patient.present = True
         elif i % 3 == 2:
