@@ -445,3 +445,8 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 **2026-11-15 19:00 · Shyan · simplify: 4 resistance levels, position-based reps**
 - Decision (see DECISIONS): for the pitch the robot runs ONE push exercise with 4 fixed resistance levels picked in the app, reps counted from position only. No calibration push, no arming rule, no raised test limits. Shyan's robot session builds it as `software/simple.py` (new file, Shiv's engine.py untouched) and wires server + app.
 - Shiv: please stop work on calibration and arming; your engine stays in the repo as it is. Kian: `set_test_limits` is not used in the demo. Mat/Gio: the app gets a 4-level picker; details will follow in LOG from the robot session.
+
+**2026-11-15 19:40 · Shyan · simplify decision reversed: calibration and the 60 N profile stay**
+- The 19:00 "4 fixed levels" plan is cancelled (see DECISIONS). Shiv: your engine is the demo engine again; nothing to stop. Kian: `set_test_limits` IS needed; the staged test on the real arm (your 18:05 entry) is now the gate for switching calibration on.
+- Why calibration looked broken on the arm: `server.run --robot` has forced `calibrate=False` since 17:10 (safety default), so the app showed no calibration and push ran at the preset. The calibrate phase and the test-limits profile have never run on the real arm.
+- Next: robot session parks simple.py, pulls Shiv's latest (2d6b02a), runs Kian's staged test-limits check with Kian and the e-stop, then starts with `--calibrate` and tries push with a hand on it.
