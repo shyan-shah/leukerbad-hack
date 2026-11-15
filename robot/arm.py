@@ -194,6 +194,10 @@ def check_trip(pos: Sequence[float], vel: Sequence[float], force: Sequence[float
 
 # --------------------------------------------------------------------------- Arm
 
+class HomeInterrupted(RuntimeError):
+    """home() was ended early by hold(), stop(), a trip or another mode change."""
+
+
 class Arm:
     """Real Flexiv Rizon 4 behind the section 4.3 interface. See the module docstring."""
 
@@ -220,6 +224,7 @@ class Arm:
         self._fault: str | None = None
         self._last_target_t = 0.0
         self._gen = 0                           # bumped on hold/start; stale stiffness is dropped
+        self._home_gen: int | None = None       # value of _gen while home() is streaming, else None
 
         self._stiff_cv = threading.Condition()  # never held while taking self._lock
         self._stiff_pending: tuple[Vec3, int] | None = None
@@ -353,6 +358,11 @@ class Arm:
 
         No move primitive has been confirmed with the technician, so this ramps the
         Cartesian target at HOME_SPEED (0.05 m/s) at nominal stiffness.
+
+        Interruptible from another thread: hold() or stop() (or a trip or fault) ends the move
+        before the next target is sent, and home() raises HomeInterrupted. After hold() the arm
+        holds where it is at k_hold, mode "hold"; after stop() the robot is stopped, mode "idle".
+        start_pos is not updated by an interrupted home.
         """
         self._require_connected()
         if self.config.is_placeholder("start_pose"):
@@ -367,24 +377,36 @@ class Arm:
             assert self._k_nom is not None
             self._robot.SetCartesianImpedance(list(self._k_nom))
             p0, q0, *_ = self._read()
-        dist = math.dist(p0, goal_pos)
-        if dist > HOME_MAX_DISTANCE:
-            raise RuntimeError(f"start pose is {dist:.2f} m away; jog closer before home()")
+            dist = math.dist(p0, goal_pos)
+            if dist > HOME_MAX_DISTANCE:
+                raise RuntimeError(f"start pose is {dist:.2f} m away; jog closer before home()")
+            # From here until the move ends, any hold(), stop(), trip, fault or other mode change
+            # bumps _gen. The loop below checks that under the lock before every target it sends.
+            my_gen = self._home_gen = self._gen
         if _dot(q0, goal_quat) < 0:  # take the short way round
             goal_quat = tuple(-c for c in goal_quat)
         n = max(1, math.ceil(dist / (HOME_SPEED * TICK_S)))
         n = max(n, 200)  # at least 2 s so orientation changes are slow too
-        for i in range(1, n + 1):
-            a = i / n
-            pos = [p + (g - p) * a for p, g in zip(p0, goal_pos)]
-            quat = _normalize([c + (g - c) * a for c, g in zip(q0, goal_quat)])
+        settle = round(1.0 / TICK_S)
+        try:
+            for i in range(1, n + settle + 1):
+                with self._lock:
+                    if self._gen != my_gen:     # checked and sent under one lock: nothing is streamed after a hold
+                        raise HomeInterrupted(f"home() interrupted after {min(i - 1, n)} of {n} steps; "
+                                              f"arm mode is {self._mode!r}")
+                    if self._robot.fault():
+                        self._mode, self._fault = "fault", "robot fault during home()"
+                        raise RuntimeError(self._fault)
+                    if i <= n:                  # after the ramp: 1 s to settle, still interruptible
+                        a = i / n
+                        pos = [p + (g - p) * a for p, g in zip(p0, goal_pos)]
+                        quat = _normalize([c + (g - c) * a for c, g in zip(q0, goal_quat)])
+                        self._send_pose(pos, quat)
+                time.sleep(TICK_S)
+        finally:
             with self._lock:
-                if self._robot.fault():
-                    self._mode, self._fault = "fault", "robot fault during home()"
-                    raise RuntimeError(self._fault)
-                self._send_pose(pos, quat)
-            time.sleep(TICK_S)
-        time.sleep(1.0)
+                if self._home_gen == my_gen:
+                    self._home_gen = None
         with self._lock:
             p_end, *_ = self._read()
         err = math.dist(p_end, goal_pos)
@@ -472,13 +494,15 @@ class Arm:
             self._hold_locked()
 
     def _hold_locked(self) -> None:
-        self._gen += 1
+        homing = self._home_gen is not None and self._home_gen == self._gen
+        self._gen += 1                          # also ends a home() in progress (it checks _gen every tick)
         self._drop_pending_stiffness()
         if self._robot is not None and self._in_cartesian:
             try:
                 pos, quat, *_ = self._read()
                 self._set_impedance((self.limits.k_hold,) * 3)
-                self._send_pose(pos, self.start_quat or quat)
+                # Mid-home the flange may still be turning towards the start orientation: hold it as it is.
+                self._send_pose(pos, quat if homing else (self.start_quat or quat))
             except Exception as exc:  # hold failed: hard stop is the fallback
                 try:
                     self._robot.Stop()

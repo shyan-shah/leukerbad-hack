@@ -332,3 +332,124 @@ def test_close_restores_nominal_stiffness(arm):
     a.close()
     assert robot.last("SetCartesianImpedance")[0] == list(K_NOM)
     assert robot.calls[-1][0] == "Stop"
+
+
+# --------------------------------------------------------------------------- home() can be interrupted
+
+HOME_QUAT = (0.0, 0.0, 0.0, 1.0)      # not the fake robot's orientation, so the flange is turning mid-home
+
+
+def _home_arm(tmp_path, distance_m):
+    """Arm on a FakeRobot whose start pose lies `distance_m` along +x from where the hand is."""
+    import threading
+    from robot.arm import CONFIG_PATH
+    raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    raw["placeholders"] = [k for k in raw.get("placeholders", []) if k != "start_pose"]
+    raw["start_pose"] = {"tcp_pose": [START[0] + distance_m, START[1], START[2], *HOME_QUAT], "q": None}
+    p = tmp_path / "config.json"
+    p.write_text(json.dumps(raw), encoding="utf-8")
+    a = Arm("Rizon4-TEST01", config_path=p)
+    robot = FakeRobot()
+    a._attach(robot, FAKE_RDK, K_NOM)
+    out = {}
+
+    def run():
+        try:
+            a.home()
+            out["result"] = "finished"
+        except Exception as e:      # noqa: BLE001 (the test inspects it)
+            out["result"] = e
+    th = threading.Thread(target=run, daemon=True)
+    return a, robot, th, out
+
+
+def _wait_for_sends(robot, n, timeout=10.0):
+    deadline = time.monotonic() + timeout
+    while robot.count("SendCartesianMotionForce") < n:
+        assert time.monotonic() < deadline, "home() never streamed that many targets"
+        time.sleep(0.002)
+
+
+def test_hold_halfway_through_home_stops_the_stream_and_holds(tmp_path):
+    from robot.arm import HomeInterrupted, TICK_S
+    a, robot, th, out = _home_arm(tmp_path, 0.20)       # 0.20 m at 0.05 m/s: 400 targets, 4 s
+    try:
+        th.start()
+        _wait_for_sends(robot, 200)                     # halfway
+        robot.pos = [START[0] + 0.10, START[1], START[2]]   # where the arm has got to
+        a.hold()
+        n_after_hold = robot.count("SendCartesianMotionForce")
+        th.join(timeout=5 * TICK_S + 0.2)
+        assert not th.is_alive(), "home() kept running after hold()"
+        assert isinstance(out["result"], HomeInterrupted) and isinstance(out["result"], RuntimeError)
+        assert 200 <= n_after_hold < 260                # it was mid-move, not finished
+        time.sleep(0.15)
+        assert robot.count("SendCartesianMotionForce") == n_after_hold   # nothing streamed after hold()
+        assert a.get_state().mode == "hold"
+        # the last command is the hold itself: current position and current orientation, at k_hold
+        pose = robot.last("SendCartesianMotionForce")[0]
+        assert pose[:3] == pytest.approx(robot.pos) and pose[3:7] == pytest.approx(robot.quat)
+        assert robot.last("SetCartesianImpedance")[0] == [LIM.k_hold] * 3 + list(K_NOM[3:])
+        assert a.start_pos is None                      # an interrupted home does not set the start pose
+    finally:
+        a.close()
+
+
+def test_hold_returns_only_after_the_last_home_target(tmp_path):
+    """hold() and the home loop share the arm lock, so no home target can follow the hold command."""
+    a, robot, th, out = _home_arm(tmp_path, 0.20)
+    try:
+        th.start()
+        _wait_for_sends(robot, 50)
+        a.hold()
+        th.join(timeout=1.0)
+        sends = [args[0] for name, args in robot.calls if name == "SendCartesianMotionForce"]
+        assert sends[-1][:3] == pytest.approx(robot.pos)          # the hold, at the (unmoved) fake position
+        assert all(s[0] > START[0] for s in sends[:-1])           # everything before it was the ramp
+    finally:
+        a.close()
+
+
+def test_stop_during_home_ends_the_move(tmp_path):
+    from robot.arm import HomeInterrupted
+    a, robot, th, out = _home_arm(tmp_path, 0.20)
+    try:
+        th.start()
+        _wait_for_sends(robot, 100)
+        a.stop()
+        n = robot.count("SendCartesianMotionForce")
+        th.join(timeout=0.5)
+        assert not th.is_alive() and isinstance(out["result"], HomeInterrupted)
+        time.sleep(0.1)
+        assert robot.count("SendCartesianMotionForce") == n
+        assert robot.calls[-1][0] == "Stop" and a.get_state().mode == "idle"
+    finally:
+        a.close()
+
+
+def test_hold_during_the_settle_second_of_home_is_seen(tmp_path):
+    from robot.arm import HomeInterrupted
+    a, robot, th, out = _home_arm(tmp_path, 0.0)        # already there: 200 targets, then 1 s to settle
+    try:
+        th.start()
+        _wait_for_sends(robot, 200)
+        time.sleep(0.2)                                 # inside the settle second
+        a.hold()
+        th.join(timeout=0.5)
+        assert not th.is_alive() and isinstance(out["result"], HomeInterrupted)
+        assert a.get_state().mode == "hold"
+    finally:
+        a.close()
+
+
+def test_home_still_completes_and_a_later_hold_uses_the_start_orientation(tmp_path):
+    a, robot, th, out = _home_arm(tmp_path, 0.0)
+    try:
+        th.start()
+        th.join(timeout=10)
+        assert out["result"] == "finished" and a.start_pos == pytest.approx(START)
+        a.hold()                                        # not homing any more: orientation is the start one
+        assert robot.last("SendCartesianMotionForce")[0][3:7] == pytest.approx(a.start_quat)
+        assert a.get_state().mode == "hold"
+    finally:
+        a.close()

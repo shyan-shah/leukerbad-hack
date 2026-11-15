@@ -171,9 +171,9 @@ function showBaseline(r) {
 
 async function doHome() {
   if (!await ask("Move the arm to the start pose?",
-    "The arm will move by itself, slowly, to the start pose. Nobody holds the handle and nobody stands inside its reach. HOLD does NOT stop this move: only the e-stop does. Have a hand on the e-stop.", "Move to home")) return;
+    "The arm will move by itself, slowly, to the start pose. Nobody holds the handle and nobody stands inside its reach. HOLD or Space ends the move and holds the arm where it is, but that has only been tested offline, not on the arm: keep a hand on the e-stop.", "Move to home")) return;
   homing = true; render();
-  const r = await act("Home (arm moving; only the e-stop stops it)", $("armMsg"), "/api/arm/home");
+  const r = await act("Home (arm moving; HOLD ends it)", $("armMsg"), "/api/arm/home");
   homing = false; render();
   if (r === undefined) {
     if (act.lastStatus === 404) {
@@ -387,7 +387,7 @@ function render() {
   // one line that says what the operator should do next
   const alert = $("alert");
   let text = "", stop = false;
-  if (homing) { text = "ARM MOVING TO THE START POSE. HOLD does not stop this move: use the e-stop if anything is wrong."; stop = true; }
+  if (homing) { text = "ARM MOVING TO THE START POSE. HOLD or Space ends the move (not yet tried on the arm): if it does not stop, use the e-stop."; stop = true; }
   else if (m && m.arm_mode === "fault") { text = "ARM FAULT. The arm has stopped. Press Stop and save, then see robot/RUNBOOK.md."; stop = true; }
   else if (m && m.arm_mode === "hold") { text = "Arm is in HOLD. Press Stop and save to end this session; start a new one to continue."; stop = true; }
   else if (m && m.done) text = "Set finished. Press Stop and save.";
