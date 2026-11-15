@@ -599,3 +599,8 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
   - Row: an empty-handle check at levels 1 and 4 (the move to the far end, a 10 s hold at the far end, the return to the start). Measure the speed during both moves (no stops). Then 10 reps by hand at level 1, then levels 2-4: reps counted, mean and spread of the force pulling out, any trip.
   - Strength: an untouched session (three tries, nothing moves, peaks under 3 N), then three real tries at a firm push (about 20-25 N): peaks, displacement, the release speed after each try (under 0.15 m/s), and no trip.
   - Before either, with nobody near: `arm.move_to` alone, 28 cm out and back (start a Row session with an empty handle and stop it once the band is on). The far end is the start pose plus 0.28 m along the reach direction of `robot/config.json` (world -x), inside the +/-0.35 m box.
+
+**Kian · 2026-11-16 03:05 · full suite result for the Row and Strength test work**
+- `python -m pytest software robot server` on the final code (the tree of 893373d): **896 passed, 1 xfailed, 0 failed**, 11 min 55 s. The one xfail is Shiv's known one (`/api/state` has no `phase` before the first tick), unchanged.
+- Correction to my 02:45 entry: its "robot/tests 69 passed" and "server/tests 167 passed" were sums I had worked out, not runs. Now measured: robot/tests 69 passed on its own; server/tests has 167 tests, all of which passed inside the full run above.
+- Nothing else changed. Still sim and mock only: the real-arm checks in the 02:45 entry are open.
