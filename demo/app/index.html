@@ -82,6 +82,8 @@
   .ringc .trk { fill: none; stroke: var(--line); stroke-width: 6; } .ringc .arc { fill: none; stroke: var(--mint); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset .45s cubic-bezier(.2,.8,.2,1); }
   .ringc span { position: absolute; inset: 0; display: grid; place-items: center; font: 700 clamp(26px, 4.2vh, 32px)/1 var(--display); color: var(--brand); font-variant-numeric: tabular-nums; }
   .mtxt { min-width: 0; } .mtxt b { display: block; font: 600 12px var(--text); letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
+  .rtag { display: inline-block; margin-top: 6px; font: 700 12px/1 var(--text); letter-spacing: .06em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--ink); } .rtag.sim { background: #FFE08A; box-shadow: none; color: #4A3700; } .rtag.on { background: var(--brand); box-shadow: none; color: var(--on-brand); }
+  .robot { display: grid; gap: 6px; padding: 10px 14px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--line); font-size: 15px; } .robot .fl { display: flex; justify-content: space-between; font-weight: 600; } .fbar { height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; } .fbar i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .1s linear; }
   .mtxt .coach { margin-top: 3px; text-align: left; font: 600 18px/1.3 var(--display); color: var(--ink); min-height: 2.6em; }
   @media (max-height: 640px) and (max-width: 479px) { .mtxt .coach { font-size: 16px; } .meter { padding: 8px 12px 8px 8px; } }
   /* sharp text in the laptop frame: zoom lays the phone out again at the smaller size, a transform would only blur it */
@@ -420,6 +422,42 @@ const PLANS = [
   { id: 'shoulder', who: 'Els', name: 'Stiff shoulder', ctx: 'Frozen shoulder', thumb: 'rot', ex: ['rot', 'circle', 'lift'], h1: 'Your shoulder turns further every week.', metric: 'Outward rotation', unit: '°', weeks: [20, 26, 31, 37], axis: [10, 30, 50], rows: [['Arm lift', '+14°'], ['Shoulder circles', 'Full circle']] },
   { id: 'strength', who: 'Sofie', name: 'Strength', ctx: 'Staying strong and steady', thumb: 'push', ex: ['push', 'pull', 'knee', 'armtest'], h1: 'You get stronger every week.', metric: 'Push strength', unit: 'N', weeks: [48, 53, 57, 62], axis: [40, 55, 70], rows: [['Leg strength', '+8%'], ['Row', '+6 N']] },
 ];
+// The live robot demo plan: only exercises the station's arm runs (context/EXERCISE_MAP.md). Row (pull) is added once the server lists it.
+PLANS.push({ id: 'robot', who: 'Maria', name: 'Arm recovery (robot)', ctx: 'After a stroke · live on the Vita arm', thumb: 'reach', ex: ['reach', 'push', 'armtest'], h1: 'Your arm reaches further every week.', metric: 'Forward reach', unit: 'cm', weeks: [18, 22, 25, 29], axis: [15, 25, 35], rows: [['Help from the arm', '−15%'], ['Smooth movement', '+12%']] });
+// ---------- the robot arm: server/ on the station laptop. Only used when that laptop serves this page at /app/ (same address, so no https-to-http block) ----------
+const ROBOT = { ids: null, token: '', ws: null }, CAP_N = 30;   // the strength test reads up to the robot's 30 N cap
+try { const u = new URL(location.href), op = u.searchParams.get('op'); if (op) { localStorage.setItem('vita-op', op); u.searchParams.delete('op'); history.replaceState(null, '', u.pathname + u.search + u.hash); } ROBOT.token = localStorage.getItem('vita-op') || ''; } catch (e) {}
+const onRobot = (id) => !!(ROBOT.ids && ROBOT.ids.has(id)), armOn = (r) => !!(r && r.robot && r.robot.sid);
+const newton = (n) => n >= CAP_N ? CAP_N + ' N+' : Math.round(n) + ' N';
+const robotNote = (id) => !ROBOT.ids ? '' : onRobot(id) ? ' · on the arm' : ' · demo animation';
+function robotFetch(path, body) { const h = { 'Content-Type': 'application/json' }; if (ROBOT.token) h['x-operator-token'] = ROBOT.token;   // operator token: open the app once with ?op=<token> when the server runs with --lan
+  return fetch(path, { method: body === undefined ? 'GET' : 'POST', headers: h, body: body === undefined ? undefined : JSON.stringify(body), keepalive: true }); }
+async function probeRobot() { if (!/^\/app(\/|$)/.test(location.pathname)) return;
+  try { const h = await (await fetch('/api/health')).json(); if (!h || !('arm_mode' in h)) return;   // Mat's app backend has /api/health too; arm_mode is ours
+    const r = await fetch('/api/exercises'); if (!r.ok) return; let d = await r.json(); if (d && !Array.isArray(d)) d = Array.isArray(d.exercises) ? d.exercises : Object.entries(d).map(([id, v]) => Object.assign({ id }, typeof v === 'object' ? v : {}));
+    ROBOT.ids = new Set(d.filter((x) => typeof x === 'string' || (x && x.live !== false)).map((x) => typeof x === 'string' ? x : x.id)); } catch (e) { return; }
+  const rp = PLANS.find((p) => p.id === 'robot'); if (ROBOT.ids.has('pull')) rp.ex = ['reach', 'push', 'pull', 'armtest']; if (PL === rp) PLAN = rp.ex.map((k) => EX[k]); if (!S.run) render(); }
+async function robotStart(r, e) { let res = null, d = {};
+  try { res = await robotFetch('/api/session/start', { patient_id: pid().replace(/[^A-Za-z0-9_.-]/g, '-'), display_name: who(), exercise: e.id, reps: e.reps }); d = await res.json().catch(() => ({})); } catch (x) { res = null; }
+  if (S.run !== r) { if (res && res.ok) robotStop(); return; }   // left the screen while the arm was starting
+  if (!res) { r.robot = null; r.t = 0; r.at = performance.now(); render(); return; }   // server gone: the timer takes over
+  if (!res.ok) { r.robot = null; r.err = typeof d.detail === 'string' ? d.detail : 'The arm did not start.'; render(); return; }   // refused: say why, never fake reps
+  r.robot = { sid: d.session_id, sim: !!d.simulated, best: 0, peak: 0, f: 0 };
+  const ws = ROBOT.ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/live');
+  ws.onmessage = (m) => { if (S.run !== r) return; try { robotMsg(r, JSON.parse(m.data)); } catch (x) {} };
+  render(); }
+function robotMsg(r, x) { const e = EX[r.id], R = r.robot; if (x.simulated && !R.sim) { R.sim = true; render(); }
+  if (x.type === 'rep') { if (x.session_id && x.session_id !== R.sid) return; R.best = Math.max(R.best, x.rom_m || 0); R.peak = Math.max(R.peak, x.peak_force_n || 0); return; }
+  if (x.type !== 'sample') return; r.phase = x.phase; r.mode = x.arm_mode;
+  const f = Math.hypot(...(x.force || [0])), bar = $('#fbar'), fl = $('#fn'); if (bar) bar.style.width = Math.min(1, f / CAP_N) * 100 + '%'; if (fl) fl.textContent = newton(f);
+  if (x.rep_count > r.n) { r.n = x.rep_count; const n = $('#n'), rg = $('#ring'); if (n) { n.textContent = r.n; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); } if (rg) rg.setAttribute('stroke-dashoffset', 100 - Math.min(1, r.n / e.reps) * 100); if (r.n >= e.reps) finish(); } }
+const robotTip = (r, e) => r.robot === 'starting' ? 'Starting the arm…' : r.mode === 'fault' ? 'The arm has stopped. Please tell staff.' : r.mode === 'hold' ? 'The arm is holding still.' : r.n === e.reps - 1 && r.phase !== 'idle' ? 'Last one. Almost there.' : r.phase === 'back' ? e.tips[2] : r.phase === 'out' || !r.n ? e.tips[0] : 'Rest a moment, then the next one.';
+const robotTag = (r) => armOn(r) ? `<span class="rtag ${r.robot.sim ? 'sim' : 'on'}">${r.robot.sim ? 'Simulated' : 'Live on the arm'}</span>` : ROBOT.ids && !onRobot(r.id) ? '<span class="rtag">Demo animation</span>' : '';
+const robotPanel = (r) => r.err ? `<div class="robot" role="alert"><b>The arm did not start.</b><span>${esc(r.err)}</span></div>` : armOn(r) ? `<div class="robot"><div class="fl"><span>Your force</span><span id="fn">0 N</span></div><div class="fbar"><i id="fbar"></i></div></div>` : '';
+function robotStop() { if (ROBOT.ws) { ROBOT.ws.onmessage = null; ROBOT.ws.close(); ROBOT.ws = null; } robotFetch('/api/session/stop', {}).catch(() => {}); }
+function robotResult(r) { const R = r.robot, sim = R && R.sim ? ' (SIMULATED)' : ''; if (!armOn(r)) return undefined;   // undefined: not a robot run, null: the arm measured nothing
+  if (r.id === 'reach') return R.best ? ['Forward reach', Math.round(R.best * 100) + ' cm', 'measured by the arm' + sim] : null;
+  return R.peak ? [r.id === 'armtest' ? 'Push strength' : 'Peak force', newton(R.peak), (r.id === 'armtest' ? 'best of ' + r.n + ' tries, ' : '') + 'measured by the arm' + sim] : null; }
 const fmt = (v, u) => v + (u === '°' ? '°' : ' ' + u);
 const KEY = 'vita-app-v1';
 let S = { tab: 'today', scanned: false, done: {}, share: true, run: null, pre: null, pt: 0, want: null, rest: null, plan: 'mix', last: null, remind: true, big: false, flat: false, out: false, hist: {}, arm: false, station: 2, camOn: false, noCam: false, scanMsg: '', online: null };
@@ -487,7 +525,7 @@ function connect(n) { S.station = n; S.scanned = true; S.scanMsg = ''; save(); a
 // progress: every finished exercise adds a measurement; a plan starts with its first four weekly values as history
 const stepOf = () => Math.max(1, Math.round((PL.axis[2] - PL.weeks[0]) / 10));
 function hist() { return S.hist[PL.id] || (S.hist[PL.id] = { pts: live() ? [PL.weeks[0]] : PL.weeks.slice(), reps: {}, ex: 0, ses: 0 }); }   // a new account starts at its first measurement
-function record(e) { const H = hist(), last = H.pts[H.pts.length - 1]; H.reps[e.id] = (H.reps[e.id] || 0) + e.reps; H.ex++; H.pts.push(Math.min(PL.axis[2], last + stepOf())); if (H.pts.length > 40) H.pts.splice(1, 1);
+function record(e, R) { const H = hist(), last = H.pts[H.pts.length - 1]; H.reps[e.id] = (H.reps[e.id] || 0) + e.reps; H.ex++; if (!R) H.pts.push(Math.min(PL.axis[2], last + stepOf())); else if (R.sid && e.id === 'reach' && R.best && PL.unit === 'cm') { H.pts.push(Math.round(R.best * 1000) / 10); if (R.sim) H.sim = true; } if (H.pts.length > 40) H.pts.splice(1, 1);
   api('/api/results', { method: 'POST', body: { patient: pid(), plan: PL.id, exercise: e.id, reps: e.reps, value: H.pts[H.pts.length - 1], unit: PL.unit, station: S.station } }); }
 function setPlan(id) { setTimeout(pullHist, 0); if (live() && AUTH.user.plan !== id) { AUTH.user.plan = id; saveAuth(); api('/api/me', { method: 'PUT', body: { plan: id } }); } PL = PLANS.find((p) => p.id === id) || PL; S.plan = PL.id; PLAN = PL.ex.map((k) => EX[k]); S.done = {}; S.rest = null; S.last = null; save(); go('today'); }
 const nextEx = () => PLAN.find((e) => !S.done[e.id]), allDone = () => !nextEx();
@@ -538,7 +576,7 @@ function draw(el, id, t) { if (use3d()) window.vita3d.show(el, EX[id].fig, t); e
 const qrSvg = (() => { const fin = (x, y) => { for (const [ox, oy] of [[0, 0], [14, 0], [0, 14]]) { const a = x - ox, b = y - oy; if (a >= 0 && a < 7 && b >= 0 && b < 7) return a === 0 || a === 6 || b === 0 || b === 6 || (a >= 2 && a <= 4 && b >= 2 && b <= 4); if (a >= -1 && a < 8 && b >= -1 && b < 8) return false; } return (x * 7 + y * 13 + x * y * 3) % 5 < 2; };
   let r = ''; for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) if (fin(x, y)) r += `<rect x="${x}" y="${y}" width="1.03" height="1.03"/>`; return `<svg viewBox="0 0 21 21" aria-hidden="true" fill="#0F191B">${r}</svg>`; })();
 const exRow = (e, i) => { const done = S.done[e.id], nx = !done && nextEx() === e && S.scanned;
-  return `<button type="button" class="ex${nx ? ' next' : ''}" data-ex="${e.id}"><span class="thumb">${pic(e.id)}</span><span><b>${esc(e.name)}</b><span class="meta">${e.reps} ${e.unit}</span></span><span class="st">${done ? '<span class="tick">✓</span>' : '<span class="ring"></span>'}</span></button>`; };
+  return `<button type="button" class="ex${nx ? ' next' : ''}" data-ex="${e.id}"><span class="thumb">${pic(e.id)}</span><span><b>${esc(e.name)}</b><span class="meta">${e.reps} ${e.unit}${robotNote(e.id)}</span></span><span class="st">${done ? '<span class="tick">✓</span>' : '<span class="ring"></span>'}</span></button>`; };
 
 const AUTHV = {
   connect: () => `<div class="view gatev"><div><p class="eyebrow">Vita</p><h1>Connect to your Vita station.</h1><p class="sub">Scan the QR code on the Vita laptop with your phone camera. Or paste the server address and key here.</p></div>
@@ -583,10 +621,10 @@ const VIEWS = {
         : '<button type="button" class="btn" data-scan>Scan the code</button>'}
         <p class="fine">${S.scanned ? '' : cam ? (S.camOn ? 'Hold the code on the station inside the frame.' : 'The camera only looks for the station code. Nothing is recorded.') : 'Demo: the button stands in for the camera.'}</p></div></div>`; },
   run: () => { const e = PLAN.find((x) => x.id === S.run.id); return `<div class="view fit">
-      <div><p class="eyebrow">Exercise ${PLAN.indexOf(e) + 1} of ${PLAN.length}</p><h1>${esc(e.name)}</h1><p class="sub">${esc(e.mode)}</p></div>
+      <div><p class="eyebrow">Exercise ${PLAN.indexOf(e) + 1} of ${PLAN.length}</p><h1>${esc(e.name)}</h1><p class="sub">${esc(e.mode)}</p>${robotTag(S.run)}</div>
       <div class="stagebox" id="fig">${figure(e.id, 0)}</div>
-      <div class="meter"><div class="ringc"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="trk" cx="32" cy="32" r="28"/><circle class="arc" id="ring" cx="32" cy="32" r="28" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - S.run.n / e.reps * 100}"/></svg><span id="n">${S.run.n}</span></div><div class="mtxt"><b>of ${e.reps} ${e.unit}</b><p class="coach" id="coach" aria-live="polite">${esc(e.tips[0])}</p></div></div>
-      <div class="push row2"><button type="button" class="btn ghost" data-pause>${S.run.paused ? 'Continue' : 'Pause'}</button><button type="button" class="btn" data-skip>Finish</button></div></div>`; },
+      <div class="meter"><div class="ringc"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="trk" cx="32" cy="32" r="28"/><circle class="arc" id="ring" cx="32" cy="32" r="28" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - S.run.n / e.reps * 100}"/></svg><span id="n">${S.run.n}</span></div><div class="mtxt"><b>of ${e.reps} ${e.unit}</b><p class="coach" id="coach" aria-live="polite">${esc(S.run.robot ? robotTip(S.run, e) : e.tips[0])}</p></div></div>
+      ${robotPanel(S.run)}<div class="push row2">${S.run.err ? `<button type="button" class="btn ghost" data-back>Back</button><button type="button" class="btn" data-begin="${e.id}">Try again</button>` : `${S.run.robot ? '' : `<button type="button" class="btn ghost" data-pause>${S.run.paused ? 'Continue' : 'Pause'}</button>`}<button type="button" class="btn" data-skip>Finish</button>`}</div></div>`; },
   progress: () => { const H = hist(), u = PL.unit, all = H.pts, pts = all.slice(-12), cur = all[all.length - 1], first = all[0], gain = cur - first, n = pts.length, goal = PL.axis[2];
     const lo = Math.min(PL.axis[0], ...pts), hi = Math.max(goal, ...pts), W = 300, x = (i) => (n < 2 ? W / 2 : i * W / (n - 1)), y = (v) => 26 + (hi - v) * 92 / (hi - lo || 1), P = pts.map((v, i) => [x(i), y(v)]), d = 'M' + P.map((q) => q.map((k) => k.toFixed(1)).join(' ')).join(' L');
     const total = Object.values(H.reps).reduce((a2, b2) => a2 + b2, 0), half = Math.round(first + (goal - first) / 2), togo = (t) => fmt(Math.max(0, Math.round((t - cur) * 10) / 10), u) + ' to go';
@@ -599,18 +637,18 @@ const VIEWS = {
         <p class="hx"><span>${all.length > n ? 'Earlier' : 'Start'}</span><span>Now</span></p></div>
       <div class="tiles">${PL.rows.slice(0, 2).map((r) => `<div class="ptile"><span>${esc(r[0])}</span><b>${esc(r[1])}</b><em>since the start</em></div>`).join('')}</div>
       <div class="card ms">${ms.map((m) => `<div class="mrow${m[2] ? '' : ' open'}"><span class="mck" aria-hidden="true">${m[2] ? '✓' : ''}</span><span><b>${esc(m[0])}</b><span class="sub">${esc(m[1])}</span></span></div>`).join('')}</div>
-      <p class="fine">${H.ses} sessions · ${total} repetitions · example figures<br><button type="button" class="lnk${S.arm ? ' warnl' : ''}" data-resetp>${S.arm ? 'Tap again to reset' : 'Reset progress'}</button></p></div>`; },
+      <p class="fine">${H.ses} sessions · ${total} repetitions · ${H.sim ? 'includes SIMULATED robot data' : 'example figures'}<br><button type="button" class="lnk${S.arm ? ' warnl' : ''}" data-resetp>${S.arm ? 'Tap again to reset' : 'Reset progress'}</button></p></div>`; },
   report: () => `<div class="view"><div><p class="eyebrow">Report</p><h1>Your weekly summary</h1></div>
       <div class="note"><span class="tick">${S.share ? '✓' : '–'}</span><span>${S.share ? 'Shared with your physiotherapist or rehab centre every Friday' : 'Not shared. Only you can see this.'}</span></div>
       <div class="card"><div class="kv"><span>Sessions completed</span><b>${hist().ses}</b></div><div class="kv"><span>${esc(PL.metric)}</span><b class="upv">${(() => { const p = hist().pts; return fmt(p[p.length - 1], PL.unit) + (p[p.length - 1] > p[0] ? ' (+' + fmt(p[p.length - 1] - p[0], PL.unit) + ')' : ''); })()}</b></div>${PL.rows.map((r) => `<div class="kv"><span>${esc(r[0])}</span><b class="upv">${esc(r[1])}</b></div>`).join('')}<div class="kv"><span>Pain reported</span><b>None</b></div></div>
       <div class="card"><button type="button" class="sw" role="switch" aria-checked="${S.share}" data-share><span><b style="font:600 16px var(--display)">Share with my care team</b><br><span class="sub" style="font-size:14px">You decide. You can turn this off at any time.</span></span><span class="tr"></span></button></div>
-      <p class="fine">Example figures for this demo. <button type="button" class="lnk" data-reset>Start the demo again</button></p></div>`,
+      <p class="fine">${hist().sim ? 'Includes SIMULATED robot data. ' : ''}Example figures for this demo. <button type="button" class="lnk" data-reset>Start the demo again</button></p></div>`,
   preview: () => { const e = PLAN.find((x) => x.id === S.pre), done = S.done[e.id]; return `<div class="view fit">
-      <div><h1>${esc(e.name)}</h1><p class="sub">${e.reps} ${e.unit} · ${esc(e.mode)}</p></div>
+      <div><h1>${esc(e.name)}</h1><p class="sub">${e.reps} ${e.unit} · ${esc(e.mode)}${robotNote(e.id)}</p></div>
       <div class="stagebox" id="fig">${figure(e.id, 0)}</div>
       <div class="card"><div class="kv"><span><b>How</b><br>${esc(e.how)}</span></div><div class="kv"><span><b>Why</b><br>${esc(e.why)}</span></div></div>
       <div class="row2 wide"><button type="button" class="btn ghost" data-back><span aria-hidden="true">‹</span> Back</button>${done ? `<div class="note"><span class="tick">✓</span><span>Done today</span></div>` : S.scanned ? `<button type="button" class="btn" data-begin="${e.id}">Start</button>` : `<button type="button" class="btn" data-go="scan" data-want="${e.id}">Scan to start</button>`}</div></div>`; },
-  rest: () => { const r = S.rest || { left: 0 }, over = r.left <= 0, m = Math.floor(Math.max(0, r.left) / 60), sec = String(Math.ceil(Math.max(0, r.left)) % 60).padStart(2, '0'), nx = nextEx(), lr = S.last && EX[S.last].result;
+  rest: () => { const r = S.rest || { left: 0 }, over = r.left <= 0, m = Math.floor(Math.max(0, r.left) / 60), sec = String(Math.ceil(Math.max(0, r.left)) % 60).padStart(2, '0'), nx = nextEx(), lr = S.last && (S.res === undefined ? EX[S.last].result : S.res);
     return `<div class="view fit"><div><p class="eyebrow">Break</p><h1>${over ? 'Ready when you are.' : 'Well done. Take a short break.'}</h1><p class="sub">${lr ? `Measured: ${esc(lr[0].toLowerCase())} ${esc(lr[1])}, ${esc(lr[2])}.` : 'Let your muscles recover before the next exercise.'}</p></div>
       <div class="stagebox restbox"><div><p class="timer" id="timer" aria-live="off">${over ? '0:00' : m + ':' + sec}</p><p class="sub">${over ? 'Your break is over' : 'of a 3-minute break'}</p></div></div>
       <div class="note"><span class="tick">✓</span><span>${PLAN.filter((e) => S.done[e.id]).length} of ${PLAN.length} done. Next when you choose: ${esc(nx.name.toLowerCase())}.</span></div>
@@ -641,9 +679,9 @@ const VIEWS = {
 
 function render() { const g = authView(), v = g || (S.run ? 'run' : S.pre ? 'preview' : S.tab); document.querySelector('.app').classList.toggle('gate', !!g); main.innerHTML = g ? AUTHV[g]() : VIEWS[v](); const wk = $('#wk'); if (wk) wk.textContent = `Week ${weekNo()} of 8`; main.scrollTop = 0; attachCam(); if (v === 'account') checkServer(); const fg = $('#fig'); document.querySelector('.app').classList.toggle('bigtext', S.big); if (fg && use3d()) draw(fg, S.run ? S.run.id : S.pre, S.run ? S.run.t : S.pt);
   document.querySelectorAll('nav button').forEach((b) => { if (b.dataset.tab === S.tab && !S.run && !S.pre) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }); }
-function go(tab) { S.arm = false; if (tab !== 'scan') camOff(); if (tab === 'progress' || tab === 'report') setTimeout(pullHist, 0); S.run = null; S.pre = null; S.tab = tab; render(); }
-function start(id) { const e = PLAN.find((x) => x.id === id) || nextEx(); if (!e) return; S.pre = null; S.rest = null; S.run = { id: e.id, n: 0, t: 0, paused: false, tip: 0, at: performance.now() }; render(); }
-function finish() { S.done[S.run.id] = true; S.last = S.run.id; record(EX[S.run.id]); if (allDone()) hist().ses++; pushHist(); S.run = null; save(); if (allDone()) { S.tab = 'done'; render(); } else { S.rest = { left: REST }; S.tab = 'rest'; render(); } }
+function go(tab) { if (armOn(S.run)) robotStop(); S.arm = false; if (tab !== 'scan') camOff(); if (tab === 'progress' || tab === 'report') setTimeout(pullHist, 0); S.run = null; S.pre = null; S.tab = tab; render(); }
+function start(id) { const e = PLAN.find((x) => x.id === id) || nextEx(); if (!e) return; S.pre = null; S.rest = null; S.run = { id: e.id, n: 0, t: 0, paused: false, tip: 0, at: performance.now() }; if (onRobot(e.id)) { S.run.robot = 'starting'; robotStart(S.run, e); } render(); }
+function finish() { if (armOn(S.run)) robotStop(); S.done[S.run.id] = true; S.last = S.run.id; S.res = robotResult(S.run); record(EX[S.run.id], S.run.robot); if (allDone()) hist().ses++; pushHist(); S.run = null; save(); if (allDone()) { S.tab = 'done'; render(); } else { S.rest = { left: REST }; S.tab = 'rest'; render(); } }
 
 // if the page is refreshed in place, the old copy of this script must stop listening, or one tap would count several times
 if (window.__vita) window.__vita.abort(); const AC = window.__vita = new AbortController();
@@ -679,15 +717,17 @@ let last = performance.now(); const still = matchMedia('(prefers-reduced-motion:
 function tick(now) { if (AC.signal.aborted) return; requestAnimationFrame(tick); const dt = Math.min(.1, (now - last) / 1000); last = now; if (S.rest && S.rest.left > 0 && !S.run) { const b4 = Math.ceil(S.rest.left); S.rest.left -= dt; const now2 = Math.ceil(Math.max(0, S.rest.left)); if (now2 !== b4) { const lbl = Math.floor(now2 / 60) + ':' + String(now2 % 60).padStart(2, '0'); if (S.tab === 'rest' && !S.pre) { if (S.rest.left <= 0) render(); else { const tm = $('#timer'); if (tm) tm.textContent = lbl; } } else if (S.tab === 'today' && !S.pre) { const rl = $('#restline'); if (rl) rl.textContent = S.rest.left <= 0 ? '' : 'Break: ' + lbl + ' left.'; } } }
   if (S.camOn && now - lastScan > 160) { lastScan = now; scanFrame(); }
   if (S.pre && !S.run) { S.pt = (S.pt + dt / 3) % 1; const fg = $('#fig'); if (fg && (!still.matches || !fg.classList.contains('has3d'))) draw(fg, S.pre, still.matches ? .45 : S.pt); return; }
-  const r = S.run; if (!r || r.paused) return;
-  const e = PLAN.find((x) => x.id === r.id); r.t += dt / 3; if (r.t >= 1) { r.t -= 1; r.n++; const n = $('#n'), bar = $('#bar'); if (n) { n.textContent = r.n; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); } if (bar) bar.style.width = r.n / e.reps * 100 + '%'; const rg = $('#ring'); if (rg) rg.setAttribute('stroke-dashoffset', 100 - r.n / e.reps * 100); if (r.n >= e.reps) { finish(); return; } }
+  const r = S.run; if (!r || r.paused || r.err) return;
+  const e = PLAN.find((x) => x.id === r.id); r.t += dt / 3; if (r.robot && r.t >= 1) r.t -= 1; if (r.t >= 1) { r.t -= 1; r.n++; const n = $('#n'), bar = $('#bar'); if (n) { n.textContent = r.n; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); } if (bar) bar.style.width = r.n / e.reps * 100 + '%'; const rg = $('#ring'); if (rg) rg.setAttribute('stroke-dashoffset', 100 - r.n / e.reps * 100); if (r.n >= e.reps) { finish(); return; } }
   const fig = $('#fig'); if (fig) draw(fig, r.id, still.matches ? .45 : r.t);
-  const tip = r.n === e.reps - 1 ? 'Last one. Almost there.' : e.tips[Math.min(2, Math.floor(r.t * 3))], c = $('#coach'); if (c && c.textContent !== tip) c.textContent = tip; }
+  const tip = r.robot ? robotTip(r, e) : r.n === e.reps - 1 ? 'Last one. Almost there.' : e.tips[Math.min(2, Math.floor(r.t * 3))], c = $('#coach'); if (c && c.textContent !== tip) c.textContent = tip; }
 render(); requestAnimationFrame(tick); if (live()) loadMe(); else pullHist();
 { const q = new URLSearchParams(location.search), st = +q.get('station');
   if (q.has('api') || st) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   if (st) { S.tab = 'scan'; connect(st); } }
 addEventListener('vita3d', () => render(), { signal: AC.signal });
+addEventListener('pagehide', () => { if (armOn(S.run)) robotStop(); }, { signal: AC.signal });
+probeRobot();
 // in its frame the phone keeps its real size and is scaled down to fit the window, so every screen lays out the same
 { const ph = $('#phone'), fitPhone = () => ph.style.setProperty('--fit', Math.min(1, (innerHeight - 40) / 844, (innerWidth - 40) / 390).toFixed(4)); fitPhone(); addEventListener('resize', fitPhone, { signal: AC.signal }); }
 </script>
