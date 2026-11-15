@@ -444,3 +444,93 @@ raises the arm's limits and `force_cap_n` reads 60; it is 30 again as soon as th
 {"type": "sample", "phase": "calibrate", "force_cap_n": 60.0, "calibration": {"status": "pushing", "progress": 0.563, "comfort_force_n": null, "resistance_n": null, "fraction": null, "reason": null}}
 {"type": "sample", "phase": "idle", "force_cap_n": 30.0, "calibration": {"status": "done", "progress": 1.0, "comfort_force_n": 22.0, "resistance_n": 13.2, "fraction": 0.6, "reason": null}}
 ```
+
+## 8. Push at four fixed levels (the pitch demo, for Mat and Gio)
+
+On the real arm the server now offers one exercise, Push, at four fixed resistance levels. There is no
+calibration push, no arming and no Go: the handle always pulls back towards the start with a constant
+force, and reps are counted from where the handle is. (The older exercises of sections 6 and 7 are only
+offered when the server is started with `--exercises reach,push,...`. `--mock` plays both sets.)
+
+**List.** `GET /api/exercises` (real output; `group`, `level`, `level_force_n` are new on every item,
+`level` and `level_force_n` are `null` for the older exercises):
+
+```json
+[{"id": "push_1", "name": "Push · Level 1 (10 N)", "kind": "resist", "reps": 10, "calibrates": false, "group": "push", "level": 1, "level_force_n": 10.0},
+ {"id": "push_2", "name": "Push · Level 2 (15 N)", "kind": "resist", "reps": 10, "calibrates": false, "group": "push", "level": 2, "level_force_n": 15.0},
+ {"id": "push_3", "name": "Push · Level 3 (20 N)", "kind": "resist", "reps": 10, "calibrates": false, "group": "push", "level": 3, "level_force_n": 20.0},
+ {"id": "push_4", "name": "Push · Level 4 (28 N)", "kind": "resist", "reps": 10, "calibrates": false, "group": "push", "level": 4, "level_force_n": 28.0}]
+```
+
+Show one Push card with a level picker (group by `group`). **Start** with the id of the chosen level:
+`POST /api/session/start {"patient_id": "maria", "exercise": "push_2", "reps": 10}`. No Prepare is needed
+first: the session zeroes the force itself.
+
+**Change the level during a set:** `POST /api/level {"level": 3}` answers
+`{"ok": true, "level": 3, "level_force_n": 20.0}`; the resistance changes over half a second and the feed's
+`exercise` becomes `"push_3"`. 409 with a sentence when there is no session or the exercise has no levels,
+422 for a level outside 1 to 4.
+
+**New fields in `/api/state` and every `sample`** (all `null` for the older exercises):
+
+| Field | Meaning |
+|---|---|
+| `group` | `"push"` |
+| `level`, `level_force_n` | the level now (1 to 4) and its newtons |
+| `message` | a short sentence to show the person as it is, or `null`: `"Hands off: zeroing in 3"`, `"Zeroing. Hands off."`, `"Turn back"`, `"Set finished"`, `"Returning to start, hands off: 2"`, `"The arm has stopped (...). Let go. Stop the session and start again."` |
+| `countdown_s` | seconds left while a countdown runs (one decimal), else `null` |
+| `path_start`, `path_end` | the two ends of the push line, `[x, y, z]` in metres |
+| `force_cap_n` | 30 |
+
+`phase` is `"idle"`, `"out"` or `"back"` as before, `rep_idx` is -1 between reps, `calibration` and
+`arming` are `null`.
+
+**What a session looks like.** Real messages from the band engine on the simulated arm (`q` left out,
+numbers rounded; SIMULATED, a simulated patient did the pushing):
+
+1. A 3 second hands-off countdown, then the force is zeroed. Nobody may touch the handle:
+
+```json
+{"type": "sample", "t": 0.046, "pos": [0.45, 0.0, 0.3], "vel": [0.0, 0.0, 0.0], "force": [0.0, 0.0, 0.0], "target": [0.45, 0.0, 0.3], "dial": -0.5, "rep_idx": -1, "simulated": true, "phase": "idle", "rep_count": 0, "auto": false, "arm_mode": "idle", "arm_fault": null, "calibration": null, "arming": null, "force_cap_n": 30.0, "group": "push", "level": 2, "level_force_n": 15.0, "message": "Hands off: zeroing in 3", "countdown_s": 3.0, "path_start": [0.45, 0.0, 0.3], "path_end": [0.75, 0.0, 0.3], "exercise": "push_2", "reps_target": 2, "done": false}
+```
+
+2. The band is on (`arm_mode` `"compliant"`, `message` `null`). Pushing out:
+
+```json
+{"type": "sample", "t": 6.484, "pos": [0.556, 0.0, 0.287], "vel": [0.247, 0.0, -0.002], "force": [21.669, 0.0, -5.995], "target": [0.502, 0.0, 0.3], "dial": -0.5, "rep_idx": 0, "simulated": true, "phase": "out", "rep_count": 0, "auto": false, "arm_mode": "compliant", "arm_fault": null, "calibration": null, "arming": null, "force_cap_n": 30.0, "group": "push", "level": 2, "level_force_n": 15.0, "message": null, "countdown_s": null, "path_start": [0.45, 0.0, 0.3], "path_end": [0.75, 0.0, 0.3], "exercise": "push_2", "reps_target": 2, "done": false}
+```
+
+3. From 27 cm out the message is `"Turn back"` (the reach is 30 cm; the arm stops itself at 37 cm):
+
+```json
+{"type": "sample", "t": 7.359, "pos": [0.721, 0.0, 0.287], "phase": "out", "rep_idx": 0, "rep_count": 0, "level": 2, "message": "Turn back", "countdown_s": null, "exercise": "push_2", "done": false}
+```
+
+4. Back within 5 cm of the start the rep is counted and a `rep` message follows. A push counts once it
+has passed 20 cm; a shorter one is not counted and sends nothing:
+
+```json
+{"type": "rep", "session_id": "20261115-202510-e0b1", "idx": 0, "mode": "resist", "dial": -0.5, "t_start": 6.17, "duration_s": 3.91, "rom_m": 0.275, "path_err_mean_m": 0.013, "path_err_max_m": 0.013, "sparc": 0.0, "peak_force_n": 21.94, "mean_force_n": 7.43, "contribution": 1.0, "completed": true, "simulated": true, "rescued": false, "exercise": "push_2"}
+```
+
+(`sparc` is always 0 and `contribution` always 1 for these reps: do not show them. In this capture
+`mean_force_n` still averaged the way back; it now covers the push out only.)
+
+5. After the last planned rep: `"done": true`, `"message": "Set finished"`. The band stays on until Stop.
+
+```json
+{"session": {"session_id": "20261115-202510-e0b1", "patient_id": "sim-demo", "simulated": true, "exercise": "push_3"}, "phase": "idle", "rep_count": 2, "exercise": "push_3", "group": "push", "level": 3, "level_force_n": 20.0, "reps_target": 2, "done": true, "message": "Set finished", "countdown_s": null, "force_cap_n": 30.0}
+```
+
+6. **Stop.** `POST /api/session/stop` can take up to about 15 seconds to answer on the real arm: the
+state shows `"Returning to start, hands off: 3"` with `countdown_s`, then the arm moves back to the start by
+itself, slowly. If someone is holding the handle it does not move and says so in `message`. Do not send a
+second stop or a start while the first is pending. The session is stored at the level it ended on:
+
+```json
+{"session_id": "20261115-202510-e0b1", "patient_id": "sim-demo", "started_at": "2026-11-15T20:25:10", "ended_at": "2026-11-15T20:25:34", "exercise": "push_3", "n_reps": 2, "simulated": true, "comfort_force_n": null, "resistance_n": null, "resistance_fraction": null}
+```
+
+**How it feels, so the wording matches.** Pushing out or holding still, the pull is the level's newtons
+(plus about 4.5 N of friction in the arm). Coming back, the pull eases off the faster the handle returns,
+so a handle that is let go glides back slowly instead of snapping. Readings stop at about 30 N.

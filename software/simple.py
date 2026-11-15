@@ -204,6 +204,8 @@ class BandEngine:
         self.started_at = _now_iso()
         self._started = True
         self._stop_evt.clear()
+        ref0 = self._start_ref()             # for path_start and path_end until the band is on
+        self._start = np.asarray(ref0 if ref0 is not None else self.arm.get_state().pos, dtype=float)
         if self.prepare and hasattr(self.arm, "zero_force"):
             st = self.arm.get_state()
             ref = self._start_ref()
@@ -519,12 +521,13 @@ class BandEngine:
         if self._rep is not None:
             r = self._rep
             r["s_max"] = max(r["s_max"], s)
-            r["f"].append(f_along)
             r["lat"].append(lateral)
             if s >= OUT_M:
                 r["out"] = True
             if r["out"] and s < r["s_max"] - 0.02:
                 self._phase = "back"
+            if self._phase == "out" or not r["f"]:
+                r["f"].append(f_along)           # force statistics are for the push out, not the way back
             if s <= BACK_M:
                 if r["out"]:
                     counted = r
