@@ -1,0 +1,136 @@
+/* Operator console: laptop first (1600x900), usable at 360 px. Builds on style.css. */
+:root { --hold-w: 300px; --hold-h: 104px; }
+
+body {
+  font-size: 17px; line-height: 1.35;
+  padding: 16px calc(var(--hold-w) + 16px) 16px 16px;
+}
+h2 { font-size: 1.25rem; margin: 0 0 0.5em; }
+h3 { font-size: 0.8rem; margin: 1em 0 0.3em; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.num { font-variant-numeric: tabular-nums; }
+.hint { color: var(--muted); font-size: 0.85rem; margin: 0.4em 0; font-weight: 400; }
+
+/* HOLD: always on screen */
+#hold {
+  position: fixed; top: 0; right: 0; bottom: 0; width: var(--hold-w); z-index: 2147483647;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3em;
+  background: #e01212; color: #fff; border: 0; border-left: 6px solid #7a0000; border-radius: 0;
+  padding: 12px; text-align: center; cursor: pointer; touch-action: manipulation;
+}
+#hold:hover { background: #f02020; }
+#hold:active { background: #b00000; }
+#hold:focus-visible { outline: 4px solid #fff; outline-offset: -8px; }
+.hold-word { font-size: 5rem; font-weight: 900; letter-spacing: 0.04em; line-height: 1; }
+.hold-sub { font-size: 1rem; font-weight: 700; opacity: 0.9; }
+.hold-msg { font-size: 1rem; font-weight: 700; min-height: 2.6em; }
+#hold[data-state="sent"] { background: #8a0d0d; }
+#hold[data-state="failed"] { background: #000; color: #ff5a5a; border-color: #ff3b3b; animation: pulse 0.6s ease-in-out infinite; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.brand { display: flex; align-items: baseline; gap: 0.6em; min-width: 0; }
+.brand b { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); }
+.top .badge { font-size: 1rem; }
+
+/* Status strip */
+.strip {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+}
+.cell { background: var(--panel); padding: 8px 12px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cell.wide { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: 12px; }
+.cell .k { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+.cell .v { font-size: 1.2rem; font-weight: 700; overflow-wrap: anywhere; }
+.cell.wide .v { font-size: 0.95rem; font-weight: 500; }
+#sErr.bad { color: #ff8080; }
+
+.pill { display: inline-block; padding: 0.05em 0.6em; border-radius: 999px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
+.am-none { color: var(--muted); padding: 0; text-transform: none; letter-spacing: 0; font-weight: 700; }
+.am-idle { background: var(--free); color: #101418; }
+.am-compliant { background: var(--ok); color: #04130a; }
+.am-hold { background: var(--danger); color: #fff; }
+.am-fault { background: #fff; color: #b00000; animation: pulse 0.7s ease-in-out infinite; }
+
+.alert {
+  margin-top: 12px; padding: 10px 14px; border-radius: 12px; font-weight: 700;
+  background: #3a2a05; border: 2px solid var(--resist); color: #ffd9a8;
+}
+.alert.stop { background: #400a0a; border-color: var(--danger); color: #ffd0d0; }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.panel { padding: 14px 16px; min-width: 0; }
+
+button { padding: 0.55em 1em; min-height: 44px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--assist); outline-offset: 2px; }
+button.go { background: var(--ok); border-color: var(--ok); color: #04130a; }
+button.warn { border-color: var(--resist); color: #ffc48a; }
+button.attn { box-shadow: 0 0 0 4px var(--resist); }
+.row.end { justify-content: flex-end; }
+.row.sep { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+.form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); font-weight: 600; min-width: 0; }
+input[type="text"], input[type="number"], select {
+  font: inherit; font-size: 1.05rem; color: var(--fg); background: var(--bg);
+  border: 2px solid var(--line); border-radius: 8px; padding: 0.45em 0.6em; min-height: 44px; width: 100%; min-width: 0;
+}
+input:disabled, select:disabled { opacity: 0.55; }
+input.bad { border-color: var(--danger); }
+label .row { flex-wrap: nowrap; }
+label .row input { flex: 1 1 0; }
+
+.msg { min-height: 1.4em; margin-top: 8px; font-size: 0.95rem; overflow-wrap: anywhere; }
+.msg.ok { color: var(--ok); }
+.msg.bad { color: #ff8080; font-weight: 700; }
+.readout { margin-top: 10px; padding: 8px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+.readout b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+
+/* Dial */
+#dialNow { margin-left: 0.4em; }
+.tag { font-size: 0.75rem; padding: 0.15em 0.6em; border-radius: 999px; border: 2px solid var(--line); color: var(--muted); vertical-align: middle; letter-spacing: 0.06em; }
+.tag.on { border-color: var(--ok); color: var(--ok); }
+.dial-ends { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; }
+input[type="range"] { width: 100%; height: 44px; margin: 0; accent-color: var(--fg); }
+.snaps { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
+.snaps button { padding: 0.3em 0; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+
+.log { list-style: none; margin: 0; padding: 0; font-size: 0.82rem; color: var(--muted); max-height: 9.5em; overflow-y: auto; }
+.log li { padding: 2px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.log li.bad { color: #ff8080; }
+
+/* Confirm box: covers the console but never the HOLD button */
+.overlay {
+  position: fixed; inset: 0 var(--hold-w) 0 0; z-index: 1000; background: rgba(0, 0, 0, 0.65);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.overlay[hidden] { display: none; }
+.overlay .box {
+  background: var(--panel); border: 2px solid var(--line); border-radius: 16px;
+  padding: 20px; width: min(520px, 100%);
+}
+.overlay p { margin: 0.4em 0 0.8em; }
+
+/* Narrow: HOLD becomes a bar fixed to the bottom edge */
+@media (max-width: 900px) {
+  body { padding: 12px 12px calc(var(--hold-h) + 16px) 12px; font-size: 16px; }
+  #hold {
+    top: auto; left: 0; width: auto; height: var(--hold-h); flex-direction: row; flex-wrap: wrap; gap: 0 12px;
+    border-left: 0; border-top: 6px solid #7a0000; padding: 6px 12px;
+  }
+  .hold-word { font-size: 3rem; }
+  .hold-sub { display: none; }
+  .hold-msg { min-height: 0; font-size: 0.85rem; flex-basis: 100%; }
+  .hold-msg:empty { display: none; }
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cell.wide { flex-direction: column; gap: 2px; }
+  .cell:nth-child(7) { grid-column: 1 / -1; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .brand b { font-size: 1.4rem; }
+  .snaps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .overlay { inset: 0 0 var(--hold-h) 0; }
+}
+@media (max-width: 420px) {
+  .form { grid-template-columns: minmax(0, 1fr); }
+  label .row { flex-wrap: wrap; }
+  label .row input { flex-basis: 100%; }
+}

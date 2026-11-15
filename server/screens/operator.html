@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vita · Operator console</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="operator.css">
+</head>
+<body>
+
+<button id="hold" type="button" aria-label="Hold: soft stop of the arm">
+  <span class="hold-word">HOLD</span>
+  <span class="hold-sub">click or press Space</span>
+  <span id="holdMsg" class="hold-msg" aria-live="assertive"></span>
+</button>
+
+<header class="top">
+  <div class="brand"><b>Vita</b><span>Operator console</span></div>
+  <span id="badge" class="badge none">NO DATA</span>
+</header>
+
+<section class="strip" aria-label="Live status">
+  <div class="cell"><span class="k">Connection</span><span class="v"><span id="dot" class="dot connecting"></span> <span id="conn">connecting</span></span></div>
+  <div class="cell"><span class="k">Arm</span><span class="v"><span id="armMode" class="pill am-none">–</span></span></div>
+  <div class="cell"><span class="k">Exercise</span><span id="sEx" class="v">–</span></div>
+  <div class="cell"><span class="k">Phase</span><span id="sPhase" class="v">–</span></div>
+  <div class="cell"><span class="k">Reps</span><span id="sReps" class="v num">–</span></div>
+  <div class="cell"><span class="k">Dial</span><span id="sDial" class="v num">–</span></div>
+  <div class="cell"><span class="k">Force</span><span id="sForce" class="v num">–</span></div>
+  <div class="cell wide"><span class="k">Last error</span><span id="sErr" class="v">none</span></div>
+</section>
+
+<div id="alert" class="alert" hidden></div>
+
+<main class="grid">
+
+  <section class="panel" id="armPanel">
+    <h2>Arm</h2>
+    <p class="hint">Before the first session on the real arm: Home, then Prepare. Nobody touches the handle for either.</p>
+    <div class="row">
+      <button id="home" type="button" hidden>Home</button>
+      <button id="prepare" type="button">Prepare (nobody touching)</button>
+    </div>
+    <div id="baseline" class="readout" hidden></div>
+    <div id="armMsg" class="msg" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" id="sessionPanel">
+    <h2>Session</h2>
+    <div class="form">
+      <label>Exercise
+        <select id="exercise"><option value="">loading…</option></select>
+      </label>
+      <label>Reps
+        <input id="reps" type="number" min="0" max="999" step="1" inputmode="numeric" autocomplete="off">
+      </label>
+      <label>Patient id
+        <input id="pid" type="text" maxlength="64" value="demo" autocomplete="off" spellcheck="false">
+      </label>
+      <label>Patient name
+        <input id="pname" type="text" maxlength="80" value="Demo" autocomplete="off">
+      </label>
+    </div>
+    <p class="hint">Reps: empty uses the exercise's own number, 0 keeps going until Stop. Patient id: letters, digits, _ . - only.</p>
+    <div class="row">
+      <button id="start" type="button" class="go">Start</button>
+      <button id="stop" type="button">Stop and save</button>
+    </div>
+    <div id="sessionMsg" class="msg" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" id="dialPanel">
+    <h2>Dial <span id="dialNow" class="num">–</span> <span id="autoTag" class="tag">–</span></h2>
+    <div class="dial-ends"><span class="mode-resist">−1 resist</span><span class="mode-free">0 free</span><span class="mode-assist">+1 assist</span></div>
+    <input id="dial" type="range" min="-1" max="1" step="0.01" value="0" list="dialTicks" aria-label="Dial, minus one to plus one" disabled>
+    <datalist id="dialTicks">
+      <option value="-1"></option><option value="-0.6"></option><option value="-0.3"></option><option value="0"></option>
+      <option value="0.3"></option><option value="0.6"></option><option value="1"></option>
+    </datalist>
+    <div id="snaps" class="snaps"></div>
+    <div class="row">
+      <button id="auto" type="button" disabled>Return to auto</button>
+      <span class="hint">The slider sends when you let go.</span>
+    </div>
+    <div id="dialMsg" class="msg" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" id="serverPanel">
+    <h2>Server</h2>
+    <label>Operator token <span class="hint">(only needed when the server runs with --lan)</span>
+      <span class="row">
+        <input id="token" type="text" autocomplete="off" spellcheck="false" placeholder="none saved">
+        <button id="tokenSave" type="button">Save</button>
+        <button id="tokenClear" type="button">Clear</button>
+      </span>
+    </label>
+    <div id="tokenMsg" class="msg"></div>
+    <div class="row sep">
+      <button id="shutdown" type="button" class="warn">Shut down server</button>
+      <span class="hint">From the arm laptop only. Holds and closes the arm.</span>
+    </div>
+    <div id="serverMsg" class="msg" aria-live="polite"></div>
+    <h3>Log</h3>
+    <ol id="log" class="log"></ol>
+  </section>
+
+</main>
+
+<!-- Not a modal <dialog>: that would cover the HOLD button. -->
+<div id="confirm" class="overlay" hidden>
+  <div class="box" role="alertdialog" aria-modal="false" aria-labelledby="cTitle" aria-describedby="cText">
+    <h2 id="cTitle">Confirm</h2>
+    <p id="cText"></p>
+    <p class="hint">HOLD and the Space bar still work while this is open. Space never confirms.</p>
+    <div class="row end">
+      <button id="cCancel" type="button">Cancel</button>
+      <button id="cOk" type="button" class="go">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOLD is a plain script on purpose: it works even if the module below or any other call fails. -->
+<script>
+(function () {
+  var btn = document.getElementById("hold"), msg = document.getElementById("holdMsg");
+  var base = (location.protocol === "file:" || !location.host) ? "http://127.0.0.1:8000" : "";
+  var seq = 0;
+
+  function tell(text, state) {
+    msg.textContent = text;
+    btn.setAttribute("data-state", state);
+    try { window.dispatchEvent(new CustomEvent("vita-hold", { detail: { text: text, state: state } })); } catch (e) {}
+  }
+
+  function send(mine, tries) {
+    var failed = function (why) {
+      if (mine !== seq) return;
+      if (tries < 3) { setTimeout(function () { send(mine, tries + 1); }, 250); return; }
+      tell("HOLD NOT CONFIRMED (" + why + "). Use the e-stop.", "failed");
+    };
+    try {
+      fetch(base + "/api/hold", { method: "POST", keepalive: true, cache: "no-store" }).then(function (r) {
+        if (mine !== seq) return;
+        if (r.ok) tell("Hold sent " + new Date().toLocaleTimeString(), "sent");
+        else failed("server answered " + r.status);
+      }, function () { failed("no answer from the server"); });
+    } catch (e) { failed("could not send"); }
+  }
+
+  function hold() {
+    seq += 1;
+    tell("Sending hold…", "sending");
+    send(seq, 0);
+  }
+
+  function typing(el) {
+    if (window.vitaSessionRunning) return false;       // during a session Space always holds
+    if (!el || !el.tagName) return false;
+    if (el.tagName === "TEXTAREA") return true;
+    return el.tagName === "INPUT" && /^(text|number|password|search)$/.test(el.type);
+  }
+  function isSpace(e) { return e.code === "Space" || e.key === " "; }
+
+  btn.addEventListener("click", hold);
+  window.addEventListener("keydown", function (e) {
+    if (!isSpace(e) || typing(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    if (!e.repeat) hold();
+  }, true);
+  window.addEventListener("keyup", function (e) {       // stops Space from also clicking a focused button
+    if (!isSpace(e) || typing(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+  }, true);
+})();
+</script>
+<script type="module" src="operator.js"></script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vita · Therapist view</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="physio.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><b>Vita</b><span>Therapist view</span></div>
+  <div class="row">
+    <span id="dot" class="dot connecting" title="Live feed"></span>
+    <span id="conn" class="conn">connecting</span>
+  </div>
+</header>
+
+<section class="picker">
+  <label for="patient">Patient</label>
+  <select id="patient"><option value="">loading…</option></select>
+  <label for="session">Session</label>
+  <select id="session"><option value="">–</option></select>
+  <span id="pBadge" class="badge none">NO DATA</span>
+</section>
+<div id="status" class="status" aria-live="polite"></div>
+
+<section class="panel" id="repsPanel">
+  <div class="phead">
+    <h2><span id="repsTitle">Session reps</span> <span id="liveTag" class="livetag" hidden>LIVE</span></h2>
+    <span id="repsBadge" class="badge none">NO DATA</span>
+  </div>
+  <p id="repsSub" class="sub"></p>
+  <p class="swipe">Swipe the table sideways for all columns. Tap a column's ⓘ for what it means.</p>
+  <div class="tablewrap">
+    <table id="reps">
+      <thead><tr id="repsHead"></tr></thead>
+      <tbody id="repsBody"></tbody>
+    </table>
+  </div>
+  <p id="repsEmpty" class="sub">No reps yet.</p>
+  <p id="capNote" class="sub" hidden>Strength test readings are capped at about 30 N by the robot's safety limit; that is the robot's limit, not the patient's.</p>
+</section>
+
+<section class="panel" id="histPanel">
+  <div class="phead">
+    <h2>Progress across sessions</h2>
+    <label class="inline">Exercise <select id="histEx"></select></label>
+  </div>
+  <p id="histSub" class="sub"></p>
+  <div id="charts" class="charts"></div>
+</section>
+
+<section class="panel" id="notePanel">
+  <div class="phead">
+    <h2>Session note</h2>
+    <div class="row">
+      <span id="copyMsg" class="sub" aria-live="polite"></span>
+      <button id="copy" type="button" disabled>Copy</button>
+    </div>
+  </div>
+  <p id="noteSub" class="sub"></p>
+  <pre id="note" tabindex="0"></pre>
+</section>
+
+<footer class="foot">
+  Device readings for therapist review, not a clinical assessment. Contribution is a team-defined index and is not clinically validated.
+  Anything marked SIMULATED does not come from a real patient or from the robot.
+</footer>
+
+<div id="tipbox" role="tooltip" hidden></div>
+
+<script type="module" src="physio.js"></script>
+</body>
+</html>

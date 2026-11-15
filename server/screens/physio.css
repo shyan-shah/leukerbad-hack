@@ -1,0 +1,100 @@
+/* Therapist view: phone first (360 px), dense and quiet. Builds on style.css. */
+body { font-size: 15px; line-height: 1.4; padding: 12px; }
+h2 { font-size: 1.05rem; margin: 0; font-weight: 700; }
+.sub { color: var(--muted); font-size: 0.85rem; margin: 4px 0 8px; }
+.badge { font-size: 0.72rem; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.brand { display: flex; align-items: baseline; gap: 0.6em; min-width: 0; }
+.brand b { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.01em; }
+.brand span, .conn { color: var(--muted); font-size: 0.9rem; }
+
+.picker { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; align-items: center; }
+.picker label, label.inline { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+.picker .badge { grid-column: 1 / -1; justify-self: start; }
+select {
+  font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 0.5em 0.6em; min-height: 44px; width: 100%; min-width: 0;
+}
+label.inline { display: flex; align-items: center; gap: 8px; }
+label.inline select { width: auto; max-width: 100%; }
+select:focus-visible, button:focus-visible, pre:focus-visible { outline: 2px solid var(--assist); outline-offset: 2px; }
+.status { color: #ff8080; font-size: 0.85rem; min-height: 1.2em; margin: 4px 0; }
+
+.panel { padding: 12px; margin-top: 12px; border-radius: 12px; min-width: 0; }
+.phead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.livetag {
+  font-size: 0.7rem; font-weight: 900; letter-spacing: 0.08em; padding: 0.15em 0.6em; border-radius: 999px;
+  background: var(--ok); color: #04130a; vertical-align: middle; animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* Rep table */
+.swipe { color: var(--muted); font-size: 0.78rem; margin: 0 0 6px; }
+.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 8px; max-height: 26em; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-variant-numeric: tabular-nums; font-size: 0.88rem; }
+th, td { padding: 7px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { position: sticky; top: 0; background: #1d232b; color: var(--muted); font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; z-index: 1; }
+th .unit { text-transform: none; font-weight: 500; }
+th.l, td.l { text-align: left; }
+th:first-child, td:first-child { position: sticky; left: 0; background: #1d232b; z-index: 2; }
+td:first-child { font-weight: 700; z-index: 1; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.new td { animation: flash 1.6s ease-out; }
+@keyframes flash { from { background: #24476f; } }
+.no { color: var(--resist); font-weight: 700; }
+.chip { display: inline-block; margin-left: 6px; padding: 0 0.5em; border-radius: 999px; border: 1px solid var(--resist); color: var(--resist); font-size: 0.75rem; }
+
+/* Info buttons and their bubble */
+.tip {
+  display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; min-height: 0;
+  margin-left: 4px; padding: 0; border-radius: 50%; border: 1px solid var(--muted); background: transparent;
+  color: var(--muted); font-size: 0.72rem; font-weight: 700; font-style: italic; font-family: Georgia, "Times New Roman", serif;
+  text-transform: none; vertical-align: middle; position: relative;
+}
+.tip::after { content: ""; position: absolute; inset: -12px; }      /* bigger touch target */
+.tip[aria-expanded="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+#tipbox {
+  position: absolute; z-index: 50; max-width: min(320px, calc(100vw - 16px)); padding: 10px 12px;
+  background: #f4f6f8; color: #0b0d10; border-radius: 8px; font-size: 0.88rem; line-height: 1.35;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* Charts */
+.charts { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.chart { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 10px 8px; min-width: 0; }
+.chart h3 { margin: 0 0 2px; font-size: 0.92rem; font-weight: 700; }
+.chart svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.chart .read { color: var(--muted); font-size: 0.8rem; min-height: 1.3em; font-variant-numeric: tabular-nums; }
+.chart .read b { color: var(--fg); }
+.chart .na { color: var(--muted); font-size: 0.85rem; padding: 28px 0; text-align: center; }
+svg .grid { stroke: var(--line); stroke-width: 1; }
+svg .zero { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+svg .axis { fill: var(--muted); font-size: 10.5px; }
+svg .unit { fill: var(--fg); font-size: 10.5px; font-weight: 700; }
+svg .line { fill: none; stroke: var(--assist); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+svg .pt { fill: var(--assist); stroke: var(--bg); stroke-width: 2; }
+svg .pt.sel { fill: var(--fg); stroke: var(--assist); stroke-width: 3; }
+svg .guide { stroke: var(--fg); stroke-width: 1; opacity: 0.5; }
+svg .simtag rect { fill: var(--danger); }
+svg .simtag text { fill: #fff; font-size: 10px; font-weight: 900; letter-spacing: 0.06em; }
+svg .hit { fill: transparent; cursor: pointer; }
+
+/* Note */
+pre {
+  margin: 0; padding: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: 0.8rem; line-height: 1.45;
+  white-space: pre; overflow-x: auto; max-height: 30em; overflow-y: auto;
+}
+button { font-size: 0.9rem; padding: 0.5em 1.1em; min-height: 44px; border-width: 1px; }
+
+.foot { color: var(--muted); font-size: 0.78rem; margin: 14px 2px 6px; }
+
+@media (min-width: 720px) {
+  body { padding: 20px 24px; font-size: 16px; max-width: 1560px; margin: 0 auto; }
+  .picker { grid-template-columns: auto minmax(0, 320px) auto minmax(0, 420px) auto; justify-content: start; }
+  .picker .badge { grid-column: auto; }
+  .panel { padding: 16px 18px; }
+  .swipe { display: none; }
+  table { min-width: 0; }
+  pre { font-size: 0.88rem; }
+}

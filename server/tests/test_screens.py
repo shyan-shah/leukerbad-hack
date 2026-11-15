@@ -127,3 +127,32 @@ def test_patient_app_served_at_app(no_site):
     assert r.status_code == 200 and "text/html" in r.headers["content-type"]
     assert no_site.get("/api/health").status_code == 200          # API not shadowed
     assert no_site.get("/screens/index.html").status_code == 200  # screens not shadowed
+
+
+@pytest.mark.parametrize("page,files", [
+    ("physio", ("physio.js", "physio.css")),
+    ("operator", ("operator.js", "operator.css")),
+])
+def test_physio_and_operator_screens_served(no_site, page, files):
+    r = no_site.get(f"/screens/{page}.html")
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
+    assert "Vita" in r.text and "style.css" in r.text
+    for f in files:
+        got = no_site.get(f"/screens/{f}")
+        assert got.status_code == 200
+        assert ("javascript" if f.endswith(".js") else "text/css") in got.headers["content-type"]
+        assert f in r.text
+
+
+def test_operator_hold_does_not_depend_on_the_module():
+    """HOLD and the Space bar are wired in a plain script in the page, before the module loads."""
+    html = (SCREENS / "operator.html").read_text(encoding="utf-8")
+    plain = html.split("<script>", 1)[1].split("</script>", 1)[0]
+    assert "/api/hold" in plain and '"Space"' in plain and "import" not in plain
+    assert html.index("<script>") < html.index('<script type="module"')
+    assert "/api/hold" not in (SCREENS / "operator.js").read_text(encoding="utf-8")
+
+
+def test_physio_charts_carry_a_simulated_label():
+    js = (SCREENS / "physio.js").read_text(encoding="utf-8")
+    assert "simtag" in js and '"SIMULATED"' in js and "not clinically validated" in js
