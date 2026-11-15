@@ -824,7 +824,9 @@ function tick(now) { if (AC.signal.aborted) return; requestAnimationFrame(tick);
 render(); requestAnimationFrame(tick); if (live()) loadMe(); else pullHist();
 { const q = new URLSearchParams(location.search), st = +q.get('station');
   if (q.has('api') || st) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
-  if (st) { S.tab = 'scan'; connect(st); } }
+  // ?station=N (NFC tag or a QR code opened by the phone camera): on the station laptop open the arm's plan, then land on Today
+  // with one Start button. Opening a link never starts the arm by itself; the patient presses Start (context/NFC.md).
+  if (st) { if (!HOSTED && !live() && /^\/app(\/|$)/.test(location.pathname) && S.plan !== 'robot') setPlan('robot'); S.tab = 'today'; S.want = null; connect(st); } }
 addEventListener('vita3d', () => render(), { signal: AC.signal });
 addEventListener('pagehide', () => { if (armOn(S.run)) robotStop(); }, { signal: AC.signal });
 probeRobot();
