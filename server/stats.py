@@ -32,10 +32,12 @@ def session_means(reps: list[RepResult]) -> dict:
     out: dict = {"n_reps": len(reps)}
     if not reps:
         out.update({f"mean_{m}": None for m in METRICS})
-        out.update(dial_start=None, dial_end=None, mean_dial=None, completed_share=None, rescued_count=0)
+        out.update(dial_start=None, dial_end=None, mean_dial=None, completed_share=None, rescued_count=0,
+                   best_peak_force_n=None)
         return out
     for m in METRICS:
         out[f"mean_{m}"] = round(fmean(getattr(r, m) for r in reps), 4)
+    out["best_peak_force_n"] = round(max(r.peak_force_n for r in reps), 4)
     out["dial_start"] = round(reps[0].dial, 3)
     out["dial_end"] = round(reps[-1].dial, 3)
     out["mean_dial"] = round(fmean(r.dial for r in reps), 3)

@@ -25,7 +25,8 @@ One entry per session, with averages over its repetitions. Good for "progress ov
 |-------|---------|
 | `session_id`, `patient_id` | codes |
 | `started_at`, `ended_at` | date and time (ISO format, e.g. `2026-11-13T09:30:00`) |
-| `exercise` | always `reach_line` (straight forward reach) for now |
+| `exercise` | programme id: `reach` (assisted forward reach), `push` and `pull` (resisted), `armtest` (strength test: 3 tries with the handle held still; only the force fields mean something). Sessions from before 15 Nov were all `reach` |
+| `best_peak_force_n` | highest peak force of the session, newtons. For `armtest` this is the result (readings stop at about 30 N, the robot's safety limit) |
 | `n_reps` | repetitions in the session |
 | `simulated` | true or false |
 | `dial_start`, `dial_end`, `mean_dial` | the assistance dial: **+1** = the arm does the work, **0** = free movement, **-1** = maximum resistance. Falling over time = needing less help |
@@ -39,7 +40,7 @@ One entry per session, with averages over its repetitions. Good for "progress ov
 | `rescued_count` | reps where the arm had to step in after the person stalled |
 
 ### `reps.csv`
-One row per repetition (opens in Excel or Google Sheets). Same measures as above, per rep, plus `mode` (`assist`, `transparent`, `resist`), `idx` (rep number in the session), `t_start` (seconds into the session), `completed`, `rescued`.
+One row per repetition (opens in Excel or Google Sheets). Same measures as above, per rep, plus `exercise` (last column, the programme id of the session), `mode` (`assist`, `transparent`, `resist`, or `isometric` for a strength-test try), `idx` (rep number in the session), `t_start` (seconds into the session), `completed`, `rescued`.
 
 ### `latest_session.json`
 The most recent session: `session` (as in sessions.json), `reps` (as in reps.csv), `note` (the automatic session note as plain text, ready to paste), and `simulated`.

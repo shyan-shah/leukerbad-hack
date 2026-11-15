@@ -49,7 +49,9 @@ Connect with a WebSocket; you do not need to send anything. Two kinds of message
 | `force` | force the person pushes the handle with, per axis, newtons. Bar length = `sqrt(x²+y²+z²)` |
 | `target` | where the arm is pulling the handle toward. Draw it as a ghost dot ahead of (assist) or behind (resist) the hand |
 | `dial` | **+1** the arm does the work, **0** free movement, **-1** maximum resistance |
-| `phase` | `idle` (between reps), `out` (reaching), `back` (returning) |
+| `phase` | `idle` (between reps), `out` (reaching, pushing, pulling, or a strength-test try), `back` (returning), `setup` (`pull` only: the patient is moving the handle to the far end before the first rep) |
+| `exercise` | programme id of the session: `reach`, `push`, `pull`, `armtest` (section 6) |
+| `reps_target` | reps asked for at start; the set is finished when `rep_count` reaches it. `null` = no limit |
 | `rep_idx` | number of the rep in progress, -1 when idle |
 | `rep_count` | reps finished so far |
 | `auto` | true when the dial adjusts itself after each rep |
@@ -66,7 +68,7 @@ Connect with a WebSocket; you do not need to send anything. Two kinds of message
  "completed": true, "simulated": true, "rescued": false}
 ```
 
-Field meanings are the same as in `server/exports/README.md` (range of motion, path error, smoothness, force, contribution, and so on).
+Field meanings are the same as in `server/exports/README.md` (range of motion, path error, smoothness, force, contribution, and so on). Messages now also carry `"exercise"`. `mode` is `assist`, `transparent`, `resist`, or `isometric` for a strength-test try (then only `peak_force_n`, `mean_force_n` and `duration_s` mean something).
 
 ## 3. Reading data (GET)
 
@@ -74,6 +76,7 @@ Field meanings are the same as in `server/exports/README.md` (range of motion, p
 |-------|---------|
 | `/api/health` | `{"ok": true, "arm": null, "arm_mode": null, "session": false, "arm_prepared": false}`. `arm` becomes `"sim"` or `"flexiv"` after the first session or prepare. `arm_prepared` turns true once `/api/arm/prepare` has succeeded on the real arm |
 | `/api/state` | `{"session": null}` when nothing runs; otherwise the session plus the latest sample (example below) |
+| `/api/exercises` | the programmes the robot can run now, each with `id`, `name`, `kind` and default `reps` (section 6) |
 | `/api/patients` | list of patients |
 | `/api/patients/{id}/sessions` | that patient's sessions, each with averages (same fields as `sessions.json`) |
 | `/api/sessions/{id}/reps` | every rep of one session |
@@ -98,7 +101,7 @@ Field meanings are the same as in `server/exports/README.md` (range of motion, p
 
 ```json
 {"session_id": "sim-anna-d01-s1", "patient_id": "sim-anna", "started_at": "2026-10-31T09:30:00",
- "ended_at": "2026-10-31T09:37:19", "exercise": "reach_line", "n_reps": 30, "simulated": true,
+ "ended_at": "2026-10-31T09:37:19", "exercise": "reach", "n_reps": 30, "simulated": true,
  "mean_rom_m": 0.194, "mean_path_err_mean_m": 0.0293, "mean_sparc": -2.2303, "mean_peak_force_n": 4.311,
  "mean_contribution": 0.1914, "mean_duration_s": 6.7853, "dial_start": 0.945, "dial_end": 0.869,
  "mean_dial": 0.892, "completed_share": 0.967, "rescued_count": 9, "...": "more means"}
@@ -108,7 +111,7 @@ Field meanings are the same as in `server/exports/README.md` (range of motion, p
 
 | Route | Body | Does |
 |-------|------|------|
-| `/api/session/start` | `{"patient_id": "sim-demo", "display_name": "Demo", "dial": 1, "auto": true}` | starts a session. Returns `{"session_id": "...", "simulated": true, "display_name": "Demo (SIMULATED)"}`. The server decides `simulated`; you cannot set it |
+| `/api/session/start` | `{"patient_id": "sim-demo", "display_name": "Demo", "exercise": "push", "reps": 10}` | starts a session. Only `patient_id` is required. `exercise` defaults to `reach`; `reps` defaults to the exercise's own number (`0` = no limit); `dial` and `auto` are optional and, when left out, the exercise's own settings apply (reach starts at +1 with auto on, push and pull at -0.6 with auto off). Returns `{"session_id": "...", "simulated": true, "display_name": "Demo (SIMULATED)", "exercise": "push", "reps": 10}`. The server decides `simulated`; you cannot set it |
 | `/api/session/stop` | none | stops, saves, rewrites `server/exports/`. Returns the session summary |
 | `/api/dial` | `{"dial": 0.4, "auto": false}` | sets the dial by hand (`auto: false`) or hands it back to auto (`auto: true`) |
 | `/api/hold` | none | soft stop of the arm, any time |
@@ -116,7 +119,7 @@ Field meanings are the same as in `server/exports/README.md` (range of motion, p
 | `/api/shutdown` | none | **from the arm laptop only.** Stops any session, then the server exits cleanly: the arm is put in hold and closed (its normal stiffness restored). Returns `{"ok": true, "stopped_session": "..." or null}`. 403 from any other device. Use this (or Ctrl+C) instead of closing the server window |
 | `/api/arm/prepare` | none | **real arm only, nobody touching the handle.** Checks the arm is connected and has no fault, zeroes the force reading, and returns the empty-handle force. Needed once after the server starts, before the first real session; safe to repeat between sessions |
 
-Errors are JSON with a `detail` field: 409 `{"detail": "no session running"}` or "a session is already running", 404 for unknown ids, 422 for a bad body (for example dial above 1).
+Errors are JSON with a `detail` field: 409 `{"detail": "no session running"}` or "a session is already running", 404 for unknown ids, 422 for a bad body (for example dial above 1, or an exercise that is not live: section 6).
 
 **Starting can be refused (409 or 503).** Show the `detail` text to the operator; nothing is running afterwards.
 
@@ -157,3 +160,153 @@ Real arm:
 - Patient screen: a horizontal track (start to end) with the hand as a dot from `pos`, the `target` as a ghost dot, a force bar, the dial as a big gauge, rep counter.
 - Physio screen: rep table that grows on each `rep` message; per-session charts from `/api/patients/{id}/sessions` (dial falling, contribution and force rising); the note from `/api/sessions/{id}/note`.
 - QR code to the physio page: only with `--lan`, and only after it works on the laptop itself.
+
+
+## 6. Running an exercise from the app (for Mat)
+
+One exercise = one session. The whole flow is five calls. Every example below is a **real message** from a running server with the mock engine (`--mock`, so everything is simulated), numbers shortened.
+
+**Which exercises work today.** With `--mock` all four (`reach`, `push`, `pull`, `armtest`) work now, so you can build the whole flow. With the real robot (`--robot`) and the simulated arm (`--sim`) the robot side decides which are live (`software/exercises.py`): today that is only `reach`; the others appear in `/api/exercises` as soon as the engine has them, with no change on your side. So build the screen from `/api/exercises`, not from a fixed list.
+
+### Step 1. Ask what the robot can do
+
+`GET /api/exercises`
+
+```json
+[{"id": "reach", "name": "Forward reach", "kind": "assist", "reps": 10},
+ {"id": "push", "name": "Push", "kind": "resist", "reps": 10},
+ {"id": "pull", "name": "Row", "kind": "resist", "reps": 10},
+ {"id": "armtest", "name": "Push strength test", "kind": "isometric", "reps": 3}]
+```
+
+The `id`s are the same as in your app's `EX` library. Anything in `EX` that is not in this list is animation only: do not send it to the robot. `reps` is the default number of reps (for `armtest`: tries).
+
+### Step 2. Start
+
+`POST /api/session/start` with `{"patient_id": "sim-demo", "exercise": "push", "reps": 3}`
+
+```json
+{"session_id": "20261115-124334-37ff", "simulated": true, "display_name": "sim-demo (SIMULATED)",
+ "exercise": "push", "reps": 3}
+```
+
+- `patient_id`: letters, digits, `_`, `.` and `-` only. Add `"display_name"` if you want a name stored.
+- Leave out `reps` to get the default from step 1. Leave out `dial` and `auto`: each exercise brings its own.
+- On the venue network add the header `x-operator-token` (section 4).
+- An exercise that is not live gives 422, with the list of what is:
+
+```json
+{"detail": {"message": "exercise 'knee' is not live on the robot. Live exercises: reach, push, pull, armtest",
+            "live": ["reach", "push", "pull", "armtest"]}}
+```
+
+- 409 or 503 means the session did not start; `detail` is a sentence for the operator (section 4).
+
+### Step 3. Listen on `ws://<laptop>:8000/ws/live`
+
+About 30 `sample` messages a second, and one `rep` message when each rep ends. Use `phase` for the prompt, `force` for a live bar, `rep_count` and `reps_target` for "3 of 10".
+
+`push`, while pushing out (the `target` sits behind the hand: that is the resistance):
+
+```json
+{"type": "sample", "t": 1.78, "pos": [0.467, 0.006, 0.3], "vel": [0.057, 0.0, 0.0],
+ "force": [3.541, 0.0, 0.0], "target": [0.417, 0.006, 0.3], "dial": -0.6, "rep_idx": 0,
+ "simulated": true, "phase": "out", "q": [0.036, 0.219, 0.3, 0.239, 0.066, -0.138, -0.277],
+ "rep_count": 0, "auto": false, "arm_mode": "compliant", "exercise": "push", "reps_target": 3}
+```
+
+`push`, a finished rep:
+
+```json
+{"type": "rep", "session_id": "20261115-124334-37ff", "idx": 0, "mode": "resist", "dial": -0.6,
+ "t_start": 1.0, "duration_s": 7.74, "rom_m": 0.28, "path_err_mean_m": 0.007, "path_err_max_m": 0.013,
+ "sparc": -1.787, "peak_force_n": 13.13, "mean_force_n": 8.48, "contribution": 0.748,
+ "completed": true, "simulated": true, "rescued": false, "exercise": "push"}
+```
+
+`pull` starts with a `setup` phase: the patient moves the handle to the far end, then the reps run from there towards the body. Show "Move the handle to the far end" while `phase` is `setup`:
+
+```json
+{"type": "sample", "t": 0.48, "pos": [0.465, 0.0, 0.3], "vel": [0.0, 0.0, 0.0], "force": [0.0, 0.0, 0.0],
+ "target": [0.465, 0.0, 0.3], "dial": -0.6, "rep_idx": -1, "simulated": true, "phase": "setup",
+ "q": [0.032, 0.216, 0.299, 0.242, 0.07, -0.134, -0.276], "rep_count": 0, "auto": false,
+ "arm_mode": "compliant", "exercise": "pull", "reps_target": 2}
+```
+
+`armtest` (strength test): the handle stays still and the patient pushes for 3 seconds, 3 tries. During a try `phase` is `out`: show "Push and hold" and a bar from `force`:
+
+```json
+{"type": "sample", "t": 1.49, "pos": [0.455, 0.0, 0.3], "vel": [0.0, 0.0, 0.0],
+ "force": [18.771, 0.0, 0.0], "target": [0.455, 0.0, 0.3], "dial": 0.0, "rep_idx": 0,
+ "simulated": true, "phase": "out", "q": [0.01, 0.201, 0.297, 0.254, 0.091, -0.115, -0.266],
+ "rep_count": 0, "auto": false, "arm_mode": "compliant", "exercise": "armtest", "reps_target": 3}
+```
+
+Each try ends with a `rep` whose `mode` is `isometric`. The result is `peak_force_n`; the best try is the highest one. Ignore `rom_m`, `sparc`, `contribution` and the path errors for this exercise:
+
+```json
+{"type": "rep", "session_id": "20261115-124340-b01d", "idx": 0, "mode": "isometric", "dial": 0.0,
+ "t_start": 1.0, "duration_s": 3.0, "rom_m": 0.008, "path_err_mean_m": 0.0, "path_err_max_m": 0.0,
+ "sparc": 0.0, "peak_force_n": 28.65, "mean_force_n": 23.35, "contribution": 1.0,
+ "completed": true, "simulated": true, "rescued": false, "exercise": "armtest"}
+```
+
+Readings stop at about 30 N: that is the robot's safety limit, not the patient's. Say so next to the number.
+
+**What to show from a rep:** reach in cm = `rom_m * 100`, peak force = `peak_force_n` N, contribution = `contribution * 100` % (reach only; our own index). If `"simulated": true`, label it simulated.
+
+**When is the set finished?** When a `sample` has `rep_count` equal to `reps_target` (the same number arrives as the last `rep`'s `idx + 1`). The server does not stop by itself: the session stays open and resting until you call stop.
+
+```json
+{"type": "sample", "t": 26.43, "pos": [0.45, 0.0, 0.3], "force": [0.0, 0.0, 0.0], "dial": -0.6,
+ "rep_idx": -1, "phase": "idle", "rep_count": 3, "arm_mode": "compliant", "exercise": "push",
+ "reps_target": 3, "...": "other sample fields"}
+```
+
+If `arm_mode` becomes `hold` or `fault`, the arm has stopped safely: show "Arm stopped, please wait" and call stop. No WebSocket? Poll `GET /api/state` a few times a second; it has the same fields.
+
+### Step 4. Stop
+
+`POST /api/session/stop` (no body)
+
+```json
+{"session_id": "20261115-124334-37ff", "patient_id": "sim-demo", "started_at": "2026-11-15T12:43:34",
+ "ended_at": "2026-11-15T12:43:36", "exercise": "push", "n_reps": 3, "simulated": true}
+```
+
+Always call it, also when the patient gives up early. Then start the next exercise of the plan with step 2. All reps of the session: `GET /api/sessions/{session_id}/reps`.
+
+### Step 5. Get the note
+
+`GET /api/sessions/20261115-124340-b01d/note` returns plain text, ready to show or paste. For the strength test:
+
+```
+Drafted automatically from device data for therapist review. Not a clinical assessment.
+SIMULATED DATA: not from a real patient.
+
+Patient: sim-demo    Session: 20261115-124340-b01d
+Started: 2026-11-15T12:43:40    Ended: 2026-11-15T12:43:41
+Exercise: push strength test: the handle is held still while the person pushes (isometric)
+
+Tries: 3
+Peak force: best 29.1 N, mean 28.6 N over the tries
+
+Try         Peak      Mean     Held
+1         28.6 N    23.4 N    3.0 s
+2         29.1 N    24.0 N    3.0 s
+3         27.9 N    22.9 N    3.0 s
+
+Readings capped at about 30 N by the robot's safety limit.
+Force is measured along the push direction with the handle held still; it is a device reading, not a clinically validated strength score.
+Therapist comments: ______________________________
+```
+
+For reach, push and pull the note starts with one summary line, then the full table:
+
+```
+Summary: 3 reps, range 28.0 cm (mean), peak force 13.7 N (best), resistance level 60% of maximum (mean dial -0.60), mean force 8.5 N
+```
+
+### Trying it without the robot
+
+`python -m server.run --mock --time-scale 4` (add `--strength 0.3` for a weaker pretend patient). The mock engine plays all four exercises, stops at the rep count and rests. Its numbers are made up to look plausible.

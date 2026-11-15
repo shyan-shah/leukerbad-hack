@@ -54,7 +54,9 @@ class View:
         fmag = math.sqrt(sum(x * x for x in f))
         mode = "assist" if s["dial"] > 0.05 else "resist" if s["dial"] < -0.05 else "transparent"
         lines = [
-            f"{sim} arm: {s.get('arm_mode')}   phase: {s.get('phase')}   reps: {s.get('rep_count')}   "
+            f"{sim} exercise: {s.get('exercise') or 'reach'}   arm: {s.get('arm_mode')}   "
+            f"phase: {s.get('phase')}   reps: {s.get('rep_count')}"
+            f"{'/' + str(s['reps_target']) if s.get('reps_target') else ''}   "
             f"auto dial: {'on' if s.get('auto') else 'OFF'}   t={s['t']:.1f}s",
             "",
             f"Dial  {s['dial']:+.2f} {mode:<11}  resist {bar(s['dial'], -1, 1)} assist",

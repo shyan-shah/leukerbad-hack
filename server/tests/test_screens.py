@@ -89,6 +89,13 @@ k = new Track(0.30);
 k.update({ t: 0, phase: "idle", pos: [0, 0.5, 0] });
 r = k.update({ t: 1, phase: "out", pos: [0.001, 0.35, 0] });
 ok(k.axis === 1 && k.sign === -1 && near(r.s, 0.5), "detects axis y, negative direction");
+k = new Track(0.28);
+r = k.update(S(0, 0.0, "setup"));
+ok(near(r.s, 0), "pull: the setup phase is a valid start");
+r = k.update(S(1, 0.28, "setup"));
+ok(near(r.s, 1), "pull: setup ends at the far end");
+r = k.update(S(2, 0.14, "out"));
+ok(near(r.s, 0.5), "pull: reps come back along the same line");
 console.log("ok");
 """
 
@@ -103,3 +110,12 @@ def test_track_geometry_with_node(tmp_path):
     (tmp_path / "check.mjs").write_text(TRACK_CHECK, encoding="utf-8")
     p = subprocess.run([node, str(tmp_path / "check.mjs")], capture_output=True, text=True, timeout=30)
     assert p.returncode == 0 and "ok" in p.stdout, p.stdout + p.stderr
+
+
+def test_patient_screen_knows_the_exercises():
+    html = (SCREENS / "patient.html").read_text(encoding="utf-8")
+    for text in ("Move the handle to the far end", "Push and hold", "Best try", "/api/exercises",
+                 'r.mode === "isometric"', "m.exercise"):
+        assert text in html
+    js = (SCREENS / "common.js").read_text(encoding="utf-8")
+    assert "export function modeClass" in js

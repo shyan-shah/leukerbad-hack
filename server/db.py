@@ -47,6 +47,10 @@ def _create(conn: sqlite3.Connection) -> None:
             if f.name not in have:
                 default = " DEFAULT 0" if _sql_type(f) == "INTEGER" else ""
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {f.name} {_sql_type(f)}{default}")
+    # Forward migration (E2): sessions.exercise now holds the programme id. Every session stored
+    # before that was the straight reach ("reach_line", or empty on very old rows).
+    conn.execute("UPDATE sessions SET exercise = 'reach' "
+                 "WHERE exercise IS NULL OR exercise = '' OR exercise = 'reach_line'")
     conn.commit()
 
 

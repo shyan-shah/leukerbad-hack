@@ -50,7 +50,7 @@ class Sample(_Record):
     dial: float                               # -1 full resistance .. 0 transparent .. +1 full assistance
     rep_idx: int                              # -1 between reps
     simulated: bool
-    phase: str = "idle"                       # "idle" | "out" | "back"   (v1)
+    phase: str = "idle"                       # "idle" | "out" | "back" (v1) | "setup" (pull: moving to the far end)
     q: tuple[float, ...] = ()                 # 7 joint angles, rad      (v1)
 
 
@@ -59,7 +59,7 @@ class RepResult(_Record):
     """One finished repetition."""
     session_id: str
     idx: int
-    mode: str                                 # "assist" | "transparent" | "resist"
+    mode: str                                 # "assist" | "transparent" | "resist" | "isometric" (armtest try)
     dial: float
     t_start: float
     duration_s: float
@@ -81,6 +81,6 @@ class SessionSummary(_Record):
     patient_id: str
     started_at: str                           # ISO 8601
     ended_at: str | None
-    exercise: str                             # "reach_line"
+    exercise: str                             # programme id: "reach" | "push" | "pull" | "armtest" | "circle"
     n_reps: int
     simulated: bool

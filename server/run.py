@@ -64,6 +64,15 @@ def reach_kwargs(a: argparse.Namespace) -> dict:
     return kw
 
 
+def mock_exercises(a: argparse.Namespace) -> list[str] | None:
+    """--mock: every programme the mock engine can play is offered, so the app can be built before the
+    real engine has it. --sim and --robot: None, meaning software.exercises.LIVE decides."""
+    if not a.mock:
+        return None
+    from .mock import PRESETS
+    return list(PRESETS)
+
+
 def build(a: argparse.Namespace):
     """Return (arm_factory, engine_factory or None, label)."""
     if a.mock:
@@ -116,7 +125,7 @@ def main(argv=None) -> None:
     engine_kwargs = reach_kwargs(a)
     app = create_app(arm_factory, a.db, engine_factory=engine_factory,
                      exports_dir=None if a.no_export else DEFAULT_OUT, control_token=token,
-                     engine_kwargs=engine_kwargs)
+                     engine_kwargs=engine_kwargs, live_exercises=mock_exercises(a))
     host = "0.0.0.0" if a.lan else "127.0.0.1"
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=a.port, log_level="warning"))
     app.state.request_exit = lambda: setattr(server, "should_exit", True)   # used by POST /api/shutdown

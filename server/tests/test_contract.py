@@ -21,7 +21,7 @@ def _rep():
 
 def _summary():
     return SessionSummary(session_id="s1", patient_id="p1", started_at="2026-11-14T15:00:00",
-                          ended_at=None, exercise="reach_line", n_reps=0, simulated=False)
+                          ended_at=None, exercise="reach", n_reps=0, simulated=False)
 
 
 @pytest.mark.parametrize("make", [_sample, _rep, _summary])

@@ -26,7 +26,8 @@ export class Track {
     if (typeof t === "number" && t < this.lastT - 0.5) this.reset();   // t restarts with each session
     if (typeof t === "number") this.lastT = t;
     if (!this.start) {
-      if (sample.phase && sample.phase !== "idle") return { s: null, targetS: null };  // opened mid-rep: wait for rest
+      // opened mid-rep: wait for rest ("setup" is the walk to the far end before a pull set, also a fine start)
+      if (sample.phase && sample.phase !== "idle" && sample.phase !== "setup") return { s: null, targetS: null };
       this.start = pos.slice(0, 3);
     }
     if (!this.locked) {

@@ -10,6 +10,7 @@ robot.arm.Arm is marked real.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import mimetypes
 import os
 import queue
@@ -26,7 +27,7 @@ from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import clock, db
+from . import clock, db, exercises
 from .contract import RepResult, Sample, SessionSummary
 from .export import export_all, session_row
 from .note import session_note
@@ -46,15 +47,24 @@ def is_real_arm(arm: Any) -> bool:
 
 
 def default_engine_factory(**kw):
+    """software.engine.Engine. An engine from before E1 has no `exercise`/`reps` arguments: it can
+    only run "reach" (anything else is refused, never silently run as a reach) and ignores `reps`."""
     from software.engine import Engine
+    params = inspect.signature(Engine.__init__).parameters
+    if not any(p.kind is p.VAR_KEYWORD for p in params.values()):
+        if "exercise" not in params and kw.get("exercise", "reach") != "reach":
+            raise RuntimeError(f"the engine on this laptop cannot run {kw['exercise']!r} yet (only reach)")
+        kw = {k: v for k, v in kw.items() if k in params or k not in ("exercise", "reps")}
     return Engine(**kw)
 
 
 class StartBody(BaseModel):
     patient_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$")
     display_name: str = Field("", max_length=80)
-    dial: float = Field(1.0, ge=-1.0, le=1.0)
-    auto: bool = True
+    dial: float | None = Field(None, ge=-1.0, le=1.0)    # omitted: the exercise's own setting
+    auto: bool | None = None                             # omitted: the exercise's own setting
+    exercise: str = Field("reach", max_length=32)        # one of GET /api/exercises
+    reps: int | None = Field(None, ge=0, le=exercises.REPS_MAX)   # omitted: the exercise default; 0: no limit
 
 
 class DialBody(BaseModel):
@@ -102,6 +112,8 @@ class Hub:
         self.prepared = False                   # real arm: POST /api/arm/prepare succeeded since server start
         self.engine = None
         self.session: SessionSummary | None = None
+        self.exercise: str | None = None        # programme id of the running session
+        self.reps_target: int | None = None     # reps asked for (None: no limit)
         self.db_lock = threading.Lock()
         self.ctl_lock = threading.Lock()        # one start/stop at a time
         self.rep_q: queue.Queue[RepResult] = queue.Queue()
@@ -141,7 +153,7 @@ class Hub:
                 break
             with self.db_lock:
                 db.save_rep(self.conn, r)
-            msgs.append({"type": "rep"} | r.to_dict())
+            msgs.append({"type": "rep"} | r.to_dict() | {"exercise": self.exercise})
         if msgs:
             with self.pending_lock:
                 self.pending.extend(msgs)
@@ -199,7 +211,8 @@ class Hub:
                     snap = self.snapshot()
                     msgs.insert(0, {"type": "sample"} | s.to_dict() | {
                         "rep_count": snap.get("rep_count"), "auto": snap.get("auto"),
-                        "arm_mode": snap.get("arm_mode")})
+                        "arm_mode": snap.get("arm_mode"), "exercise": self.exercise,
+                        "reps_target": self.reps_target})
                 if not msgs or not self.clients:
                     continue
                 for ws in list(self.clients):
@@ -217,13 +230,16 @@ class Hub:
 def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_PATH,
                engine_factory: Callable[..., Any] | None = None, exports_dir: str | Path | None = None,
                engine_kwargs: dict | None = None, control_token: str | None = None,
-               site_dir: str | Path | None = None, is_real: Callable[[Any], bool] = is_real_arm) -> FastAPI:
+               site_dir: str | Path | None = None, is_real: Callable[[Any], bool] = is_real_arm,
+               live_exercises: list[str] | None = None) -> FastAPI:
     """
     arm_factory()      -> arm object (connected on first session start)
     engine_factory(**) -> engine with the MASTER_PLAN 4.4 interface (default software.engine.Engine)
     exports_dir        -> if set, exports are rewritten after every session stop
     control_token      -> if set, POST start/stop/dial/go, arm/prepare and shutdown need header `x-operator-token`.
                           /api/hold never does.
+    live_exercises     -> ids this engine can run. Default: software.exercises.LIVE, read on every request
+                          (only "reach" until that file exists). server.run --mock passes the mock's own list.
     """
     conn = db.connect(db_path)
     hub = Hub(arm_factory, conn, engine_factory or default_engine_factory, exports_dir,
@@ -242,6 +258,9 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     app = FastAPI(title="Rehab station API", lifespan=lifespan)
     app.state.hub = hub
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+    def live_ids() -> list[str]:
+        return list(live_exercises) if live_exercises is not None else exercises.live_ids()
 
     def guard(token: str | None) -> None:
         if control_token and token != control_token:
@@ -294,11 +313,22 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
         if hub.session is None or hub.engine is None:
             return {"session": None}
         return {"session": {"session_id": hub.session.session_id, "patient_id": hub.session.patient_id,
-                            "simulated": hub.session.simulated}} | hub.snapshot()
+                            "simulated": hub.session.simulated, "exercise": hub.exercise}} | hub.snapshot() | {
+                    "exercise": hub.exercise, "reps_target": hub.reps_target}
+
+    @app.get("/api/exercises")
+    def list_exercises():
+        """The programmes the robot can run now: id, name, kind and default reps."""
+        return [exercises.info(i) for i in live_ids()]
 
     @app.post("/api/session/start")
     def start(body: StartBody, x_operator_token: str | None = Header(default=None)):
         guard(x_operator_token)
+        live = live_ids()
+        if body.exercise not in live:
+            raise HTTPException(422, {"message": f"exercise {body.exercise!r} is not live on the robot. "
+                                                 f"Live exercises: {', '.join(live)}", "live": live})
+        reps = exercises.info(body.exercise)["reps"] if body.reps is None else (body.reps or None)
         with hub.ctl_lock:
             if hub.session is not None:
                 raise HTTPException(409, "a session is already running; stop it first")
@@ -316,7 +346,7 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             sid = f"{clock.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:4]}"
             summary = SessionSummary(session_id=sid, patient_id=body.patient_id,
                                      started_at=clock.now_iso(),
-                                     ended_at=None, exercise="reach_line", n_reps=0, simulated=sim)
+                                     ended_at=None, exercise=body.exercise, n_reps=0, simulated=sim)
             with hub.db_lock:
                 try:
                     db.upsert_patient(conn, body.patient_id, name, sim)
@@ -324,12 +354,17 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
                     raise HTTPException(409, str(e))
                 db.save_session(conn, summary)
             kw = {"reach_axis": getattr(arm, "reach_axis", 0)} | hub.engine_kwargs
-            engine = hub.engine_factory(arm=arm, session_id=sid, patient_id=body.patient_id, simulated=sim,
-                                        dial=body.dial, auto=body.auto, on_sample=hub.on_sample,
-                                        on_rep=hub.on_rep, **kw)
+            if body.dial is not None:       # only what the caller sent: otherwise the exercise preset decides
+                kw["dial"] = body.dial
+            if body.auto is not None:
+                kw["auto"] = body.auto
             hub.latest = hub.sent = None
-            hub.session, hub.engine = summary, engine
+            hub.exercise, hub.reps_target = body.exercise, reps
             try:
+                engine = hub.engine_factory(arm=arm, session_id=sid, patient_id=body.patient_id, simulated=sim,
+                                            exercise=body.exercise, reps=reps, on_sample=hub.on_sample,
+                                            on_rep=hub.on_rep, **kw)
+                hub.session, hub.engine = summary, engine
                 engine.start()
             except Exception as e:
                 hub.engine, hub.session = None, None
@@ -342,7 +377,8 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
                 if isinstance(e, RuntimeError):   # the engine refused (e.g. empty-handle force too high)
                     raise HTTPException(409, f"session not started: {e}")
                 raise
-            return {"session_id": sid, "simulated": sim, "display_name": name}
+            return {"session_id": sid, "simulated": sim, "display_name": name,
+                    "exercise": body.exercise, "reps": reps}
 
     @app.post("/api/session/stop")
     def stop(x_operator_token: str | None = Header(default=None)):
@@ -404,9 +440,11 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
     @app.get("/api/sessions/{session_id}/reps")
     def reps(session_id: str):
         with hub.db_lock:
-            if db.get_session(conn, session_id) is None:
+            s = db.get_session(conn, session_id)
+            if s is None:
                 raise HTTPException(404, "unknown session")
-            return [r.to_dict() for r in db.list_reps(conn, session_id)]
+            ex = exercises.canonical(s.exercise)
+            return [r.to_dict() | {"exercise": ex} for r in db.list_reps(conn, session_id)]
 
     @app.get("/api/sessions/{session_id}/note", response_class=PlainTextResponse)
     def note(session_id: str):
@@ -414,8 +452,9 @@ def create_app(arm_factory: Callable[[], Any], db_path: str | Path = db.DEFAULT_
             s = db.get_session(conn, session_id)
             if s is None:
                 raise HTTPException(404, "unknown session")
-            earlier = [x for x in db.list_sessions(conn, s.patient_id)
-                       if (x.started_at, x.session_id) < (s.started_at, s.session_id)]
+            earlier = [x for x in db.list_sessions(conn, s.patient_id)     # same exercise only
+                       if (x.started_at, x.session_id) < (s.started_at, s.session_id)
+                       and exercises.canonical(x.exercise) == exercises.canonical(s.exercise)]
             prev = db.list_reps(conn, earlier[-1].session_id) if earlier else None
             return session_note(s, db.list_reps(conn, session_id), prev)
 

@@ -47,5 +47,5 @@ Package details and ready-to-paste prompts: `context/KICKOFF.md` (K0, S0x, Y0x, 
 | B6 Website and screens | Mat, Gio | demo/ | In progress (site live at vitarehab.netlify.app, app at vitastation.netlify.app; not yet using server/exports/) |
 | B7 Pilot outreach drafts | Mat, Gio | business/ | Sunday |
 | E1 Engine exercise presets: reach, push, pull (reversed), armtest (isometric) per context/EXERCISE_MAP.md (swap: Shyan works in software/ for this) | Shyan | software/ | Done on SimArm (software/EXERCISES.md); not yet run on the real arm |
-| E2 Server `exercise` field on /api/session/start, state, reps, DB, API.md (swap: Shiv works in server/ for this) | Shiv | server/ | Todo |
+| E2 Server `exercise` field on /api/session/start, state, reps, DB, API.md (swap: Shiv works in server/ for this) | Shiv | server/ | Done (GET /api/exercises, note, mock, patient screen; sim e2e per exercise runs once E1 lands) |
 | Register team by 17:00 on 14 Nov (name, track, members, 1 hardware item, sign agreement) | Shyan | n/a | Done (hardware: Flexiv Rizon 4) |

@@ -20,6 +20,12 @@ from .contract import RepResult, Sample, SessionSummary
 from .stats import mode_of
 
 IDLE_S = 1.0
+SETUP_S = 2.5            # pull: time the pretend patient takes to move the handle to the far end
+TRY_S = 3.0              # armtest: length of one push-and-hold try
+FORCE_CAP_N = 30.0       # armtest readings stop at about this (the robot's safety limit)
+# exercise -> (dial, auto, reach_m) used when the caller does not set them
+PRESETS = {"reach": (1.0, True, 0.30), "push": (-0.6, False, 0.28), "pull": (-0.6, False, 0.28),
+           "armtest": (0.0, False, 0.30)}
 
 
 class MockArm:
@@ -44,11 +50,20 @@ def _min_jerk(x: float) -> float:
 
 class MockEngine:
     def __init__(self, arm, session_id: str, patient_id: str, simulated: bool,
-                 reach_axis: int = 0, reach_sign: int = 1, reach_m: float = 0.30,
-                 dial: float = 1.0, auto: bool = True, on_sample=None, on_rep=None,
+                 reach_axis: int = 0, reach_sign: int = 1, reach_m: float | None = None,
+                 dial: float | None = None, auto: bool | None = None, on_sample=None, on_rep=None,
                  strength: float = 0.6, time_scale: float = 1.0, seed: int = 0,
-                 start_pos=(0.45, 0.0, 0.30)) -> None:
+                 start_pos=(0.45, 0.0, 0.30), exercise: str = "reach", reps: int | None = None) -> None:
+        """`exercise`: reach, push, pull or armtest (anything else behaves like reach).
+        `reps`: stop making reps after this many and stay idle; None = no limit (armtest: 3 tries)."""
         self.arm = arm
+        self.exercise = exercise
+        p_dial, p_auto, p_reach = PRESETS.get(exercise, PRESETS["reach"])
+        dial = p_dial if dial is None else dial
+        auto = p_auto if auto is None else auto
+        reach_m = p_reach if reach_m is None else reach_m
+        self.reps = (3 if exercise == "armtest" else None) if reps is None else int(reps)
+        self.flip = exercise == "pull"            # pull runs the line from the far end towards the patient
         self.session_id, self.patient_id = session_id, patient_id
         self.simulated = True                     # always: nothing here comes from a real person
         self.axis, self.sign, self.reach = reach_axis, (1 if reach_sign >= 0 else -1), reach_m
@@ -79,7 +94,7 @@ class MockEngine:
         if hasattr(self.arm, "hold"):
             self.arm.hold()
         return SessionSummary(self.session_id, self.patient_id, self.started_at,
-                              clock.now_iso(), "reach_line",
+                              clock.now_iso(), self.exercise,
                               self.rep_count, True)
 
     def set_dial(self, dial: float, auto: bool | None = None) -> None:
@@ -99,6 +114,8 @@ class MockEngine:
               vel_along: float, lead: float) -> Sample:
         a = self.axis
         side = (a + 1) % 3
+        if self.flip:      # progress s counts from the far end back towards the start
+            s, vel_along, force_along, lead = 1.0 - s, -vel_along, -force_along, -lead
         pos = self.start_xyz.copy()
         pos[a] += self.sign * s * self.reach
         pos[side] += lateral
@@ -119,12 +136,68 @@ class MockEngine:
             self.on_sample(smp)
         return smp
 
+    def _sleep(self, dt: float) -> None:
+        time.sleep(dt / self.time_scale)
+
+    def _idle_forever(self, t: float) -> None:
+        """The set is finished: keep sending resting samples until stop()."""
+        while not self._stop.is_set():
+            self._tick(t, 0.0, 0.0, "idle", -1, 0.0, 0.0, 0.0)
+            t += 0.01
+            self._sleep(0.01)
+
+    def _run_armtest(self) -> None:
+        """Isometric strength test: the handle stays still, the person pushes for TRY_S, `reps` tries."""
+        dt, t, rng = 0.01, 0.0, self.rng
+        for idx in range(self.reps or 3):
+            for _ in range(int(IDLE_S / dt)):
+                if self._stop.is_set():
+                    return
+                self._tick(t, 0.0, 0.0, "idle", -1, 0.0, 0.0, 0.0)
+                t += dt
+                self._sleep(dt)
+            peak = (8.0 + 30.0 * float(np.clip(self.strength + rng.normal(0, 0.05), 0.02, 1.0)))
+            t_start, fs = t, []
+            n = int(TRY_S / dt)
+            for i in range(n):
+                if self._stop.is_set():
+                    return
+                x = i / max(n - 1, 1)
+                f = min(FORCE_CAP_N, max(0.0, peak * min(1.0, x / 0.25) * (1 - 0.15 * x) + rng.normal(0, 0.3)))
+                self._tick(t, 0.008 * f / FORCE_CAP_N / self.reach, 0.0, "out", idx, f, 0.0, 0.0)
+                fs.append(f)
+                t += dt
+                self._sleep(dt)
+            rep = RepResult(
+                session_id=self.session_id, idx=idx, mode="isometric", dial=0.0, t_start=round(t_start, 2),
+                duration_s=TRY_S, rom_m=round(0.008 * max(fs) / FORCE_CAP_N, 4), path_err_mean_m=0.0,
+                path_err_max_m=0.0, sparc=0.0, peak_force_n=round(float(np.max(fs)), 2),
+                mean_force_n=round(float(np.mean(fs)), 2), contribution=1.0, completed=True, simulated=True,
+                rescued=False)
+            with self._lock:
+                self.rep_count = idx + 1
+            if self.on_rep:
+                self.on_rep(rep)
+        self._idle_forever(t)
+
     def _run(self) -> None:
+        if self.exercise == "armtest":
+            return self._run_armtest()
         dt = 0.01
         t = 0.0
         idx = 0
         rng = self.rng
+        if self.flip:       # pull: the person first moves the handle from the start to the far end
+            n = int(SETUP_S / dt)
+            for i in range(n):
+                if self._stop.is_set():
+                    return
+                self._tick(t, 1.0 - _min_jerk(i / max(n - 1, 1)), 0.0, "setup", -1, 0.0, 0.0, 0.0)
+                t += dt
+                self._sleep(dt)
         while not self._stop.is_set():
+            if self.reps is not None and idx >= self.reps:
+                return self._idle_forever(t)
             with self._lock:
                 dial = self.dial
             cap = float(np.clip(self.strength + rng.normal(0, 0.08), 0.02, 1.0))

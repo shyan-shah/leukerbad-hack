@@ -79,7 +79,7 @@ def make_history(conn, patient_id: str = "sim-anna", display_name: str = "Anna (
             ended = started + timedelta(seconds=t)
             db.save_session(conn, SessionSummary(
                 session_id=sid, patient_id=patient_id, started_at=started.isoformat(timespec="seconds"),
-                ended_at=ended.isoformat(timespec="seconds"), exercise="reach_line",
+                ended_at=ended.isoformat(timespec="seconds"), exercise="reach",
                 n_reps=len(reps), simulated=True))
             for r in reps:
                 db.save_rep(conn, r, commit=False)

@@ -10,6 +10,7 @@
   .bar { margin-bottom: 0; }
   .big { font-size: min(var(--fs-xxl), 11vh); line-height: 1.05; }
   #mode { font-size: min(var(--fs-xxl), 11vh, 10.5vw); font-weight: 900; line-height: 1; letter-spacing: 0.02em; }
+  #exname { font-size: var(--fs-s); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
   #prompt { font-size: min(var(--fs-xl), 7vh); font-weight: 800; text-align: center; min-height: 1.2em; }
   .panel { padding: min(var(--gap), 2.5vh) var(--gap); }
 
@@ -67,7 +68,7 @@
 </head>
 <body>
 <div class="bar">
-  <div id="mode" class="mode-free">–</div>
+  <div><div id="exname"></div><div id="mode" class="mode-free">–</div></div>
   <div class="row">
     <span id="dot" class="dot connecting"></span>
     <span id="badge" class="badge none">NO DATA</span>
@@ -97,7 +98,7 @@
     <div id="reps" class="big">0</div>
   </div>
   <div class="panel tile">
-    <div class="label">You did (last rep)</div>
+    <div class="label" id="contribLabel">You did (last rep)</div>
     <div id="contrib" class="big">–</div>
   </div>
   <div class="panel tile">
@@ -120,7 +121,14 @@ const $ = id => document.getElementById(id);
 const FORCE_MAX_N = 40;          // bar full scale
 const STALE_MS = 2000;           // no samples this long: session has ended
 const MODE_WORD = { assist: "HELPING", free: "FREE", resist: "CHALLENGING" };
-const PROMPT = { idle: "Rest", out: "Reach out", back: "Come back" };
+const PROMPT = { idle: "Rest", out: "Reach out", back: "Come back", setup: "Move the handle to the far end" };
+const PROMPT_BY_EX = {      // exercise id -> wording that differs from the reach
+  push: { out: "Push forward" },
+  pull: { out: "Pull towards you", back: "Let it go back" },
+  armtest: { out: "Push and hold", back: "Relax" },
+};
+const EX_NAMES = { reach: "Forward reach", push: "Push", pull: "Row", armtest: "Push strength test" };
+let bestTry = null;          // armtest: highest peak force so far, N
 const pct = x => `${(Math.max(-0.05, Math.min(1.05, x)) * 100).toFixed(2)}%`;
 
 const track = new Track(0.30);
@@ -135,10 +143,14 @@ function draw() {
   if (!live || latest === drawn) return;
   const m = drawn = latest;
 
-  const mode = modeOf(m.dial);
-  $("mode").textContent = MODE_WORD[mode];
+  const ex = m.exercise || "reach";
+  const test = ex === "armtest";
+  const mode = test ? "free" : modeOf(m.dial);
+  $("exname").textContent = EX_NAMES[ex] || ex;
+  $("mode").textContent = test ? "STRENGTH TEST" : MODE_WORD[mode];
   $("mode").className = `mode-${mode}`;
-  $("prompt").textContent = PROMPT[m.phase] || "";
+  $("prompt").textContent = (PROMPT_BY_EX[ex] || {})[m.phase] || PROMPT[m.phase] || "";
+  $("contribLabel").textContent = test ? "Best try" : "You did (last rep)";
   $("holding").classList.toggle("on", m.arm_mode === "hold" || m.arm_mode === "fault");
 
   const { s, targetS } = track.update(m);
@@ -147,7 +159,7 @@ function draw() {
   $("fill").style.width = pct(Math.max(0, s ?? 0));
   $("fill").className = `fill bg-${mode}`;
   const tgt = $("target");
-  tgt.style.display = targetS === null ? "none" : "";
+  tgt.style.display = targetS === null || test ? "none" : "";
   if (targetS !== null) { tgt.style.left = pct(targetS); tgt.style.borderColor = `var(--${mode})`; }
 
   const f = Math.hypot(...(m.force || [0, 0, 0]));
@@ -165,6 +177,12 @@ function onSample(m) {
 
 function onRep(r) {
   banner(r.simulated);
+  if (r.mode === "isometric") {     // a strength-test try: nothing moves, only the force counts
+    bestTry = Math.max(bestTry ?? 0, r.peak_force_n);
+    $("contrib").textContent = fmt.N(bestTry);
+    $("last").textContent = `Try ${r.idx + 1}: peak ${fmt.N(r.peak_force_n)} · best ${fmt.N(bestTry)}`;
+    return;
+  }
   $("contrib").textContent = fmt.pct(r.contribution);
   const bits = [`Rep ${r.idx + 1}: ${fmt.cm(r.rom_m)} reach`, `peak ${fmt.N(r.peak_force_n)}`, fmt.s(r.duration_s)];
   if (r.rescued) bits.push("arm helped finish");
@@ -173,11 +191,13 @@ function onRep(r) {
 
 function resetSession() {
   track.reset();
+  bestTry = null;
   $("contrib").textContent = "–";
   $("last").textContent = "";
 }
 
 connectLive(onSample, onRep, s => { $("dot").className = `dot ${s}`; });
+api.get("/api/exercises").then(list => { for (const e of list) EX_NAMES[e.id] = e.name; }).catch(() => {});
 api.get("/api/state").then(st => banner(st.session ? st.session.simulated : undefined)).catch(() => {});
 requestAnimationFrame(draw);
 </script>

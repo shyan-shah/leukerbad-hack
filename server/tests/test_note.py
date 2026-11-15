@@ -12,7 +12,7 @@ def _rep(idx, **kw):
 
 def _summary(sim=True):
     return SessionSummary(session_id="s", patient_id="p", started_at="2026-11-14T15:00:00",
-                          ended_at="2026-11-14T15:20:00", exercise="reach_line", n_reps=3, simulated=sim)
+                          ended_at="2026-11-14T15:20:00", exercise="reach", n_reps=3, simulated=sim)
 
 
 def test_header_and_simulated_label():

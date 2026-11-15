@@ -8,7 +8,7 @@ from server.contract import RepResult, SessionSummary
 
 def _session(sid="s1", pid="p1", sim=True, n=0, ended=None):
     return SessionSummary(session_id=sid, patient_id=pid, started_at="2026-11-14T15:00:00",
-                          ended_at=ended, exercise="reach_line", n_reps=n, simulated=sim)
+                          ended_at=ended, exercise="reach", n_reps=n, simulated=sim)
 
 
 def _rep(sid="s1", idx=0, sim=True, **kw):

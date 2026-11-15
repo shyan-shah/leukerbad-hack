@@ -83,6 +83,11 @@ export function modeOf(dial) {
   return dial > 0.05 ? "assist" : dial < -0.05 ? "resist" : "free";
 }
 
+// Colour class suffix for a rep's mode. Unknown modes (and "isometric", a strength-test try) are neutral.
+export function modeClass(mode) {
+  return mode === "assist" ? "assist" : mode === "resist" ? "resist" : "free";
+}
+
 const num = x => typeof x === "number" && Number.isFinite(x);
 const DASH = "–";
 export const fmt = {
