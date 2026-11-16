@@ -626,3 +626,21 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Four further full runs on the same code gave 168 passed, 0 failed each. So it is intermittent, and I do not know which test it was or whether it is one of the seven I added to `test_band.py`.
 - Not a finding, only where I would look first: the server tests that run a SimArm in real time and wait with timeouts (the band, Row and Strength "through the API on SimArm" tests), on a loaded laptop.
 - If you see a failure in server/tests, please run with `-rf` and note the test name here.
+
+**2026-11-16 10:35 · Shyan · Row and the Strength test pass their real-arm checks (Kian's 02:45 list); filming Push, Row and Strength**
+- Code: main at 609e613 (Kian's `software/simple_more.py`, unchanged). `test_simple.py` + `test_simple_more.py` + `server/tests/test_band.py`: 124 passed, 0 failed. Server: `python -m server.run --robot --tool Flange --lan --with-row-strength`. Home moved 7.6 mm, zero 0.16 N.
+- Row, empty handle, nobody near (move to the far end with `arm.move_to`, second zero, band 10 s, stop and return):
+
+| | Level 1 | Level 4 |
+|---|---|---|
+| Move out, 28.0 cm | 6.9 s, 0.044-0.050 m/s mid-move, no stops, max 0.052 | 6.9 s, 0.045-0.050, no stops, max 0.050 |
+| Return, 28.0 cm | 6.9 s, 0.045-0.049, no stops, max 0.059 | 6.9 s, 0.045-0.050, no stops, max 0.057 |
+| Reading during the far-end zero countdown | 0.6-1.5 N | 0.7-1.3 N |
+| Band on 10 s | mean 0.26 N, max 0.9 N, 0.5 mm, 0 reps | mean 0.30 N, max 1.5 N, 0.6 mm, 0 reps |
+
+- Row by hand (Shyan, level 2, stopped after 2 reps): 2 counted of 2. Force while pulling: mean 18.7 N, sd 4.8, max 24.9 N; highest total reading 28.6 N; top speed 0.13 m/s; "Turn back" shown at the end of each pull; no trip. Shyan: happy with how it works. Levels 1, 3 and 4 not done by hand.
+- Strength, untouched (three tries): peak 1.61 N, mean 0.25 N, handle moved 0.4 mm, no trip.
+- Strength by hand (three tries): try 1 peak 30.0 N, 45.6 mm, "Eased off" after 1.25 s (600 N/m x 4.5 cm is about 27 N); the hand kept pushing to 67 mm and 36.4 N reading (trip 40) before letting go. Try 2: peak 14.5 N, mean 10.1 N over 3 s, 23 mm, completed. Try 3: 0.39 N, not pushed. Fastest movement in any try 0.135 m/s (during try 1's push), so every release under 0.15 m/s. No trip, no fault.
+- For filming: push 15-25 N in the strength test; above about 27 N it eases off by design.
+- Not done: Kian's `robot/results/test_limits*_arm.json` are not in this tree (they may be in Shyan's main checkout only). Push level 4 still reads 4-9 N over 28 N with hand speed (LOG 15 Nov 23:45): push it slowly on camera.
+- `Start Demo.bat` (Desktop, not in git) now starts `--robot --tool Flange --lan --with-row-strength`. It runs from the main checkout: `git pull origin main` there first.
