@@ -620,3 +620,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 **Mat · 2026-11-16 · pitch deck: Swiss data, physio-centre feedback**
 - `demo/pitch-deck`: all figures are now Swiss with sources: 16,000 strokes a year (Swiss Heart Foundation), 1 in 4 aged 65+ by 2050 (BFS), 43,400 new nurses needed by 2029 (Obsan 2021), CHF 47–64 per physio session (tariff 7301), station price CHF 20–28k, Swiss medical-device rules (MedDO/Swissmedic). Study figures (Lang 2009, RATULS) unchanged.
 - We called three Swiss physio centres: all see more patients coming in, and all said measured training like Vita would give the physio a better overview of progress, so they could treat more patients at a time. On the "Why a station" slide; centres not named.
+
+**Kian · 2026-11-16 · for Shyan and Shiv: one server test failed once, not identified**
+- Right before a6b6c09 (the `--with-row-strength` change) one full run of `python -m pytest server/tests` on this laptop gave "1 failed, 167 passed". The run did not print which test, and the commit was pushed anyway (my command did not stop on the failure).
+- Four further full runs on the same code gave 168 passed, 0 failed each. So it is intermittent, and I do not know which test it was or whether it is one of the seven I added to `test_band.py`.
+- Not a finding, only where I would look first: the server tests that run a SimArm in real time and wait with timeouts (the band, Row and Strength "through the API on SimArm" tests), on a loaded laptop.
+- If you see a failure in server/tests, please run with `-rf` and note the test name here.
