@@ -228,6 +228,10 @@
   .deck #today .vid { position: absolute; right: max(28px, 3vw); top: 50%; width: min(520px, 34vw); transform: translateY(-40%); }
   @media (max-width: 899px) { #today { flex-direction: column; align-items: stretch; gap: 18px; } }
   #intro .brand.big { margin-top: clamp(20px, 5vh, 56px); gap: 14px; } #intro .brand.big svg { width: clamp(64px, 6vw, 96px); height: auto; } #intro .brand.big .wm { font-size: clamp(54px, 5.4vw, 84px); } #intro .brand.big em { font-size: clamp(14px, 1.2vw, 19px); padding: 4px 12px; }
+  .deck.vfull #today .vid { position: fixed; inset: 0; width: auto; transform: none; z-index: 5; background: #000; animation: vgrow .5s cubic-bezier(.22,.8,.2,1); }
+  .deck.vfull #today .vid > :is(.ph, video) { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; box-shadow: none; object-fit: contain; } .deck.vfull #today .vid figcaption { display: none; }
+  .deck.vfull #today .panel { visibility: hidden; } .deck #today .vid { cursor: zoom-in; } .deck.vfull #today .vid { cursor: zoom-out; }
+  @keyframes vgrow { from { opacity: 0; transform: scale(.4); } }
   #thanks .in { align-items: center; text-align: center; gap: 26px; }
   #thanks .brand svg { width: 92px; height: 78px; } #thanks .brand .wm { font-size: 76px; color: #fff; } #thanks .brand em { font-size: 18px; }
   #thanks h2 { margin: 0; font-size: clamp(48px, 6vw, 88px); color: #fff; } #thanks .lead { margin: 0; max-width: 34ch; font-size: clamp(18px, 1.6vw, 24px); line-height: 1.4; color: #CFE0E3; }
@@ -574,7 +578,11 @@ document.getElementById('copy').addEventListener('click', () => {
   const near = () => { let b = 0, bd = 1e9; slides.forEach((el, i) => { const d = Math.abs(el.getBoundingClientRect().top); if (d < bd) { bd = d; b = i; } }); return b; };
   const paint = () => { slides.forEach((el, i) => { el.classList.toggle('cur', deck() && i === n); el.classList.toggle('past', deck() && i < n); });
     count.textContent = label(); bPrev.disabled = n === 0; bNext.disabled = n === slides.length - 1; root.classList.toggle('nohud', deck() && plain.includes(slides[n].id)); root.classList.toggle('mid', deck() && slides[n].id === 'today'); const key = slides[n].dataset.ex || ''; if (deck() && key && key !== lastEx) { lastEx = key; hud.classList.remove('swap'); void hud.offsetWidth; hud.classList.add('swap'); } if (deck()) { prog.style.transform = 'scaleX(' + Math.min(1, n / (main - 1)).toFixed(4) + ')'; dispatchEvent(new Event('slidechange')); document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.go === slides[n].id)); } };
-  const go = (i, inner) => { n = Math.max(0, Math.min(slides.length - 1, i)); if (!t0 && n > 0) { t0 = Date.now(); tick(); }
+  // Slide 8: the first "next" blows the video up to fill the screen for the jury; the next press moves on, "back" shrinks it again.
+  const vid = document.querySelector('#today .vid'), vfull = (on) => { root.classList.toggle('vfull', on); const v = vid.querySelector('video'); if (v) { v.muted = !on; if (on) { v.currentTime = 0; v.play().catch(() => {}); } } };
+  vid.addEventListener('click', () => { if (deck() && slides[n].id === 'today') vfull(!root.classList.contains('vfull')); });
+  const go = (i, inner) => { if (deck() && slides[n].id === 'today') { const on = root.classList.contains('vfull'); if (!on && i === n + 1 && !inner) return vfull(true); if (on) { vfull(false); if (i === n - 1) return; } }
+    n = Math.max(0, Math.min(slides.length - 1, i)); if (!t0 && n > 0) { t0 = Date.now(); tick(); }
     if (deck()) { paint(); slides[n].scrollTop = 0; if (inner && inner !== slides[n]) inner.scrollIntoView({ block: 'start' }); try { history.replaceState(null, '', '#' + slides[n].id); } catch (e) {} }
     else (inner || slides[n]).scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const mode = () => { const was = deck(); if (!was) n = near(); root.classList.toggle('deck', wide.matches); if (was && !wide.matches) { paint(); slides[n].scrollIntoView(); } else paint(); };
@@ -589,7 +597,7 @@ document.getElementById('copy').addEventListener('click', () => {
   addEventListener('keydown', (e) => { if (e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key;
     if (k === ' ' && e.target.closest('button, a')) return;
     if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(k)) { e.preventDefault(); go(n + 1); } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(k)) { e.preventDefault(); go(n - 1); }
-    else if (k === 'Home') { e.preventDefault(); go(0); } else if (k === 'End') { e.preventDefault(); go(slides.length - 1); } else if (k === 'f' || k === 'F') full(); });
+    else if (k === 'Home') { e.preventDefault(); go(0); } else if (k === 'End') { e.preventDefault(); go(slides.length - 1); } else if (k === 'f' || k === 'F') full(); else if (k === 'Escape' && root.classList.contains('vfull')) vfull(false); });
   addEventListener('wheel', (e) => { if (!deck() || Math.abs(e.deltaY) < 24) return; const sl = slides[n];
     if (sl.scrollHeight > sl.clientHeight + 4) { const atEnd = sl.scrollTop + sl.clientHeight >= sl.scrollHeight - 2, atTop = sl.scrollTop <= 0; if (!(e.deltaY > 0 ? atEnd : atTop)) { wheelAt = e.timeStamp; return; } }
     if (e.timeStamp - wheelAt < 900) return; wheelAt = e.timeStamp; go(n + (e.deltaY > 0 ? 1 : -1)); }, { passive: true }); }

@@ -669,3 +669,4 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Last slide (Vision) ends with the Vita logo, a vitarehab.org link and a short thank-you to the Leukerbad AI Hackathon.
 - Follow-up: the thank-you is now its own closing slide (`#thanks`, slide 12) with the large Vita logo, "Thank you" and vitarehab.org; the Vision slide is back to its chart only. The slide counter and progress bar run to the closing slide.
 - First slide: big Vita logo in the lower left, under the headline (replaces the small "Vita Rehab" eyebrow).
+- Slide 8: the first "next" (or a click on the video) blows the video up to fill the screen and plays it with sound from the start; the next press goes to slide 9, "back" or Esc shrinks it again.
