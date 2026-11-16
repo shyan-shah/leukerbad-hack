@@ -644,3 +644,6 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - For filming: push 15-25 N in the strength test; above about 27 N it eases off by design.
 - Not done: Kian's `robot/results/test_limits*_arm.json` are not in this tree (they may be in Shyan's main checkout only). Push level 4 still reads 4-9 N over 28 N with hand speed (LOG 15 Nov 23:45): push it slowly on camera.
 - `Start Demo.bat` (Desktop, not in git) now starts `--robot --tool Flange --lan --with-row-strength`. It runs from the main checkout: `git pull origin main` there first.
+
+**2026-11-16 11:05 · Shyan · app: the station screen is an NFC tap, no camera (one-feature edit in demo/app/index.html)**
+- The "Scan" tab is now "Tap": "Tap your phone on the handle.", a phone-and-waves picture and one "Tap to connect" button (the old demo-scan path, then the station plan). No QR code, no camera button; Today says "Tap the station to start". Checked in Chrome on the real-arm server. **Mat, Gio: copy this into your app source before any rebuild.**

@@ -60,6 +60,7 @@
 
   .cam { position: relative; flex: 1; min-height: 260px; border-radius: 24px; background: #101A1C; display: grid; place-items: center; overflow: hidden; }
   .cam .qr { width: 46%; max-width: 170px; border-radius: 12px; background: #fff; padding: 9px; } .cam .qr svg { display: block; width: 100%; }
+  .cam .nfc { width: 46%; max-width: 170px; }
   .cam i { position: absolute; width: 34px; height: 34px; border: 4px solid var(--mint); } .cam .a { top: 22px; left: 22px; border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; }
   .cam .b { top: 22px; right: 22px; border-left: 0; border-bottom: 0; border-radius: 0 10px 0 0; } .cam .c { bottom: 22px; left: 22px; border-right: 0; border-top: 0; border-radius: 0 0 0 10px; }
   .cam .d { bottom: 22px; right: 22px; border-left: 0; border-top: 0; border-radius: 0 0 10px 0; }
@@ -197,7 +198,7 @@
   <nav aria-label="Main">
     <button type="button" data-tab="today"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="4"/><path d="M8 3v4M16 3v4M3.5 10.5h17"/><circle class="ac" cx="12" cy="15.4" r="2.3"/></svg>Today</button>
     <button type="button" data-tab="progress"><svg viewBox="0 0 24 24"><path d="M3.5 20.5h17M4.5 16.5c3.5 0 4-5 7-5s3 1.500 4.500-.5 2-3.500 2.500-4.500"/><circle class="ac" cx="19.300" cy="4.800" r="2.300"/></svg>Progress</button>
-    <button type="button" data-tab="scan"><svg viewBox="0 0 24 24"><path d="M3.5 8.5v-2a3 3 0 0 1 3-3h2M15.5 3.5h2a3 3 0 0 1 3 3v2M20.5 15.5v2a3 3 0 0 1-3 3h-2M8.5 20.5h-2a3 3 0 0 1-3-3v-2"/><rect class="ac" x="8.5" y="8.5" width="7" height="7" rx="2"/></svg>Scan</button>
+    <button type="button" data-tab="scan"><svg viewBox="0 0 24 24"><path d="M3.5 8.5v-2a3 3 0 0 1 3-3h2M15.5 3.5h2a3 3 0 0 1 3 3v2M20.5 15.5v2a3 3 0 0 1-3 3h-2M8.5 20.5h-2a3 3 0 0 1-3-3v-2"/><rect class="ac" x="8.5" y="8.5" width="7" height="7" rx="2"/></svg>Tap</button>
     <button type="button" data-tab="report"><svg viewBox="0 0 24 24"><path class="ac" d="M14.500 3.500l4 4h-4z"/><path d="M7 3.500h7.500l4 4V18a2.500 2.500 0 0 1-2.500 2.500H7A2.500 2.500 0 0 1 4.500 18V6A2.500 2.500 0 0 1 7 3.500zM7.800 14h2l1.400-3 1.900 5 1.100-2h1.300"/></svg>Report</button>
     <button type="button" data-tab="account"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c.9-4 3.900-6.200 7.500-6.200s6.600 2.200 7.500 6.200"/><circle class="ac" cx="18.6" cy="5.4" r="2.300"/></svg>Account</button>
   </nav>
@@ -751,18 +752,17 @@ const VIEWS = {
       <button type="button" class="note planbtn" data-go="plans"><span class="tick">✓</span><span><b>${esc(PL.name)}</b><br>Plan set by your specialist</span><span class="chev">Other plans ›</span></button>
       <div class="sum"><div><b>${PLAN.filter((e) => S.done[e.id]).length} of ${PLAN.length}</b> exercises done</div><div>about ${Math.round(PLAN.reduce((a, e) => a + (S.done[e.id] ? 0 : e.reps * 3), 0) / 60) || 0} min left</div><div class="bar"><i style="width:${PLAN.filter((e) => S.done[e.id]).length / PLAN.length * 100}%"></i></div></div>
       <div class="list">${PLAN.map(exRow).join('')}</div>${lvRow(['push', 'pull'].some((k) => lvOn(k) && PLAN.some((e) => e.id === k) && !S.done[k]))}
-      <div class="push">${allDone() ? `<button type="button" class="btn" data-go="report">See this week's report</button>` : S.scanned ? `<button type="button" class="btn" data-start>Start ${esc(nextEx().name.toLowerCase())}</button>` : `<button type="button" class="btn" data-go="scan">Scan the station to start</button>`}
-        <p class="fine"><span id="restline">${S.rest && S.rest.left > 0 ? 'Break: ' + Math.floor(Math.ceil(S.rest.left) / 60) + ':' + String(Math.ceil(S.rest.left) % 60).padStart(2, '0') + ' left.' : ''}</span> ${S.scanned ? `Connected to Vita station ${S.station}.` : 'Sit down at any Vita station and scan its code.'}</p></div></div>`,
-  scan: () => { const cam = canCam(); return `<div class="view">
-      <div><p class="eyebrow">Scan</p><h1>${S.scanned ? 'You are connected.' : 'Point your phone at the code on the station.'}</h1></div>
-      <div class="cam${S.camOn ? ' live on' : ''}" id="cam">${S.camOn ? '<video id="vid" playsinline muted autoplay></video>' : `<div class="qr">${qrSvg}</div>`}<i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i><span class="beam"></span>
+      <div class="push">${allDone() ? `<button type="button" class="btn" data-go="report">See this week's report</button>` : S.scanned ? `<button type="button" class="btn" data-start>Start ${esc(nextEx().name.toLowerCase())}</button>` : `<button type="button" class="btn" data-go="scan">Tap the station to start</button>`}
+        <p class="fine"><span id="restline">${S.rest && S.rest.left > 0 ? 'Break: ' + Math.floor(Math.ceil(S.rest.left) / 60) + ':' + String(Math.ceil(S.rest.left) % 60).padStart(2, '0') + ' left.' : ''}</span> ${S.scanned ? `Connected to Vita station ${S.station}.` : 'Sit down at any Vita station and tap your phone on the handle.'}</p></div></div>`,
+  scan: () => `<div class="view">
+      <div><p class="eyebrow">Tap</p><h1>${S.scanned ? 'You are connected.' : 'Tap your phone on the handle.'}</h1></div>
+      <div class="cam" id="cam"><svg class="nfc" viewBox="0 0 120 120" aria-hidden="true" fill="none" stroke="var(--mint)" stroke-width="5" stroke-linecap="round"><rect x="30" y="22" width="44" height="76" rx="9"/><path d="M46 88h12"/><path d="M84 46a22 22 0 0 1 0 28M95 37a36 36 0 0 1 0 46"/></svg><span class="beam"></span>
         ${S.scanned ? `<div class="found"><div><span class="tick">✓</span>Vita station ${S.station} found<br>Your plan is loaded</div></div>` : ''}</div>
       <p class="scanmsg" id="scanmsg" aria-live="polite">${esc(S.scanMsg)}</p>
       <div class="push">${S.scanned && S.want && !S.done[S.want] ? `<p class="fine" style="font-size:15px">Starting ${esc(PLAN.find((x) => x.id === S.want).name.toLowerCase())}…</p>`
         : S.scanned ? `<button type="button" class="btn" data-go="today">Go to my exercises</button><button type="button" class="btn ghost" data-unscan>Disconnect</button>`
-        : cam ? `${S.camOn ? '<button type="button" class="btn ghost" data-camoff>Stop the camera</button>' : '<button type="button" class="btn" data-camon>Open the camera</button>'}<button type="button" class="lnk demo" data-scan>No code at hand? Use a demo scan</button>`
-        : '<button type="button" class="btn" data-scan>Scan the code</button>'}
-        <p class="fine">${S.scanned ? '' : cam ? (S.camOn ? 'Hold the code on the station inside the frame.' : 'The camera only looks for the station code. Nothing is recorded.') : 'Demo: the button stands in for the camera.'}</p></div></div>`; },
+        : '<button type="button" class="btn" data-scan>Tap to connect</button>'}
+      <p class="fine">${S.scanned ? '' : 'Hold the top of your phone on the round handle. The NFC tag inside it connects you to this station.'}</p></div></div>`,
   run: () => { const e = PLAN.find((x) => x.id === S.run.id); return `<div class="view fit">
       <div><p class="eyebrow">Exercise ${PLAN.indexOf(e) + 1} of ${PLAN.length}</p><h1>${esc(e.name)}</h1><p class="sub">${esc(e.mode)}</p>${robotTag(S.run)}</div>
       <div class="stagebox" id="fig">${figure(e.id, 0)}</div>
@@ -839,7 +839,7 @@ document.addEventListener('submit', async (ev) => { const f = ev.target.closest(
   signedIn(r.data); }, { signal: AC.signal });
 document.addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (!b) return; const d = b.dataset;
   if (d.tab) { S.want = null; go(d.tab); } else if (d.go) { S.want = d.want || null; go(d.go); } else if (d.plan) setPlan(d.plan); else if (d.level) setLevel(+d.level);
-  else if ('scan' in d) { camOff(); const cam = $('#cam'); if (cam) cam.classList.add('on'); b.disabled = true; b.textContent = 'Scanning…'; setTimeout(() => { if (S.tab !== 'scan' || S.run) { S.scanned = true; save(); return; } connect(S.station || 2); }, 1500); }
+  else if ('scan' in d) { camOff(); const cam = $('#cam'); if (cam) cam.classList.add('on'); b.disabled = true; b.textContent = 'Connecting…'; setTimeout(() => { if (S.tab !== 'scan' || S.run) { S.scanned = true; save(); return; } connect(S.station || 2); }, 1500); }
   else if ('camon' in d) camOn(); else if ('camoff' in d) { camOff(); render(); }
   else if ('unscan' in d) { S.scanned = false; save(); render(); }
   else if ('reset' in d) { S.scanned = false; S.done = {}; S.rest = null; S.last = null; S.out = false; S.hist = {}; lvKeep(null); save(); go('today'); }
