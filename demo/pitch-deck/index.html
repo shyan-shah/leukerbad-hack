@@ -227,6 +227,7 @@
   .deck #today .vid figcaption { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #fff; color: var(--forest); }
   .deck #today .vid { position: absolute; right: max(28px, 3vw); top: 50%; width: min(520px, 34vw); transform: translateY(-40%); }
   @media (max-width: 899px) { #today { flex-direction: column; align-items: stretch; gap: 18px; } }
+  #intro .brand.big { margin-top: clamp(20px, 5vh, 56px); gap: 14px; } #intro .brand.big svg { width: clamp(64px, 6vw, 96px); height: auto; } #intro .brand.big .wm { font-size: clamp(54px, 5.4vw, 84px); } #intro .brand.big em { font-size: clamp(14px, 1.2vw, 19px); padding: 4px 12px; }
   #thanks .in { align-items: center; text-align: center; gap: 26px; }
   #thanks .brand svg { width: 92px; height: 78px; } #thanks .brand .wm { font-size: 76px; color: #fff; } #thanks .brand em { font-size: 18px; }
   #thanks h2 { margin: 0; font-size: clamp(48px, 6vw, 88px); color: #fff; } #thanks .lead { margin: 0; max-width: 34ch; font-size: clamp(18px, 1.6vw, 24px); line-height: 1.4; color: #CFE0E3; }
@@ -264,10 +265,10 @@
 <main class="scroll">
   <section class="ch" id="intro" data-ex="press" data-view="wide">
     <div class="panel">
-      <p class="eyebrow">Vita Rehab</p>
       <h1>More practice. Measured.</h1>
       <p class="lead">Rehab on a robot arm. Every rep measured.</p>
       <p class="cue" aria-hidden="true"><i></i>Press →</p>
+      <div class="brand big"><svg viewBox="0 0 76 64" aria-hidden="true"><path d="M9 24c10 0 13 31 26 31s17-33 30-41" fill="none" stroke="#58E6F2" stroke-width="8" stroke-linecap="round"/><circle cx="65" cy="13" r="8.5" fill="#0A4552"/></svg><span class="wm">vita</span><em>Rehab</em></div>
     </div>
   </section>
 
