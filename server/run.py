@@ -88,7 +88,7 @@ def exercise_sets(a: argparse.Namespace) -> tuple[list[str] | None, list[str] | 
     --robot: Push at four fixed levels (push_1 .. push_4, the band engine) and nothing else.
     --robot --with-row-strength: also Row at the same levels (row_1 .. row_4) and the strength test
     (strength). Without that flag they cannot be started on the real arm, not even through --exercises:
-    they have not passed their real-arm checks (context/LOG.md). The older exercises (reach, push, pull,
+    they have not passed their real-arm checks. The older exercises (reach, push, pull,
     armtest) are offered only when named in --exercises.
     --sim: the older exercises as before; every band-engine id can be named in --exercises.
     --mock: everything the mock can play.
@@ -179,7 +179,7 @@ def main(argv=None) -> None:
     ap.add_argument("--with-row-strength", action="store_true",
                     help="--robot: also offer Row (row_1 .. row_4) and the strength test (strength). Off by "
                          "default: with --robot only Push (push_1 .. push_4) runs. Sim and mock only so far; "
-                         "pass it for their real-arm checks (context/LOG.md)")
+                         "pass it for their real-arm checks")
     ap.add_argument("--push-only", action="store_true",
                     help="does nothing: Push only is already the default with --robot (kept so old commands still start)")
     ap.add_argument("--exercises", default=None, metavar="IDS",
@@ -231,7 +231,7 @@ def main(argv=None) -> None:
                   "   (Push at 4 fixed levels; Row and the strength test only with --with-row-strength; "
                   "the older ones only with --exercises)") if a.exercises is None else ""))
         if a.robot is not None and a.with_row_strength:
-            print("  NOTE       Row and the strength test have NOT passed their real-arm checks (context/LOG.md). "
+            print("  NOTE       Row and the strength test have NOT passed their real-arm checks. "
                   "Tester only, hands off whenever the screen says the arm is moving.")
     if enabled is not None:
         print(f"  Exercises enabled now: {', '.join(enabled)}   (more: POST /api/exercises/enable)")

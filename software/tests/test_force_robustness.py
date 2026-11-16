@@ -1,7 +1,7 @@
 """Force-sensor errors: SimArm's error options and the engine's empty-handle baseline.
 
 The real arm read about (4.5, -2.5, 11.9) N un-zeroed with nothing touching it
-(context/BRINGUP_FINDINGS.md), against a 1.5 N occupancy threshold. These tests use that
+(docs/BRINGUP_FINDINGS.md), against a 1.5 N occupancy threshold. These tests use that
 offset, 0.5 N/min drift, 0.3 N noise and up to 200 ms stiffness latency. Everything here is
 simulated.
 """

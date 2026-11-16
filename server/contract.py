@@ -2,7 +2,7 @@
 
 Shiv's engine produces these records; the server stores and serves them.
 Fields may be added (with defaults, at the end), never renamed or removed.
-See context/MASTER_PLAN.md sections 4.5 and KICKOFF "Shared conventions".
+Units: seconds, metres, newtons; positions in the robot base frame.
 
 Units: seconds, metres, newtons. Positions in the robot base frame.
 `force` is the force the person applies to the handle.

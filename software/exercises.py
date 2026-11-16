@@ -1,4 +1,4 @@
-"""Exercise presets for the engine (package E1). See context/EXERCISE_MAP.md and software/EXERCISES.md.
+"""Exercise presets for the engine (package E1). See docs/EXERCISE_MAP.md and software/EXERCISES.md.
 
 A preset is a small, frozen set of numbers over the existing control law. ``Engine(...,
 exercise="<id>")`` applies it. ``EXERCISES`` holds every preset; ``LIVE`` lists the ids the

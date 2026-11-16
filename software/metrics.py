@@ -2,7 +2,7 @@
 
 Pure functions on arrays. No robot, no API, no database.
 
-Conventions (context/KICKOFF.md, "Shared conventions"):
+Conventions:
 - ``t`` shape (N,), seconds, increasing.
 - ``pos`` shape (N, 3), metres, handle position in the robot base frame.
 - ``force`` shape (N, 3), newtons, force the person applies to the handle.

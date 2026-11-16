@@ -1,5 +1,5 @@
 {
-  "_README": "Measured on the arm on 15 Nov 2026 with tool Flange (nothing mounted), by Shyan's agent with Kian's OK. When the handle is mounted and set as the tool, the start pose, zeroing, drift check and force sign must all be redone (tcp_pose depends on the tool). Keys still listed in 'placeholders' are not confirmed.",
+  "_README": "Measured on the arm on 15 Nov 2026 with tool Flange (nothing mounted). When the handle is mounted and set as the tool, the start pose, zeroing, drift check and force sign must all be redone (tcp_pose depends on the tool). Keys still listed in 'placeholders' are not confirmed.",
   "placeholders": ["force_sign"],
 
   "serial": "Rizon4-062157",

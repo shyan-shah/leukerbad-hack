@@ -1,7 +1,7 @@
 # Builds the app: puts the 3D module (deck scene code + app motions) into vita-app.html, then writes the local test copy and the Desktop export.
 import os, re, base64
 os.chdir(os.path.expanduser('~/vitalis-website'))
-SP = '/private/tmp/claude-501/-Users-matveyshelkovnikov/88632073-ba78-4019-bd73-918a46fc8c5e/scratchpad'
+SP = os.environ.get('VITA_BUILD_TMP', os.path.expanduser('~/tmp/vita-build'))   # working folder for build intermediates
 sci = open('assets/science.js').read().split('\n')
 part = '\n'.join(sci[27:126])                     # science.js lines 28-126: materials, room, chair, Anna, robot
 logo = 'data:image/png;base64,' + base64.b64encode(open(SP + '/logo-small.png', 'rb').read()).decode()

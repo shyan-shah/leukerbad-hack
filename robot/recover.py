@@ -80,7 +80,7 @@ def _call(robot, name: str):
 
 def print_status(robot, label: str) -> None:
     print(f"\n--- {label} ---")
-    # All of these getters exist in flexivrdk 1.7.0 (checked 14 Nov, context/BRINGUP_FINDINGS.md section 5).
+    # All of these getters exist in flexivrdk 1.7.0 (checked 14 Nov, docs/BRINGUP_FINDINGS.md section 5).
     for name in ("connected", "fault", "operational", "estop_released", "enabling_button_pressed", "busy", "mode"):
         print(f"  {name:<24} {_call(robot, name)}")
     try:

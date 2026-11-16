@@ -2,7 +2,7 @@
 
 Scripts Shyan used on 14 Nov to connect to the arm and run the first motion test. They live in `server/`
 because that is Shyan's folder; they drive the arm through Kian's `robot/arm.py` without changing it.
-Results and what they mean: `context/BRINGUP_FINDINGS.md` and `context/MOTION_TEST.md`.
+Results and what they mean: `docs/BRINGUP_FINDINGS.md` and `docs/MOTION_TEST.md`.
 
 ## Setup (arm laptop, once)
 

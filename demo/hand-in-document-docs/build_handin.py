@@ -94,7 +94,7 @@ pages.append('''<section class="pg cover">
 </section>''')
 
 # 2 overview + what runs today
-stats = '''<div class="stats"><div><b>48 h</b><span>to build</span></div><div><b>5</b><span>people, each running several Claude Code agents</span></div>
+stats = '''<div class="stats"><div><b>48 h</b><span>to build</span></div><div><b>5</b><span>people</span></div>
 <div><b>~900</b><span>automated tests (~10,000 lines)</span></div><div><b>150+</b><span>commits on one main branch</span></div></div>'''
 runs = table(['', 'On the real arm', 'In simulation'], [
     ['<b>Push</b> at 4 resistance levels (Light, Medium, Firm, Strong)', f'{yes} 10/10 reps counted at each level, smooth return', yes],
@@ -193,12 +193,11 @@ repo = table(['Folder', 'What', 'Owner'], [
     ['<code>robot/</code>', '<code>arm.py</code> safety layer over the Flexiv RDK, config, run book, safety checks, tuning', 'Kian'],
     ['<code>software/</code>', 'Engines (Push, Row, Strength; the earlier adaptive engine), simulated arm and patient, metrics, rep detection', 'Shiv, Shyan'],
     ['<code>server/</code>', 'API, live feed, storage, exports, session note, screens, real-arm bring-up scripts (<code>server/hw/</code>)', 'Shyan'],
-    ['<code>demo/</code>', 'Patient app, website, pitch deck', 'Mat, Gio'],
-    ['<code>context/</code>', 'Shared plan, decisions and log the five people and their AI agents worked from', 'Everyone']])
+    ['<code>demo/</code>', 'Patient app, website, pitch deck', 'Mat, Gio'],])
 pages.append(page(10, 'Team and process', 'How we worked', repo + '''<div class="three four">
-<div><h3>Many agents, one branch</h3><p>Five people, each driving several Claude Code sessions at once on one <code>main</code> branch. 150+ commits in 48 hours.</p></div>
-<div><h3>Shared context</h3><p>Every agent read the same <code>context/</code> files first: the master plan, a decisions log (time, who, what and why for every scope or architecture decision) and a running log of what each person had done, what was next and what was blocking others.</p></div>
-<div><h3>Folder ownership</h3><p>Each folder has one owner, which kept parallel agents from editing the same files.</p></div>
+<div><h3>One main branch</h3><p>150+ commits in 48 hours, everyone on one <code>main</code> branch.</p></div>
+<div><h3>Decisions on record</h3><p>Every scope or architecture decision was logged with time, owner and reason, and every change of plan was recorded as one.</p></div>
+<div><h3>Folder ownership</h3><p>Each folder has one owner, so parallel work never collided.</p></div>
 <div><h3>Outreach to therapists</h3><p>Mat and Gio reached out to physiotherapists in the Netherlands and to therapists in Zurich to test the idea with the people who would use it. Mat talked with therapists to check that the exercises are done accurately and how supervision should work. The three Swiss physio centres we called all see more patients coming in, and said measured training would give them a better overview of each patient’s progress.</p></div></div>'''))
 
 # 11 limits

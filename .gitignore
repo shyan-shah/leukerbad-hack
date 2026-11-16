@@ -14,6 +14,6 @@ env/
 .DS_Store
 Thumbs.db
 
-# Secrets / local Claude settings
+# Secrets / local tool settings
 .env
 .claude/settings.local.json

@@ -2,7 +2,7 @@
 
 Pure functions on arrays. No robot, no API, no database.
 
-Conventions (context/KICKOFF.md, "Shared conventions"):
+Conventions:
 - Positions are metres in the robot base (world) frame.
 - A straight reach is ``start`` (3,) to ``end`` (3,);
   ``axis = (end - start) / |end - start|``.

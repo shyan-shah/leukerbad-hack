@@ -1,5 +1,4 @@
 <!doctype html><html lang="en" style="height:100%"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0A3A45"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Vita Patient App</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap">
 <style>
   /* Layout: one phone-sized column. Four tabs at the bottom, one job per screen, one main button per screen. */
@@ -450,7 +449,7 @@ const PLANS = [
   { id: 'shoulder', who: 'Els', name: 'Stiff shoulder', ctx: 'Frozen shoulder', thumb: 'rot', ex: ['rot', 'circle', 'lift'], h1: 'Your shoulder turns further every week.', metric: 'Outward rotation', unit: '°', weeks: [20, 26, 31, 37], axis: [10, 30, 50], rows: [['Arm lift', '+14°'], ['Shoulder circles', 'Full circle']] },
   { id: 'strength', who: 'Sofie', name: 'Strength', ctx: 'Staying strong and steady', thumb: 'push', ex: ['push', 'pull', 'knee', 'armtest'], h1: 'You get stronger every week.', metric: 'Push strength', unit: 'N', weeks: [48, 53, 57, 62], axis: [40, 55, 70], rows: [['Leg strength', '+8%'], ['Row', '+6 N']] },
 ];
-// The live robot demo plan: only exercises the station's arm runs (context/EXERCISE_MAP.md). Row (pull) is added once the server lists it.
+// The live robot demo plan: only exercises the station's arm runs (docs/EXERCISE_MAP.md). Row (pull) is added once the server lists it.
 PLANS.push({ id: 'robot', who: 'Maria', name: 'Arm recovery (robot)', ctx: 'After a stroke · live on the Vita arm', thumb: 'reach', ex: ['reach', 'push', 'armtest'], h1: 'Your arm reaches further every week.', metric: 'Forward reach', unit: 'cm', weeks: [18, 22, 25, 29], axis: [15, 25, 35], rows: [['Help from the arm', '−15%'], ['Smooth movement', '+12%']] });
 // ---------- the robot arm: server/ on the station laptop. Only used when that laptop serves this page at /app/ (same address, so no https-to-http block) ----------
 // Push (robot): one Push card with four fixed resistance levels, offered when the station lists push_1 to push_4. In the app it stays the exercise 'push'; only the id sent to the station changes with the level.
@@ -871,7 +870,7 @@ render(); requestAnimationFrame(tick); if (live()) loadMe(); else pullHist();
 { const q = new URLSearchParams(location.search), st = +q.get('station');
   if (q.has('api') || st) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   // ?station=N (NFC tag or a QR code opened by the phone camera): on the station laptop open the arm's plan, then land on Today
-  // with one Start button. Opening a link never starts the arm by itself; the patient presses Start (context/NFC.md).
+  // with one Start button. Opening a link never starts the arm by itself; the patient presses Start (docs/NFC.md).
   if (st) { if (!HOSTED && !live() && /^\/app(\/|$)/.test(location.pathname) && S.plan !== 'robot') setPlan('robot'); S.tab = 'today'; S.want = null; connect(st); } }
 addEventListener('vita3d', () => render(), { signal: AC.signal });
 addEventListener('pagehide', () => { if (armOn(S.run)) robotStop(); }, { signal: AC.signal });

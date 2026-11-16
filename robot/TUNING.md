@@ -4,7 +4,7 @@ Owner: Kian. **Status 15 Nov: recommendations from the 14 Nov motion test only. 
 has been measured with the handle mounted or with a person holding it.** Section 4 lists what to
 measure on the arm; section 5 is where those numbers go.
 
-## 1. What was measured (context/MOTION_TEST.md, tool `Flange`, nothing mounted)
+## 1. What was measured (docs/MOTION_TEST.md, tool `Flange`, nothing mounted)
 
 | Measurement | Value | What it tells us |
 |---|---|---|
@@ -129,4 +129,4 @@ Not measured yet. Fill in from `robot/results/tune_<date>_arm.json`.
 ## 6. Final values
 
 Unchanged from the start values until section 5 is filled in. Any change to a final stiffness
-or limit gets a line in `context/DECISIONS.md`.
+or limit gets a line in `robot/TUNING.md`.

@@ -1,7 +1,7 @@
 """Real-arm effects in the sim (pose- and motion-dependent empty-handle force, Coulomb friction)
 and the engine rules that cope with them: occupancy, start refusal, near-start, setup.
 
-Numbers come from context/MOTION_TEST.md and robot/TUNING.md (14 Nov, tool Flange, nothing
+Numbers come from docs/MOTION_TEST.md and robot/TUNING.md (14 Nov, tool Flange, nothing
 mounted): the empty reading changed by up to 3 N with pose and read 3 to 7 N while moving,
 and friction is about 4.5 N. Everything here is simulated.
 """

@@ -1,7 +1,7 @@
 # Splits the single-file app into a small Vite project (HTML, CSS, JS modules, three.js from npm) for Lovable or any host.
 import os, shutil, json, re
 os.chdir(os.path.expanduser('~/vitalis-website'))
-SP = '/private/tmp/claude-501/-Users-matveyshelkovnikov/88632073-ba78-4019-bd73-918a46fc8c5e/scratchpad'
+SP = os.environ.get('VITA_BUILD_TMP', os.path.expanduser('~/tmp/vita-build'))   # working folder for build intermediates
 OUT = os.path.expanduser('~/Desktop/vita-app-lovable')
 L = open('vita-app.html').read().split('\n')
 find = lambda pred, start=0: next(i for i in range(start, len(L)) if pred(L[i]))

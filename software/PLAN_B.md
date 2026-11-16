@@ -6,7 +6,7 @@ Robot: Rizon 4, software v3.9.3. RDK: `flexivrdk` 1.7.0, installed in `C:\venvs\
 ## 1. Short answer
 
 - **Our engine probably needs only the cheaper "Standard" licence, not "Professional".** Flexiv's v1.x manual says Professional adds "robot dynamics and real-time functionalities such as joint torque/position streaming, Cartesian motion/force streaming". Standard covers "essential and non-real-time functionalities such as reading robot states, sending plan/primitive commands". `NRT_CARTESIAN_MOTION_FORCE` is a non-real-time mode, so it most likely falls under Standard. **This is not verified.** The manual sorts features into licence tiers and never lists modes by name.
-- **The risk we can actually see today is having no licence at all, not the wrong tier.** Shyan's packet capture (`context/BRINGUP_FINDINGS.md`) shows the robot offers no `flexiv_rdk` topics. Without a licence the RDK server never starts, so no mode works: no primitives, no joint impedance, no free drive through the RDK.
+- **The risk we can actually see today is having no licence at all, not the wrong tier.** Shyan's packet capture (`docs/BRINGUP_FINDINGS.md`) shows the robot offers no `flexiv_rdk` topics. Without a licence the RDK server never starts, so no mode works: no primitives, no joint impedance, no free drive through the RDK.
 - **Recommendation:**
   1. Keep plan A, the Cartesian spring in `NRT_CARTESIAN_MOTION_FORCE`.
   2. On first connect, run the 2-minute licence probe in section 4 before anything else.

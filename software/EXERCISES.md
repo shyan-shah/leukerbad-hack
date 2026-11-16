@@ -1,7 +1,7 @@
 # Robot exercise programmes (E1)
 
 Presets live in `software/exercises.py` (`EXERCISES`, `LIVE`); the engine applies one with
-`Engine(..., exercise="<id>", reps=None)`. The app ids are those of `context/EXERCISE_MAP.md`.
+`Engine(..., exercise="<id>", reps=None)`. The app ids are those of `docs/EXERCISE_MAP.md`.
 All numbers are team-chosen starting values, not clinical prescriptions. Everything below was
 tested on `SimArm` only (`software/tests/test_exercises.py`, 39 tests, reach along x and along y as in Layout B; `software/tests/test_real_arm_effects.py`, 180 tests with the real arm's friction and force-reading errors simulated); nothing here has run on the real arm yet.
 

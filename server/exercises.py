@@ -6,7 +6,7 @@ reads both tolerantly at request time (so E1 landing, or adding "circle" to LIVE
 server change) and falls back to its own table. Until software/exercises.py exists, only
 "reach" is live.
 
-Ids are exact (context/EXERCISE_MAP.md): reach, push, pull, armtest, circle.
+Ids are exact (docs/EXERCISE_MAP.md): reach, push, pull, armtest, circle.
 """
 from __future__ import annotations
 

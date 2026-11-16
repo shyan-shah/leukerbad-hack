@@ -25,7 +25,7 @@ the real arm read about (4.5, -2.5, 11.9) N un-zeroed with nothing touching it),
 Only ``get_state().force`` carries the errors (so the trip check sees them, as on the real
 arm); the physics always uses the true person force.
 
-Real-arm effects seen on 14 Nov (context/MOTION_TEST.md, robot/TUNING.md), also off by default:
+Real-arm effects seen on 14 Nov (docs/MOTION_TEST.md, robot/TUNING.md), also off by default:
 
 - ``empty_force_pose_n_per_m`` (N per metre, per axis): the reading with nothing on the handle
   changes with pose. It is this vector times the hand's distance from the start pose along

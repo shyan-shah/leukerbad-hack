@@ -205,7 +205,7 @@ reproducible in the sim.
 2. **The isometric test (`armtest`) cannot measure more than about 30 N.** At K_MAX a 30 N push
    already moves the handle 5.0 cm (30 / 600), which is exactly the limit in check 12, and above
    30 N the handle slides and then trips. "No motion beyond about 1 cm" in
-   `context/EXERCISE_MAP.md` holds only up to 6 N. Raising `k_max` would be loosening a safety
+   `docs/EXERCISE_MAP.md` holds only up to 6 N. Raising `k_max` would be loosening a safety
    limit and is not done. For the demo: the actor pushes gently (under 25 N) and the screen should
    not call the number "maximum strength".
 3. **An empty handle released under a 20 N assist pull accelerates fast.** In the sim it reached

@@ -4,7 +4,7 @@
 
 Vita is software that turns an off-the-shelf, force-sensing robot arm (here a Flexiv Rizon 4) into a station for arm rehabilitation. The arm acts as an elastic band whose strength the patient picks on their phone; it counts every repetition and measures how far and how hard the patient pushes. A physiotherapist sees every repetition remotely.
 
-Built in 48 hours by five people, each running several Claude Code agents in parallel on this one repository.
+Built in 48 hours by a team of five.
 
 | | |
 |---|---|
@@ -24,7 +24,7 @@ Built in 48 hours by five people, each running several Claude Code agents in par
 | The safety layer | [`robot/arm.py`](robot/arm.py) and [`robot/README.md`](robot/README.md) |
 | How the exercises work | [`software/simple.py`](software/simple.py) and [`software/EXERCISES.md`](software/EXERCISES.md) |
 | The API and screens | [`server/README.md`](server/README.md) and [`server/API.md`](server/API.md) |
-| How the team worked | [`context/README.md`](context/README.md) |
+| Engineering notes from the real arm | [`docs/BRINGUP_FINDINGS.md`](docs/BRINGUP_FINDINGS.md) and [`docs/MOTION_TEST.md`](docs/MOTION_TEST.md) |
 
 ---
 
@@ -141,18 +141,15 @@ On the station laptop wired to the arm: `python -m server.run --robot --lan` (Pu
 | `software/` | Engines (Push, Row, Strength; the earlier adaptive engine), simulated arm and patient, metrics, rep detection | Shiv, Shyan |
 | `server/` | API, live feed, storage, exports, session note, screens, real-arm bring-up scripts (`server/hw/`) | Shyan |
 | `demo/` | Patient app, website, pitch deck | Mat, Gio |
-| `context/` | Shared plan, decisions and log the five people and their AI agents worked from | everyone |
+| `docs/` | Engineering notes: bringing the real arm up, the first motion tests, the exercise map, NFC set-up | everyone |
 
-## How we worked
-
-Five people, each driving several Claude Code sessions at once on one `main` branch. Every agent read the same `context/` files before working: the master plan, a decisions log (every scope or architecture decision with time, who, what and why) and a running log of what each person had done, what was next and what was blocking others. Folder ownership kept parallel agents from editing the same files. 150+ commits in 48 hours.
 
 ## Status and honest limits
 
 - Research prototype. Tested by the team on a bare flange and a printed handle; not used with patients. A product like this is a medical device and needs certification first.
 - The physio dashboard's history is simulated and labelled so; today's sessions are real.
 - Strength readings are capped at about 30 N by the safety limits on this arm.
-- Row and the strength test passed their real-arm checks on 16 November (`context/LOG.md`); they have had fewer hours of use than Push.
+- Row and the strength test passed their real-arm checks on 16 November; they have had fewer hours of use than Push.
 
 **Team:** Shyan Shah, Shiv, Kian, Mat (Matvey), Gio van Belle.
 

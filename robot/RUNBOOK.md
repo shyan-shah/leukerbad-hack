@@ -116,7 +116,7 @@ General rule: **the person lets go first, then diagnose.** If in doubt, e-stop.
 4. If the server crashed instead of closing cleanly: `python robot/recover.py`.
 5. E-stop holder presses the e-stop. Only then may the e-stop holder leave.
 6. Say "arm is free" to the team, or power off the control box per the technician. TODO(confirm on arm): Elements shutdown sequence and the park pose for the next team.
-7. Append to `context/LOG.md` anything that faulted, and to `robot/SAFETY.md` any safety event.
+7. Record anything that faulted, and any safety event, in `robot/SAFETY.md`.
 
 ## 5. Confirmed on the arm, and still open
 

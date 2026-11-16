@@ -11,7 +11,7 @@ Pure numpy, no robot, no API, no database. Everything produced here is
 simulated: :func:`simulate_reach` returns ``"simulated": True`` alongside its
 arrays so the flag can be carried to the screen (KICKOFF rule 7).
 
-Conventions (context/KICKOFF.md, "Shared conventions"): seconds, metres,
+Conventions: seconds, metres,
 newtons; positions in the robot base frame; ``force`` is the force the person
 applies to the handle; 100 Hz by default (``dt = 0.01``).
 

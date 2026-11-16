@@ -1,6 +1,6 @@
 """robot/arm.py: the only code in the repo that talks to the Flexiv Rizon 4.
 
-Implements the frozen interface of context/MASTER_PLAN.md section 4.3 (package K1).
+Implements the arm interface described in robot/README.md.
 
 The arm runs its own Cartesian impedance controller (NRT_CARTESIAN_MOTION_FORCE).
 Python only streams target points and, a few times per rep, per-axis stiffness.
@@ -380,7 +380,7 @@ class Arm:
         if "XXXXXX" in self.serial or (self.serial == self.config.serial
                                        and self.config.is_placeholder("serial")):
             raise RuntimeError(f"serial {self.serial!r} is a placeholder; set it in robot/config.json "
-                               "(see context/BRINGUP_FINDINGS.md)")
+                               "(see docs/BRINGUP_FINDINGS.md)")
         for key in ("force_sign", "reach_axis"):
             if self.config.is_placeholder(key):
                 warnings.warn(f"robot/config.json '{key}' is still a placeholder; confirm it in K0",

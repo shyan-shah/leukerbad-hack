@@ -145,7 +145,7 @@ along the reach): both under 2 N and within 1 N of each other is the goal.
 
 - [ ] **Re-read the start pose**: the TCP moved from the flange face to the grip middle, so the
       old `tcp_pose` is wrong (the joint angles `q` are not). The pose printed by step 4 goes into
-      `robot/config.json` (Kian's agent does this once the arm is free).
+      `robot/config.json` (once the arm is free).
 - [ ] Tell Shyan: the server must be started with `--tool RehabHandle`
       (`python -m server.run --robot Rizon4-062157 --tool RehabHandle`); with the default `Flange` it now refuses.
 - [ ] If the handle is ever taken off, switch the tool back to `Flange` first. A handle tool with

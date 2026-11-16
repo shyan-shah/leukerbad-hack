@@ -26,8 +26,8 @@ What this cannot show (sim time is stepped, SimArm(realtime=False)):
 The soak runs once (about 50 s); each requirement is its own test so one failure does not hide the rest.
 
 One requirement does not hold on simple.py (cc6340b) and is marked ``xfail(strict=True)`` so main stays
-green: /api/state has no ``phase`` between the start call and the engine's first tick (context/LOG.md,
-Shiv, 15 Nov 23:30). When that changes pytest reports the test as a failure: remove the marker then.
+green: /api/state has no ``phase`` between the start call and the engine's first tick
+(found 15 Nov). When that changes pytest reports the test as a failure: remove the marker then.
 """
 from __future__ import annotations
 

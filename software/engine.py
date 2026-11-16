@@ -1,6 +1,6 @@
 """The control engine: 100 Hz loop, rep state machine, hands-off rule, auto dial (package S4).
 
-Implements the frozen interface of context/MASTER_PLAN.md section 4.4 using the rules of
+Implements the adaptive engine using the rules of
 section 4.2. It is built from the pure modules of software/: ``paths`` (the line),
 ``controller.command`` (target and stiffness), ``metrics.rep_metrics`` (per-rep numbers) and
 ``adapt.next_dial`` (auto dial). It works with ``robot.arm.Arm`` and ``software.sim_arm.SimArm``
@@ -40,7 +40,7 @@ Rep state machine (section 4.2):
   hand that is missed only ends a rep, an empty handle taken for a hand would be driven.
 
 Force baseline (the real arm's sensor reads several N with nothing touching it, see
-context/BRINGUP_FINDINGS.md and DECISIONS.md): ``start()`` averages ``BASELINE_N`` force
+docs/BRINGUP_FINDINGS.md): ``start()`` averages ``BASELINE_N`` force
 readings BEFORE compliance starts, with the handle empty (the same "nobody touching" rule
 as ``zero_force``), and refuses to start with a RuntimeError if that baseline is over
 ``MAX_BASELINE_N`` (sensor not zeroed, or something resting on the handle). Every force

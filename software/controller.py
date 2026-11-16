@@ -1,6 +1,6 @@
 """Per-tick impedance command from the dial (package S2).
 
-Pure function, no arm, no threads. See context/MASTER_PLAN.md sections 4.2 and 4.4.
+Pure function, no arm, no threads. See software/README.md.
 
 The arm is a spring between the hand and the target, per base axis:
 ``force = K * (target - hand)``. Each tick the engine calls ``command`` and gets
