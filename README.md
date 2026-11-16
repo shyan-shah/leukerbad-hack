@@ -20,8 +20,8 @@ Built in 48 hours by five people, each running several Claude Code agents in par
 | | On the real arm | In simulation |
 |---|---|---|
 | **Push** at 4 resistance levels (Light, Medium, Firm, Strong) | Yes: 10/10 reps counted at each level, smooth return | Yes |
-| **Row** (pull towards you) at 4 levels | See "Status" below | Yes, 57 dedicated tests + soak |
-| **Strength test** (3 timed pushes against a held arm) | See "Status" below | Yes |
+| **Row** (pull towards you) at 4 levels | Yes: passed real-arm checks; automatic move to the far end and back with no stops | Yes, 57 dedicated tests + soak |
+| **Strength test** (3 timed pushes against a held arm) | Yes: passed real-arm checks; untouched peak 1.6 N, nothing moves | Yes |
 | Tap-to-start with an NFC tag on the station | Yes | Yes |
 | Live rep counter, force bar and 3D twin on the phone | Yes | Yes |
 | Physio dashboard, session note, exports | Yes | Yes |
@@ -139,6 +139,10 @@ Five people, each driving several Claude Code sessions at once on one `main` bra
 - Research prototype. Tested by the team on a bare flange and a printed handle; not used with patients. A product like this is a medical device and needs certification first.
 - The physio dashboard's history is simulated and labelled so; today's sessions are real.
 - Strength readings are capped at about 30 N by the safety limits on this arm.
-- Row and the strength test: implemented and tested in simulation; real-arm status is recorded in `context/LOG.md`.
+- Row and the strength test passed their real-arm checks on 16 November (`context/LOG.md`); they have had fewer hours of use than Push.
 
 **Team:** Shyan Shah, Shiv, Kian, Mat (Matvey), Gio van Belle.
+
+## Licence
+
+MIT, see [LICENSE](LICENSE).
