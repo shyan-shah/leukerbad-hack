@@ -663,3 +663,7 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 **Gio · 2026-11-16 · pitch deck: market folded into the problem slide, muscle panel on every 3D slide**
 - `demo/pitch-deck`: the "Who it is for" slide is gone; its five groups are now a row of chips ("Who it hits") under the three numbers on the problem slide. Deck is 10 slides plus Vision (11). "Market" nav link removed.
 - Muscle panel ("Muscles at work") was hidden on the title, solution, product (during Anna's 10 s arrival) and safety slides, so it only showed on the future-exercises slide. It now shows on every slide with the 3D scene; only the problem slide hides it.
+
+**Gio · 2026-11-16 · pitch deck: live 3D arm and video slot on slide 8, thank-you on the last slide**
+- `demo/pitch-deck`: slide 8 ("Running on a real Flexiv Rizon 4") is now a 3D-scene slide: the arm and Anna doing Push, centred between the text panel and a placeholder for the video of Kian on the arm. To add the video, replace the `.ph` div in `#today .vid` with `<video src="assets/kian-arm.mp4" autoplay muted loop playsinline>` (the comment above it has the line). New `mid` class centres the 3D scene (science.js voff 0); science.js cache version v40.
+- Last slide (Vision) ends with the Vita logo, a vitarehab.org link and a short thank-you to the Leukerbad AI Hackathon.

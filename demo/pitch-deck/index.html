@@ -221,6 +221,16 @@
   .deck .steps p { color: #CFE0E3; }
   .deck .solid .note { align-self: flex-start; max-width: 62ch; padding: 14px 22px; border-radius: 18px; background: var(--pill); color: var(--forest); font-weight: 600; font-size: 17px; line-height: 1.4; box-shadow: 0 6px 0 var(--pill-edge); }
   .deck .solid.green .fine { color: #A9CDD3; max-width: 70ch; }
+  .vid { margin: 0; width: min(540px, 100%); pointer-events: auto; } .vid > :is(.ph, video) { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 26px; background: #0A4552; object-fit: cover; box-shadow: 0 9px 0 #06313B, 0 30px 34px -26px rgba(10,69,82,.5); }
+  .vid .ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #EAF6F7; outline: 2px dashed rgba(88,230,242,.45); outline-offset: -14px; } .vid .ph i { width: 58px; height: 58px; margin-bottom: 8px; border-radius: 50%; background: #58E6F2; clip-path: polygon(38% 28%, 38% 72%, 74% 50%); }
+  .vid .ph b { font: 600 20px var(--display); } .vid .ph span { font-size: 15px; color: #A9CDD3; } .vid figcaption { margin-top: 14px; font-size: 14.5px; color: var(--soft); }
+  .deck #today .vid figcaption { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #fff; color: var(--forest); }
+  .deck #today .vid { position: absolute; right: max(28px, 3vw); top: 50%; width: min(520px, 34vw); transform: translateY(-40%); }
+  @media (max-width: 899px) { #today { flex-direction: column; align-items: stretch; gap: 18px; } }
+  #vision .end { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 32px; padding-top: 12px; border-top: 1px solid rgba(30,40,42,.1); }
+  #vision .end .brand svg { width: 46px; height: 39px; } #vision .end .wm { font-size: 38px; } #vision .end em { font-size: 15px; }
+  #vision .end a { font: 600 clamp(19px, 1.6vw, 24px) var(--display); color: var(--forest); text-decoration: none; border-bottom: 2px solid var(--mint); }
+  #vision .end p { margin: 0; flex: 1 1 320px; font-size: clamp(15px, 1.2vw, 18px); line-height: 1.4; color: var(--soft); }
   .deck .hz li { align-items: center; } .deck .hz h3 { margin: 0; }
 </style>
 
@@ -382,15 +392,18 @@
   </div>
 </section>
 
-<section class="solid green slide" id="today">
-  <div class="in">
-    <div class="headblock"><p class="eyebrow">Built this weekend</p><h2>Running on a real Flexiv Rizon 4.</h2></div>
-    <div class="cols">
-      <div><h3>Exercises</h3><ul><li><b>Push</b> against a 10–28 N band</li><li><b>Row</b> pull back against the band</li><li><b>Strength test</b> best of three</li></ul></div>
-      <div><h3>Software</h3><ul><li>NFC tap to start</li><li>Force and position, 100 times a second</li><li>Stops above 0.40 m/s</li></ul></div>
-    </div>
-    <p class="fine">Research prototype, not a medical device. Session data is real; app history is simulated.</p>
+<section class="ch" id="today" data-ex="press" data-view="stop" data-fac="1">
+  <div class="panel card">
+    <div class="headblock"><p class="eyebrow">Built this weekend</p><h2>Running on a real Flexiv Rizon 4</h2></div>
+    <ul class="exl">
+      <li><b>Push, Row, Strength test</b><span>10–28 N band</span></li>
+      <li><b>NFC tap to start</b><span>force and position, 100 times a second</span></li>
+      <li><b>Auto stop</b><span>above 0.40 m/s</span></li>
+    </ul>
   </div>
+  <!-- Video of Kian using the arm: replace the placeholder div with
+       <video src="assets/kian-arm.mp4" autoplay muted loop playsinline></video> -->
+  <figure class="vid"><div class="ph"><i aria-hidden="true"></i><b>Video: Kian on the arm</b><span>coming soon</span></div><figcaption>Kian testing Push on the real arm</figcaption></figure>
 </section>
 
 <section class="solid slide" id="business">
@@ -426,6 +439,11 @@
         </svg>
         <figcaption><span><i class="k1"></i>Your strength</span><span><i class="k2"></i>Load Vita sets</span><span><i class="k3"></i>Fixed weights</span></figcaption>
       </figure>
+    </div>
+    <div class="end">
+      <div class="brand"><svg viewBox="0 0 76 64" aria-hidden="true"><path d="M9 24c10 0 13 31 26 31s17-33 30-41" fill="none" stroke="#58E6F2" stroke-width="8" stroke-linecap="round"/><circle cx="65" cy="13" r="8.5" fill="#0A4552"/></svg><span class="wm">vita</span><em>Rehab</em></div>
+      <a href="https://vitarehab.org" target="_blank" rel="noopener">vitarehab.org</a>
+      <p>Thank you, Leukerbad AI Hackathon, for an amazing time and for the robots, mentors and support that made this possible.</p>
     </div>
   </div>
 </section>
@@ -540,7 +558,7 @@ document.getElementById('copy').addEventListener('click', () => {
 <script>
 // Deck: on desktop one slide is on screen at a time. Arrows, Space, Page Up/Down, the wheel and the buttons change slide. On phones the page scrolls normally.
 { const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'today', 'business', 'later', 'vision'].map((id) => document.getElementById(id)).filter(Boolean), count = document.getElementById('count'), prog = document.getElementById('prog');
-  const wide = matchMedia('(min-width: 900px)'), plain = ['basis'], hud = document.querySelector('.hud'), bPrev = document.getElementById('prev'), bNext = document.getElementById('nxt'); let n = 0, wheelAt = 0, lastEx = 'press';
+  const wide = matchMedia('(min-width: 900px)'), plain = ['basis', 'today'], hud = document.querySelector('.hud'), bPrev = document.getElementById('prev'), bNext = document.getElementById('nxt'); let n = 0, wheelAt = 0, lastEx = 'press';
   const deck = () => root.classList.contains('deck');
   // the pitch itself ends at the long-term vision; everything after it is appendix for questions
   const main = slides.indexOf(document.getElementById('vision')) + 1, label = () => n < main ? (n + 1) + ' / ' + main : 'Appendix ' + (n - main + 1);
@@ -550,7 +568,7 @@ document.getElementById('copy').addEventListener('click', () => {
   setInterval(tick, 500); tm.addEventListener('click', () => { t0 = 0; tick(); });
   const near = () => { let b = 0, bd = 1e9; slides.forEach((el, i) => { const d = Math.abs(el.getBoundingClientRect().top); if (d < bd) { bd = d; b = i; } }); return b; };
   const paint = () => { slides.forEach((el, i) => { el.classList.toggle('cur', deck() && i === n); el.classList.toggle('past', deck() && i < n); });
-    count.textContent = label(); bPrev.disabled = n === 0; bNext.disabled = n === slides.length - 1; root.classList.toggle('nohud', deck() && plain.includes(slides[n].id)); const key = slides[n].dataset.ex || ''; if (deck() && key && key !== lastEx) { lastEx = key; hud.classList.remove('swap'); void hud.offsetWidth; hud.classList.add('swap'); } if (deck()) { prog.style.transform = 'scaleX(' + Math.min(1, n / (main - 1)).toFixed(4) + ')'; dispatchEvent(new Event('slidechange')); document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.go === slides[n].id)); } };
+    count.textContent = label(); bPrev.disabled = n === 0; bNext.disabled = n === slides.length - 1; root.classList.toggle('nohud', deck() && plain.includes(slides[n].id)); root.classList.toggle('mid', deck() && slides[n].id === 'today'); const key = slides[n].dataset.ex || ''; if (deck() && key && key !== lastEx) { lastEx = key; hud.classList.remove('swap'); void hud.offsetWidth; hud.classList.add('swap'); } if (deck()) { prog.style.transform = 'scaleX(' + Math.min(1, n / (main - 1)).toFixed(4) + ')'; dispatchEvent(new Event('slidechange')); document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.go === slides[n].id)); } };
   const go = (i, inner) => { n = Math.max(0, Math.min(slides.length - 1, i)); if (!t0 && n > 0) { t0 = Date.now(); tick(); }
     if (deck()) { paint(); slides[n].scrollTop = 0; if (inner && inner !== slides[n]) inner.scrollIntoView({ block: 'start' }); try { history.replaceState(null, '', '#' + slides[n].id); } catch (e) {} }
     else (inner || slides[n]).scrollIntoView({ behavior: 'smooth', block: 'start' }); };
@@ -571,5 +589,5 @@ document.getElementById('copy').addEventListener('click', () => {
     if (sl.scrollHeight > sl.clientHeight + 4) { const atEnd = sl.scrollTop + sl.clientHeight >= sl.scrollHeight - 2, atTop = sl.scrollTop <= 0; if (!(e.deltaY > 0 ? atEnd : atTop)) { wheelAt = e.timeStamp; return; } }
     if (e.timeStamp - wheelAt < 900) return; wheelAt = e.timeStamp; go(n + (e.deltaY > 0 ? 1 : -1)); }, { passive: true }); }
 </script>
-<script type="module" src="assets/science.js?v=39"></script>
+<script type="module" src="assets/science.js?v=40"></script>
 </body></html>

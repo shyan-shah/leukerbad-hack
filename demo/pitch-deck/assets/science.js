@@ -550,7 +550,7 @@ function frame(now) {
   facility(dt, T); if (active && active.dataset.cycle && !FREEZE && !paused && !arriving) { cyc += dt; if (cyc > 5.5) { cyc = 0; const OR = active.dataset.order ? active.dataset.order.split(' ') : ORDER, nx = OR[(OR.indexOf(ex) + 1) % OR.length], v = VIEWS[nx]; choose(nx); view.taz = v[0]; view.tel = v[1]; view.tdist = v[2]; } } else cyc = 0; view.idle += dt; const drift = FREEZE ? 0 : Math.sin(T * .22) * .1 * clamp((view.idle - 1.5) / 2); view.az = lerp(view.az, view.taz + drift, f(2.6)); view.el = lerp(view.el, view.tel, f(2.6)); view.dist = lerp(view.dist, view.tdist, f(2.6));
   const narrow = phone, dist = view.dist * (narrow ? (cam.aspect < 1.15 ? 1.12 : .9) : 1.16); look.set(narrow ? .42 : .5, narrow ? .66 : .74, -.05);
   cam.position.set(look.x + Math.sin(view.az) * Math.cos(view.el) * dist, look.y + Math.sin(view.el) * dist, look.z + Math.cos(view.az) * Math.cos(view.el) * dist); cam.lookAt(look);
-  voff = lerp(voff, BARE ? 0 : document.documentElement.classList.contains('nohud') ? -.17 : -.09, FREEZE ? 1 : 1 - Math.exp(-dt * 3)); if (!narrow) cam.setViewOffset(VW, VH, VW * voff, VH * -.03, VW, VH); else cam.clearViewOffset();
+  voff = lerp(voff, BARE ? 0 : document.documentElement.classList.contains('mid') ? 0 : document.documentElement.classList.contains('nohud') ? -.17 : -.09, FREEZE ? 1 : 1 - Math.exp(-dt * 3)); if (!narrow) cam.setViewOffset(VW, VH, VW * voff, VH * -.03, VW, VH); else cam.clearViewOffset();
   snap = false; renderer.render(scene, cam);
 }
 requestAnimationFrame((n) => { last = n; frame(n); });
