@@ -201,6 +201,30 @@
   @media (min-width: 900px) and (max-width: 1399px) { .coach { bottom: auto; top: 84px; right: max(28px, env(safe-area-inset-right, 0px)); max-width: 290px; } .coach span { font-size: 14px; } }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .cue i::after { animation: none; } .panel.card { transition: none !important; } }
   .still .cue i::after { animation: none; } .still .panel.card { transition: none; }
+  /* Boxes styled after objects in the 3D room: the petrol "Rehab station" banner (text panels), the white station body (light cards) and the yellow "Book in the app" pill (callouts). Solid bottom edges instead of soft blurred shadows, like the toy-like scene. Slide mode only. */
+  .deck { --edge: #06313B; --clay: #D4E0E2; --pill: #F1C36A; --pill-edge: #B98A3E; --glow: #58E6F2; }
+  .deck .panel.card, .deck .ch:not(.on) .panel.card { background: var(--forest); color: #EAF6F7; border-radius: 30px; padding: 36px 40px 38px; box-shadow: 0 10px 0 var(--edge), 0 34px 40px -24px rgba(10,69,82,.55); }
+  .deck .panel.card h2 { color: #fff; } .deck .panel.card .eyebrow { color: var(--glow); }
+  .deck :is(#who, #path, #later, #product) .what { color: var(--pill) !important; }
+  .deck .aud { gap: 8px; } .deck .aud li { border-left: 0; padding: 11px 18px; border-radius: 999px; background: rgba(255,255,255,.08); } .deck .aud b { color: #fff; }
+  .deck .flow li::before { background: var(--pill); color: var(--forest); box-shadow: 0 3px 0 var(--pill-edge); border: 0; } .deck .flow b { color: #fff; }
+  .deck .exl li { padding: 10px 16px; } .deck .exl b { color: #fff; } .deck .exl span { color: #A9CDD3; }
+  .deck .exl li.on { background: var(--glow); } .deck .exl li.on b { color: var(--forest); } .deck .exl li.on span { color: #0F4E5C; }
+  .deck .quote { font-size: 15px; line-height: 1.4; color: #A9CDD3; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.14); }
+
+  .deck :is(.biz, .bm) > div, .deck .vchart { background: #fff; border-radius: 26px; box-shadow: 0 9px 0 var(--clay), 0 30px 34px -26px rgba(30,40,42,.35); }
+  .deck .biz > div:first-child { background: var(--forest); box-shadow: 0 9px 0 var(--edge), 0 30px 34px -26px rgba(10,69,82,.5); } .deck .biz > div:first-child b { color: #fff; } .deck .biz > div:first-child span { color: #CFE0E3; }
+  .deck .biz span { display: block; margin-top: 10px; }
+  .deck .bm > div:last-child { background: var(--pill); box-shadow: 0 9px 0 var(--pill-edge), 0 30px 34px -26px rgba(185,138,62,.5); } .deck .bm > div:last-child :is(b, .k) { color: var(--forest); }
+  .deck .bm b { display: block; margin-top: 6px; }
+
+  .deck .cols > div, .deck .steps > div { background: #0E5363; border-radius: 26px; padding: 26px 30px 28px; box-shadow: 0 9px 0 var(--edge); }
+  .deck .cols > div:last-child { background: #A8F0F5; color: var(--forest); } .deck .cols > div:last-child li { border-top-color: rgba(10,69,82,.2); }
+  .deck .cols li:first-child { border-top: 0; }
+  .deck .steps p { color: #CFE0E3; }
+  .deck .solid .note { align-self: flex-start; max-width: 62ch; padding: 14px 22px; border-radius: 18px; background: var(--pill); color: var(--forest); font-weight: 600; font-size: 17px; line-height: 1.4; box-shadow: 0 6px 0 var(--pill-edge); }
+  .deck .solid.green .fine { color: #A9CDD3; max-width: 70ch; }
+  .deck .hz li { align-items: center; } .deck .hz h3 { margin: 0; }
 </style>
 
 <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/environments/RoomEnvironment.js":"./vendor/RoomEnvironment.js","three/addons/geometries/RoundedBoxGeometry.js":"./vendor/RoundedBoxGeometry.js"}}</script>
