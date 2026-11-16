@@ -670,3 +670,5 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Follow-up: the thank-you is now its own closing slide (`#thanks`, slide 12) with the large Vita logo, "Thank you" and vitarehab.org; the Vision slide is back to its chart only. The slide counter and progress bar run to the closing slide.
 - First slide: big Vita logo in the lower left, under the headline (replaces the small "Vita Rehab" eyebrow).
 - Slide 8: the first "next" (or a click on the video) blows the video up to fill the screen and plays it with sound from the start; the next press goes to slide 9, "back" or Esc shrinks it again.
+
+- Slide 8 now shows only the trolley and arm (with the Vita branding), large on the left: slides with `data-solo` hide everything else in the 3D scene and aim the camera at the arm (`arm` view, science.js v41). Text card and video sit in a column on the right.

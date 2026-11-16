@@ -126,7 +126,7 @@ rob.ring.castShadow = false;
   const qm = new THREE.Mesh(new THREE.PlaneGeometry(.1, .1), new THREE.MeshPhysicalMaterial({ map: qt, roughness: .5 })); qm.position.set(.13, .52, .2535); base.add(qm); box(.112, .112, .005, mat('#58E6F2'), .13, .52, .2505, base, .008); }
 const POLE_ROB = V(0, 1, 0), E = V(), W = V(), U = V(), Nrm = V();
 
-const OV0 = scene.children.length;
+const OV0 = scene.children.length, ROBOT = new Set(scene.children.slice(AN1, OV0));      // the trolley and the arm, drawn alone on slides marked data-solo
 // ---------- what the exercise looks like in the air ----------
 const TRAIL = 150, trailPos = new Float32Array(TRAIL * 3), trailGeo = new THREE.BufferGeometry(); trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
 const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: '#0A4552', transparent: true, opacity: .7 })); trail.frustumCulled = false; scene.add(trail); let trailN = 0;
@@ -323,7 +323,7 @@ function joints(s) { const tg = TARGET[ex], out = [];
 // the seated patient and everything drawn around her go into two groups, so they can be hidden while she is still walking in
 const annaG = new THREE.Group(), ovG = new THREE.Group(); { const kids = scene.children.slice(), a = kids.slice(AN0, AN1), o = kids.slice(OV0); scene.add(annaG, ovG); a.forEach((c) => annaG.add(c)); o.forEach((c) => ovG.add(c)); }
 // ---------- the page drives the scene: the part of the text in the middle of the screen decides the exercise and the camera ----------
-const VIEWS = { arrive: [.74, .3, 6.4], stop: [.9, .27, 4.5], gym: [.8, .36, 12.8], wide: [.72, .27, 5.5], reach: [.62, .2, 4.7], stretch: [.42, .15, 4.7], circle: [1.02, .24, 4.5], follow: [1.02, .2, 4.5], push: [.55, .17, 4.4], press: [.62, .2, 4.7], row: [.7, .2, 4.7], leg: [.36, .13, 4.5] };
+const SOLO_X = .2, VIEWS = { arm: [.6, .16, 3.2], arrive: [.74, .3, 6.4], stop: [.9, .27, 4.5], gym: [.8, .36, 12.8], wide: [.72, .27, 5.5], reach: [.62, .2, 4.7], stretch: [.42, .15, 4.7], circle: [1.02, .24, 4.5], follow: [1.02, .2, 4.5], push: [.55, .17, 4.4], press: [.62, .2, 4.7], row: [.7, .2, 4.7], leg: [.36, .13, 4.5] };
 const view = { az: .72, el: .27, dist: 5.5, taz: .72, tel: .27, tdist: 5.5, drag: false, x: 0, y: 0, idle: 0 };
 const stage = $('.stage'), secs = $$('[data-ex]'), links = $$('[data-go]'); let active = null, VW = 1, VH = 1, phone = false, seen = true;
 const prog = $('#prog'), mainEl = $('main');
@@ -548,9 +548,9 @@ function frame(now) {
 
   // the camera
   facility(dt, T); if (active && active.dataset.cycle && !FREEZE && !paused && !arriving) { cyc += dt; if (cyc > 5.5) { cyc = 0; const OR = active.dataset.order ? active.dataset.order.split(' ') : ORDER, nx = OR[(OR.indexOf(ex) + 1) % OR.length], v = VIEWS[nx]; choose(nx); view.taz = v[0]; view.tel = v[1]; view.tdist = v[2]; } } else cyc = 0; view.idle += dt; const drift = FREEZE ? 0 : Math.sin(T * .22) * .1 * clamp((view.idle - 1.5) / 2); view.az = lerp(view.az, view.taz + drift, f(2.6)); view.el = lerp(view.el, view.tel, f(2.6)); view.dist = lerp(view.dist, view.tdist, f(2.6));
-  const narrow = phone, dist = view.dist * (narrow ? (cam.aspect < 1.15 ? 1.12 : .9) : 1.16); look.set(narrow ? .42 : .5, narrow ? .66 : .74, -.05);
+  const narrow = phone, dist = view.dist * (narrow ? (cam.aspect < 1.15 ? 1.12 : .9) : 1.16), solo = !!(active && active.dataset.solo); if (solo) look.set(BASE0.x, .78, BASE0.z); else look.set(narrow ? .42 : .5, narrow ? .66 : .74, -.05);
   cam.position.set(look.x + Math.sin(view.az) * Math.cos(view.el) * dist, look.y + Math.sin(view.el) * dist, look.z + Math.cos(view.az) * Math.cos(view.el) * dist); cam.lookAt(look);
-  voff = lerp(voff, BARE ? 0 : document.documentElement.classList.contains('mid') ? 0 : document.documentElement.classList.contains('nohud') ? -.17 : -.09, FREEZE ? 1 : 1 - Math.exp(-dt * 3)); if (!narrow) cam.setViewOffset(VW, VH, VW * voff, VH * -.03, VW, VH); else cam.clearViewOffset();
-  snap = false; renderer.render(scene, cam);
+  voff = lerp(voff, BARE ? 0 : solo ? SOLO_X : document.documentElement.classList.contains('nohud') ? -.17 : -.09, FREEZE ? 1 : 1 - Math.exp(-dt * 3)); if (!narrow) cam.setViewOffset(VW, VH, VW * voff, VH * -.03, VW, VH); else cam.clearViewOffset();
+  snap = false; if (solo) { const off = scene.children.filter((c) => c.visible && !c.isLight && !ROBOT.has(c)); off.forEach((c) => { c.visible = false; }); renderer.render(scene, cam); off.forEach((c) => { c.visible = true; }); } else renderer.render(scene, cam);
 }
 requestAnimationFrame((n) => { last = n; frame(n); });
