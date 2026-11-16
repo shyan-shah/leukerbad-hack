@@ -270,8 +270,8 @@
 <main class="scroll">
   <section class="ch" id="intro" data-ex="press" data-view="wide">
     <div class="panel">
-      <h1>More practice. Measured.</h1>
-      <p class="lead">Rehab on a robot arm. Every rep measured.</p>
+      <h1>Rehab on a robot arm.</h1>
+      <p class="lead">Every rep measured.</p>
       <p class="cue" aria-hidden="true"><i></i>Press →</p>
       <div class="brand big"><svg viewBox="0 0 76 64" aria-hidden="true"><path d="M9 24c10 0 13 31 26 31s17-33 30-41" fill="none" stroke="#58E6F2" stroke-width="8" stroke-linecap="round"/><circle cx="65" cy="13" r="8.5" fill="#0A4552"/></svg><span class="wm">vita</span><em>Rehab</em></div>
     </div>
@@ -309,16 +309,6 @@
       <ul class="exl" id="exl"></ul>
       <p class="what">4 levels, 10–28 N. Every rep recorded.</p>
       <p class="quote">Advised by Katja, rehab specialist at Klimmendaal. Her waiting list: over a year.</p>
-    </div>
-  </section>
-  <section class="ch" id="safety" data-ex="press" data-view="stop" data-fac="1" data-stop="1">
-    <div class="panel card">
-      <div class="headblock"><p class="eyebrow">Safety</p><h2>One red button stops it</h2></div>
-      <ul class="exl">
-        <li><b>Fixed programs</b><span>10–28 N</span></li>
-        <li><b>Auto stop</b><span>above 0.40 m/s or too much force</span></li>
-        <li><b>Any staff member</b><span>can press stop</span></li>
-      </ul>
     </div>
   </section>
 
@@ -566,14 +556,14 @@ document.getElementById('copy').addEventListener('click', () => {
 <div class="pager" aria-label="Slides"><button type="button" id="prev" aria-label="Previous slide">‹</button><button type="button" id="nxt" aria-label="Next slide">›</button><button type="button" class="fs" id="fs" aria-label="Full screen" title="Full screen (F)">⛶</button></div>
 <script>
 // Deck: on desktop one slide is on screen at a time. Arrows, Space, Page Up/Down, the wheel and the buttons change slide. On phones the page scrolls normally.
-{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'today', 'business', 'later', 'vision', 'thanks'].map((id) => document.getElementById(id)).filter(Boolean), prog = document.getElementById('prog');
+{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'app', 'today', 'business', 'later', 'vision', 'thanks'].map((id) => document.getElementById(id)).filter(Boolean), prog = document.getElementById('prog');
   const wide = matchMedia('(min-width: 900px)'), plain = ['basis', 'today'], hud = document.querySelector('.hud'), bPrev = document.getElementById('prev'), bNext = document.getElementById('nxt'); let n = 0, wheelAt = 0, lastEx = 'press';
   const deck = () => root.classList.contains('deck');
   // the pitch itself ends at the long-term vision; everything after it is appendix for questions
   const main = slides.indexOf(document.getElementById('thanks')) + 1;
   const near = () => { let b = 0, bd = 1e9; slides.forEach((el, i) => { const d = Math.abs(el.getBoundingClientRect().top); if (d < bd) { bd = d; b = i; } }); return b; };
   const paint = () => { slides.forEach((el, i) => { el.classList.toggle('cur', deck() && i === n); el.classList.toggle('past', deck() && i < n); });
-    bPrev.disabled = n === 0; bNext.disabled = n === slides.length - 1; root.classList.toggle('nohud', deck() && plain.includes(slides[n].id)); root.classList.toggle('nomus', deck() && ['intro', 'path', 'safety'].includes(slides[n].id)); const key = slides[n].dataset.ex || ''; if (deck() && key && key !== lastEx) { lastEx = key; hud.classList.remove('swap'); void hud.offsetWidth; hud.classList.add('swap'); } if (deck()) { prog.style.transform = 'scaleX(' + Math.min(1, n / (main - 1)).toFixed(4) + ')'; dispatchEvent(new Event('slidechange')); document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.go === slides[n].id)); } };
+    bPrev.disabled = n === 0; bNext.disabled = n === slides.length - 1; root.classList.toggle('nohud', deck() && plain.includes(slides[n].id)); root.classList.toggle('nomus', deck() && ['intro', 'path'].includes(slides[n].id)); const key = slides[n].dataset.ex || ''; if (deck() && key && key !== lastEx) { lastEx = key; hud.classList.remove('swap'); void hud.offsetWidth; hud.classList.add('swap'); } if (deck()) { prog.style.transform = 'scaleX(' + Math.min(1, n / (main - 1)).toFixed(4) + ')'; dispatchEvent(new Event('slidechange')); document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.go === slides[n].id)); } };
   const go = (i, inner) => { n = Math.max(0, Math.min(slides.length - 1, i));
     if (deck()) { paint(); slides[n].scrollTop = 0; if (inner && inner !== slides[n]) inner.scrollIntoView({ block: 'start' }); try { history.replaceState(null, '', '#' + slides[n].id); } catch (e) {} }
     else (inner || slides[n]).scrollIntoView({ behavior: 'smooth', block: 'start' }); };
