@@ -120,6 +120,17 @@ Then open `http://127.0.0.1:8000/app/` (patient app), `/screens/patient.html` (b
 
 On the station laptop wired to the arm: `python -m server.run --robot --lan` (Push only by default; `--with-row-strength` adds Row and the strength test). Cold-start steps are in `robot/RUNBOOK.md`.
 
+## Start here
+
+| If you want | Open |
+|---|---|
+| The pitch | `demo/pitch-deck/vita-pitch-deck.html` (double-click) |
+| The technical hand-in document | `demo/hand-in-document-docs/hand-in-document.pdf` |
+| The safety layer | [`robot/arm.py`](robot/arm.py) and [`robot/README.md`](robot/README.md) |
+| How the exercises work | [`software/simple.py`](software/simple.py) and [`software/EXERCISES.md`](software/EXERCISES.md) |
+| The API and screens | [`server/README.md`](server/README.md) and [`server/API.md`](server/API.md) |
+| How the team worked | [`context/README.md`](context/README.md) |
+
 ## Repository map
 
 | Folder | What | Owner |
