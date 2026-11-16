@@ -616,3 +616,7 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Check-in is now an NFC tap: Anna taps her phone on the handle (tag inside it). The QR sticker and scan beam are gone from the 3D and the app mock-up.
 - The 3D handle is now the round 3D-printed knob we actually have, with the NFC tag in it.
 - Open `vita-pitch-deck.html` directly (single file), or serve the folder for `index.html`. `vita-app.html` not touched.
+
+**Mat · 2026-11-16 · pitch deck: Swiss data, physio-centre feedback**
+- `demo/pitch-deck`: all figures are now Swiss with sources: 16,000 strokes a year (Swiss Heart Foundation), 1 in 4 aged 65+ by 2050 (BFS), 43,400 new nurses needed by 2029 (Obsan 2021), CHF 47–64 per physio session (tariff 7301), station price CHF 20–28k, Swiss medical-device rules (MedDO/Swissmedic). Study figures (Lang 2009, RATULS) unchanged.
+- We called three Swiss physio centres: all see more patients coming in, and all said measured training like Vita would give the physio a better overview of progress, so they could treat more patients at a time. On the "Why a station" slide; centres not named.
