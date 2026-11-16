@@ -672,3 +672,5 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - Slide 8: the first "next" (or a click on the video) blows the video up to fill the screen and plays it with sound from the start; the next press goes to slide 9, "back" or Esc shrinks it again.
 
 - Slide 8 now shows only the trolley and arm (with the Vita branding), large on the left: slides with `data-solo` hide everything else in the 3D scene and aim the camera at the arm (`arm` view, science.js v41). Text card and video sit in a column on the right.
+
+**Gio · 2026-11-16 · pitch deck: Sources wording** — "cited from memory" line replaced with "The first group was checked against the original sources. The exercise references below are being verified against the original papers." in both deck files. Katja agreed to be named, so the product slide and website keep her name.
