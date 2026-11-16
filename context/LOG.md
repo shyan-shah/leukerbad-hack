@@ -610,3 +610,9 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 - `server/run.py`: with `--robot` the server offers push_1..4 and nothing else, exactly as before my Row and Strength work. `--with-row-strength` adds row_1..4 and strength. Without it they are not runnable on the arm at all (`--exercises row_1` is refused). `--push-only` is still accepted and does nothing. `--sim` and `--mock` are unchanged (no flag needed).
 - The start-up banner says which it is, and with the flag on `--robot` it prints a NOTE that Row and the strength test have not passed their real-arm checks.
 - Shyan: the real-arm checks in my 02:45 entry now say to start with `--with-row-strength`; that entry's line about the default is corrected in place. `server/API.md` section 9 says the same.
+
+**Mat · 2026-11-16 · pitch deck: 3 demo exercises, NFC in the handle, round knob, future-exercises slide**
+- `demo/pitch-deck`: slides 1-11 now show only the three demo exercises (Push, Row, Strength test). The other five (forward reach, assisted stretch, shoulder circles, follow the dot, knee extension) moved to a new slide 12 "The same arm, more exercises", labelled "Future idea · not in the demo".
+- Check-in is now an NFC tap: Anna taps her phone on the handle (tag inside it). The QR sticker and scan beam are gone from the 3D and the app mock-up.
+- The 3D handle is now the round 3D-printed knob we actually have, with the NFC tag in it.
+- Open `vita-pitch-deck.html` directly (single file), or serve the folder for `index.html`. `vita-app.html` not touched.

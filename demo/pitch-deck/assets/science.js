@@ -168,20 +168,28 @@ const EX = {
     note: 'She stays within 1.4 cm of the target on average (88%). Control is weakest when crossing from right to left.', marks: [], off: [0, 0, 0], span: 1, chase: true,
     path(t) { const a = t * Math.PI * 2; return [.55, .99 + Math.sin(a * 2) * .085, Z0 + Math.sin(a) * .18]; },
     at(t) { const p = this.path(t - .018), w = Math.sin(t * 40) * .006; return { x: p[0], y: p[1] + w, z: p[2] - w, lean: .14, value: Math.round(88 + Math.sin(t * 19) * 3), state: 'ok', say: t < .5 ? 'Follow the yellow dot with your hand.' : 'Right on it! Stay with the dot.' }; } },
-  push: { name: 'Strength test', why: 'Pushing up from a chair, opening a heavy door', period: 6.4, label: 'Push force', unit: 'N', delta: '+5 N on last week', repsLab: 'attempts', reps: 3, mode: 'holds completely still', modeVal: '38 N', modeLab: 'best today', series: [24, 27, 30, 33, 38],
-    note: 'Peak push force 38 N, up from 33 N. Left and right have not been compared yet: test the left arm next session.', marks: [], off: [0, 0, 0], span: 1, noTrail: true,
-    at(t) { const f = t < .12 ? 0 : t < .45 ? ease((t - .12) / .33) : t < .72 ? 1 : t < .88 ? 1 - ease((t - .72) / .16) : 0, shake = f * Math.sin(t * 190) * .0025; return { x: .56 + f * .012 + shake, y: .97, z: Z0, lean: .16 + f * .09, value: Math.round(f * 38 + (f === 1 ? Math.sin(t * 60) * .6 : 0)), state: f > .05 ? 'load' : 'ok', live: f > .03 ? 'N' : '',
-      say: t < .12 ? 'The handle stays still. Get ready to push.' : t < .45 ? 'Push against me, as hard as feels comfortable.' : t < .72 ? 'Hold it… 38 newtons. Stronger than last week!' : 'And relax. Very good.' }; } },
+  press: { name: 'Push', why: 'Pushing up from a chair, a door, a trolley', period: 5.2, label: 'Band force', unit: 'N', delta: 'Level 3 of 4', repsLab: 'repetitions', reps: 10, mode: 'pushes back like an elastic band', modeVal: '20 N', modeLab: 'level 3', series: [6, 8, 10, 10, 10],
+    note: 'Ten of ten pushes at level 3 (20 N), full range every time. Ready to try level 4 next session.', marks: [], off: [0, -.075, .1], span: .42,
+    at(t) { const k = there(t, .44, .54, .92); return { x: lerp(X0, .72, k), y: lerp(.95, .97, k), z: Z0, lean: .06 + k * .2, value: k > .03 ? Math.round(20 + Math.sin(t * 40) * .6) : 0, state: k > .03 ? 'load' : 'ok', live: k > .03 ? 'N' : '',
+      say: t < .44 ? 'Level 3. Push the handle out, nice and slow.' : t < .54 ? 'All the way. That one counts: 7 of 10.' : t < .92 ? 'And let it bring you back.' : 'Ready? Next one.' }; } },
+  row: { name: 'Row', why: 'Pulling a door open, getting up with a rail, carrying shopping', period: 5.2, label: 'Band force', unit: 'N', delta: 'Level 3 of 4', repsLab: 'repetitions', reps: 10, mode: 'resists as she pulls back', modeVal: '20 N', modeLab: 'level 3', series: [5, 7, 9, 10, 10],
+    note: 'Ten rows at level 3. The pull slows in the last few centimetres: keep level 3 for one more session.', marks: [], off: [0, -.075, .1], span: .42,
+    at(t) { const k = there(t, .44, .54, .92); return { x: lerp(.72, X0 + .03, k), y: lerp(.97, .95, k), z: Z0, lean: .3 - k * .34, value: k > .03 ? Math.round(20 + Math.sin(t * 40) * .6) : 0, state: k > .03 ? 'load' : 'ok', live: k > .03 ? 'N' : '',
+      say: t < .44 ? 'The arm holds the handle out. Pull it towards you.' : t < .54 ? 'Squeeze your shoulder blades. 5 of 10.' : t < .92 ? 'And slowly let it go back out.' : 'Good. Once more.' }; } },
+  push: { name: 'Strength test', why: 'Pushing up from a chair, opening a heavy door', period: 6.4, label: 'Push force', unit: 'N', delta: '+2 N on last week', repsLab: 'tries', reps: 3, mode: 'holds completely still', modeVal: '26 N', modeLab: 'best today', series: [18, 20, 22, 24, 26],
+    note: 'Peak push force 26 N, up from 24 N. Left and right have not been compared yet: test the left arm next session.', marks: [], off: [0, 0, 0], span: 1, noTrail: true,
+    at(t) { const f = t < .12 ? 0 : t < .45 ? ease((t - .12) / .33) : t < .72 ? 1 : t < .88 ? 1 - ease((t - .72) / .16) : 0, shake = f * Math.sin(t * 190) * .0025; return { x: .56 + f * .012 + shake, y: .97, z: Z0, lean: .16 + f * .09, value: Math.round(f * 26 + (f === 1 ? Math.sin(t * 60) * .6 : 0)), state: f > .05 ? 'load' : 'ok', live: f > .03 ? 'N' : '',
+      say: t < .12 ? 'The handle stays still. Get ready to push.' : t < .45 ? 'Push against me, as hard as feels comfortable.' : t < .72 ? 'Hold it… 26 newtons. Stronger than last week!' : 'And relax. Very good.' }; } },
   leg: { name: 'Knee extension', why: 'Standing up, climbing stairs, steadier walking', period: 6, label: 'Knee angle', unit: '°', delta: '+7° on last week', repsLab: 'repetitions', reps: 10, mode: 'adds gentle resistance', modeVal: '1.5 kg', modeLab: 'resistance', series: [48, 55, 60, 65, 72], leg: true, base: [.8, -.42],
     note: 'Right knee now extends to 72° against 1.5 kg. Movement is steady going up, quicker coming down: cue her to lower slowly.',
     marks: [{ p: [KNEE_R.x + CUFF_AT * Math.sin(1.25), KNEE_R.y - CUFF_AT * Math.cos(1.25), .1], text: 'Goal 72°', dy: .2, dx: .14 }], off: [0, 0, .09], span: .4,
     at(t) { const k = there(t, .4, .55, .92), th = lerp(.15, 1.25, k); return { x: KNEE_R.x + CUFF_AT * Math.sin(th), y: KNEE_R.y - CUFF_AT * Math.cos(th), z: .1, th, lean: -.03 * k, value: Math.round(lerp(8, 72, k)), state: k > .05 && t < .55 ? 'load' : 'ok', look: -.3,
       say: t < .4 ? 'Lift your foot and straighten the knee.' : t < .55 ? 'Hold… 72 degrees. That’s your best yet!' : t < .92 ? 'Lower it slowly. Slowly…' : 'Good. Rest a second.' }; } },
 };
-const ORDER = ['reach', 'stretch', 'circle', 'follow', 'push', 'leg'];
+const ORDER = ['press', 'row', 'push'];      // the three the real station runs in the demo
 let stopOn = false, stopT = 0, halted = false, reachK = 0, arrOn = false, arrT = 0, arriving = false; const ARR_END = 10.2, ARRQ = qs.get('arr');      // the arrival: she walks in, scans the station, sits down
       // the emergency-stop slide: a staff member presses the red button, the arm holds still
-let blendT = 9, blendFrom = null, ex = 'reach', exT = 0, paused = false, lastSay = '', lastVal = -1, sayAt = -1, snap = true, wasLeg = false;
+let blendT = 9, blendFrom = null, ex = 'press', exT = 0, paused = false, lastSay = '', lastVal = -1, sayAt = -1, snap = true, wasLeg = false;
 const el = { val: $('#mVal'), unit: $('#mUnit'), lab: $('#mLab'), say: $('#say'), mode: $('#mode'), name: $('#mName') };
 function choose(name) { dispatchEvent(new CustomEvent('exchange', { detail: name })); ex = name; exT = 0; trailN = 0; lastVal = -1; const d = EX[name];
   el.unit.textContent = d.unit; el.lab.textContent = d.label; el.mode.textContent = d.mode; el.name.textContent = d.name;
@@ -209,7 +217,9 @@ const TARGET = {
   stretch: { name: 'Shoulder capsule, being stretched', parts: { sh: 1, up: .35 }, act: (s) => (s.value - 60) / 58 },
   circle: { name: 'Rotator cuff and shoulder blade', parts: { sh: 1, up: .5 }, act: (s, t) => .65 + Math.sin(t * Math.PI * 2) * .3 },
   follow: { name: 'Forearm, hand and movement control', parts: { fore: 1, hand: 1, head: .6 }, act: (s, t) => .65 + Math.sin(t * Math.PI * 8) * .3 },
-  push: { name: 'Chest, shoulder and triceps', parts: { torso: .7, sh: 1, up: 1 }, act: (s) => s.value / 38 },
+  push: { name: 'Chest, shoulder and triceps', parts: { torso: .7, sh: 1, up: 1 }, act: (s) => s.value / 26 },
+  press: { name: 'Chest, shoulder and triceps', parts: { torso: .6, sh: 1, up: 1 }, act: (s) => s.value / 20 },
+  row: { name: 'Upper back, shoulders and biceps', parts: { torso: .8, sh: 1, up: .8, fore: .4 }, act: (s) => s.value / 20 },
   leg: { name: 'Thigh muscle (quadriceps)', parts: { thigh: 1 }, act: (s) => (s.value - 8) / 64 },
 };
 // Each exercise lists its muscles: id on the map, name, what it does, how hard it works (0 to 1) at a moment of the repetition, and 1 if it is being stretched rather than working.
@@ -219,6 +229,8 @@ TARGET.stretch.mus = [['cap', 'Shoulder capsule', 'is stretched', (a) => a, 1], 
 TARGET.circle.mus = [['cuff', 'Rotator cuff', 'keeps the joint centred', () => .6], ['delt', 'Deltoid', 'lifts the arm', (a, t) => .3 + .65 * osc(t, 1, Math.PI / 2)], ['pec', 'Chest muscle', 'pulls the arm inward', (a, t) => .12 + .75 * Math.max(0, Math.sin(t * Math.PI * 2))], ['lat', 'Latissimus', 'pulls it outward', (a, t) => .12 + .75 * Math.max(0, -Math.sin(t * Math.PI * 2))]];
 TARGET.follow.mus = [['brain', 'Brain: movement control', 'compares and corrects', (a, t) => .5 + .45 * osc(t, 9)], ['fore', 'Forearm muscles', 'make fine corrections', (a, t) => .35 + .55 * osc(t, 7, 1)], ['delt', 'Deltoid', 'holds the arm up', () => .5], ['cuff', 'Rotator cuff', 'steadies the shoulder', () => .45]];
 TARGET.push.mus = [['pec', 'Chest muscle', 'pushes forward', (a) => a], ['tri', 'Triceps', 'locks the elbow', (a) => a * .95], ['delt', 'Front deltoid', 'holds the arm up', (a) => .25 + a * .6], ['abs', 'Trunk muscles', 'brace the body', (a) => a * .6]];
+TARGET.press.mus = [['pec', 'Chest muscle', 'pushes the handle out', (a) => a], ['tri', 'Triceps', 'straightens the elbow', (a) => a * .9], ['delt', 'Front deltoid', 'drives the arm forward', (a) => .2 + a * .65], ['abs', 'Trunk muscles', 'brace the body', (a) => a * .5]];
+TARGET.row.mus = [['lat', 'Latissimus', 'pulls the arm back', (a) => a], ['back', 'Upper back', 'squeezes the shoulder blades', (a) => a * .85], ['bic', 'Biceps', 'bends the elbow', (a) => a * .8], ['delt', 'Rear deltoid', 'draws the arm back', (a) => .2 + a * .55]];
 TARGET.leg.mus = [['quad', 'Quadriceps', 'straightens the knee', (a) => a], ['hipf', 'Hip flexors', 'hold the thigh steady', (a) => .15 + a * .35], ['ham', 'Hamstrings', 'lengthen and let go', (a) => a * .6, 1], ['abs', 'Trunk muscles', 'keep her upright', (a) => .2 + a * .2, 0, 1]];
 const IDS = ['back', 'abs', 'lat', 'pec', 'cuff', 'cap', 'hipf', 'ham', 'quad', 'calf', 'tib', 'tri', 'bic', 'fore', 'delt'], ACT = {}; IDS.forEach((id) => { ACT[id] = { a: 0, t: 0, st: 0, on: false, name: '' }; });
 const rowsOf = (tg) => tg.mus.map((m) => `<div class="mrow"><p><b>${m[1]}</b><span>${m[2]}</span></p><div class="bar${m[4] ? ' st' : ''}"><i></i></div></div>`).join('');
@@ -282,7 +294,7 @@ function setMuscles(name) { const tg = TARGET[name]; tName.textContent = tg.name
 // ---------- the joints: a marker on each working joint, an arc that opens with the angle, and the angle in degrees ----------
 // Shoulder: how far the arm is lifted away from the body. Elbow: the angle between upper arm and forearm (180 = straight). Knee: how far the shin is lifted from hanging down.
 const JC = '#0E708F', JN = { S: 'Shoulder', E: 'Elbow', K: 'Knee' }, JOFF = { S: V(-.2, .1, 0), E: V(.02, -.13, .05), K: V(-.08, .15, 0) }, AN = 22;
-TARGET.reach.jts = ['S', 'E']; TARGET.stretch.jts = ['S']; TARGET.circle.jts = ['S']; TARGET.follow.jts = ['E', 'S']; TARGET.push.jts = ['E', 'S']; TARGET.leg.jts = ['K']; TARGET.stretch.valJ = 'S'; TARGET.leg.valJ = 'K';
+TARGET.reach.jts = ['S', 'E']; TARGET.stretch.jts = ['S']; TARGET.circle.jts = ['S']; TARGET.follow.jts = ['E', 'S']; TARGET.push.jts = ['E', 'S']; TARGET.leg.jts = ['K']; TARGET.press.jts = ['E', 'S']; TARGET.row.jts = ['E', 'S']; TARGET.stretch.valJ = 'S'; TARGET.leg.valJ = 'K';
 const ringTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.beginPath(); g.arc(64, 64, 42, 0, 7); g.fillStyle = 'rgba(255,255,255,.6)'; g.fill(); g.lineWidth = 12; g.strokeStyle = JC; g.stroke(); g.beginPath(); g.arc(64, 64, 11, 0, 7); g.fillStyle = JC; g.fill(); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
 const gJ = mk('g', {}); map.insertBefore(gJ, gTxt); const J3 = {}, jtsEl = $('#jts'), axis = V(), jq = new THREE.Quaternion(), jv = V();
 ['S', 'E', 'K'].forEach((k) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, transparent: true, depthTest: false, toneMapped: false })); sp.renderOrder = 6; scene.add(sp);
@@ -310,7 +322,7 @@ function joints(s) { const tg = TARGET[ex], out = [];
 // the seated patient and everything drawn around her go into two groups, so they can be hidden while she is still walking in
 const annaG = new THREE.Group(), ovG = new THREE.Group(); { const kids = scene.children.slice(), a = kids.slice(AN0, AN1), o = kids.slice(OV0); scene.add(annaG, ovG); a.forEach((c) => annaG.add(c)); o.forEach((c) => ovG.add(c)); }
 // ---------- the page drives the scene: the part of the text in the middle of the screen decides the exercise and the camera ----------
-const VIEWS = { arrive: [.74, .3, 6.4], stop: [.9, .27, 4.5], gym: [.8, .36, 12.8], wide: [.72, .27, 5.5], reach: [.62, .2, 4.7], stretch: [.42, .15, 4.7], circle: [1.02, .24, 4.5], follow: [1.02, .2, 4.5], push: [.55, .17, 4.4], leg: [.36, .13, 4.5] };
+const VIEWS = { arrive: [.74, .3, 6.4], stop: [.9, .27, 4.5], gym: [.8, .36, 12.8], wide: [.72, .27, 5.5], reach: [.62, .2, 4.7], stretch: [.42, .15, 4.7], circle: [1.02, .24, 4.5], follow: [1.02, .2, 4.5], push: [.55, .17, 4.4], press: [.62, .2, 4.7], row: [.7, .2, 4.7], leg: [.36, .13, 4.5] };
 const view = { az: .72, el: .27, dist: 5.5, taz: .72, tel: .27, tdist: 5.5, drag: false, x: 0, y: 0, idle: 0 };
 const stage = $('.stage'), secs = $$('[data-ex]'), links = $$('[data-go]'); let active = null, VW = 1, VH = 1, phone = false, seen = true;
 const prog = $('#prog'), mainEl = $('main');
@@ -368,17 +380,34 @@ function pose(p, P, N, hands, feet) { between(p.torso, P, N); pD.copy(N).sub(P).
     pS.copy(P); pS.y -= .02; pS.z += sg * .09; elbow(pM, pS, feet[i], .44, .44, poleL); between(p.th[i], pS, pM); between(p.sh[i], pM, feet[i]); p.kn[i].position.copy(pM); p.feet[i].position.set(feet[i].x + .05, feet[i].y - .035, feet[i].z); } }
 const vv = () => [V(), V()];
 
-// Anna on her feet: she walks to the station, scans the code with her wPhone, turns and sits down. Then the seated model takes over.
+// the handle as it is today: a round knob, 3D printed, on a short neck from the flange; the NFC tag sits inside it (the cyan dot)
+const knob = new THREE.Group(), knobHand = new THREE.Group(); scene.add(knob, knobHand);
+{ const printed = mat('#0E5A6A', { roughness: .6 }); cyl(.012, .014, .03, M.joint, 0, .015, 0, knob); cyl(.03, .03, .006, M.cap, 0, .03, 0, knob);
+  const k = ball(.045, printed, 0, -.014, 0, knob); k.scale.set(1, .74, 1);
+  [-.024, -.012, 0, .01].forEach((y) => { const r = add(new THREE.Mesh(new THREE.TorusGeometry(.045 * Math.sqrt(1 - ((y + .014) / .0333) ** 2) + .0004, .0008, 4, 40), mat('#0A4552')), knob); r.rotation.x = Math.PI / 2; r.position.y = y; r.castShadow = false; });      // print layers
+  const tag = add(new THREE.Mesh(new THREE.CircleGeometry(.008, 24), glow('#58E6F2')), knob); tag.rotation.x = Math.PI / 2; tag.position.y = -.0475;
+  const arc = (R, tube, y, from, len) => { const m = add(new THREE.Mesh(new THREE.TorusGeometry(R, tube, 10, 24, len), M.skin), knobHand); m.rotation.set(Math.PI / 2, 0, from); m.position.y = y; ball(tube, M.skin, R * Math.cos(from + len), y, R * Math.sin(from + len), knobHand); };
+  [-.02, -.006].forEach((y, i) => arc(.05 - i * .002, .009, y, .1, Math.PI - .2));      // fingers round the far side of the knob
+  arc(.049, .01, -.016, Math.PI + 1, 1.2);      // the thumb on the near side
+  const palm = ball(.026, M.skin, -.03, -.03, .012, knobHand); palm.scale.set(.6, .9, 1); }
+gripHand.children.forEach((c) => { c.visible = false; }); rob.grip.scale.setScalar(1e-4); rob.top.scale.setScalar(1e-4);
+const kX = V(), kZ = V(0, 1, 0), kM = new THREE.Matrix4();
+// Anna on her feet: she walks to the station, taps her wPhone on the handle (the NFC tag is inside it), turns and sits down. Then the seated model takes over.
 const walker = person(scene, { top: M.cardi, legs: M.trousers, skin: M.skin, hair: M.hair, shoe: M.shell, sole: M.accent, style: 'bun', collar: M.shell, long: true }); walker.g.visible = false;
 { const gold = mat('#B98A3E', { metalness: .85, roughness: .28 }); [-.042, .042].forEach((z) => { const r = add(new THREE.Mesh(new THREE.TorusGeometry(.027, .0034, 10, 36), gold), walker.head); r.position.set(.1, .012, z); r.rotation.y = Math.PI / 2; r.castShadow = false; }); box(.004, .004, .03, gold, .1, .014, 0, walker.head, .001); }
 const wPhone = new THREE.Group(); walker.g.add(wPhone); box(.012, .135, .068, mat('#1E282A', { roughness: .3 }), 0, 0, 0, wPhone, .006); box(.003, .118, .058, glow('#BFE9F3'), .0075, 0, 0, wPhone, .002);
 const beam = new THREE.Mesh(new THREE.CylinderGeometry(.006, .03, 1, 16, 1, true), new THREE.MeshBasicMaterial({ color: '#58E6F2', transparent: true, opacity: .4, side: THREE.DoubleSide, depthWrite: false })); scene.add(beam); beam.visible = false;
-const qrGlow = add(new THREE.Mesh(new THREE.TorusGeometry(.085, .008, 8, 4), glow('#58E6F2')), base); qrGlow.position.set(.13, .52, .258); qrGlow.rotation.z = Math.PI / 4; qrGlow.castShadow = false; qrGlow.visible = false;
+const HW = V(.6, .82, -.34);      // where the handle waits during the arrival (H in the frame loop)
+const qrGlow = new THREE.Group(); scene.add(qrGlow); qrGlow.visible = false;      // the NFC tap: rings ripple out of the handle
+const ripples = [0, 1, 2].map(() => { const r = new THREE.Mesh(new THREE.TorusGeometry(.05, .008, 8, 48), new THREE.MeshBasicMaterial({ color: '#58E6F2', transparent: true, depthWrite: false, depthTest: false })); r.renderOrder = 9; r.rotation.x = Math.PI / 2; qrGlow.add(r); return r; });
+qrGlow.position.set(HW.x, HW.y + .045, HW.z);
+// no QR sticker on the trolley any more: the tag is in the handle (the sticker is built in the shared part above, so it is hidden here)
+base.children.forEach((m) => { if (Math.abs(m.position.x - .13) < .001 && Math.abs(m.position.y - .52) < .001 && m.position.z > .24) m.visible = false; });
 const wP = V(), wN = V(), wH = vv(), wF = vv(), wA = V(), wB = V();
 function arrive(dt) { walker.g.visible = arriving; if (!arriving) { beam.visible = qrGlow.visible = false; return; }
   const t = arrT, sst = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); }, QX = base.position.x + .13, QZ = base.position.z + .2535;
-  const A0 = [1.3, 2.7], A1 = [QX, QZ + .62], A2 = [.47, .06];      // the door side, in front of the code, in front of the chair
-  let x, z, th, walk = 0, dist = 0; const TH1 = Math.PI / 2, TH2 = Math.atan2(A1[1] - A2[1], A2[0] - A1[0]);
+  const A0 = [1.3, 2.7], A1 = [HW.x - .435, HW.z - .1], A2 = [.47, .06];      // the door side, in front of the handle, in front of the chair
+  let x, z, th, walk = 0, dist = 0; const TH1 = 0, TH2 = Math.atan2(A1[1] - A2[1], A2[0] - A1[0]);
   if (t < 3) { const k = sst(0, 3, t); x = lerp(A0[0], A1[0], k); z = lerp(A0[1], A1[1], k); th = Math.atan2(A0[1] - A1[1], A1[0] - A0[0]); th = lerp(th, TH1, sst(2.3, 3, t)); walk = Math.sin(Math.PI * clamp(t / 3)) > .12 ? 1 : .4; dist = k * 2.2; }
   else if (t < 5.2) { x = A1[0]; z = A1[1]; th = TH1; }
   else if (t < 6.8) { const k = sst(5.2, 6.8, t); x = lerp(A1[0], A2[0], k); z = lerp(A1[1], A2[1], k); th = lerp(TH1, TH2, sst(5.2, 5.7, t)); walk = 1; dist = k * .95; }
@@ -389,12 +418,12 @@ function arrive(dt) { walker.g.visible = arriving; if (!arriving) { beam.visible
   for (let i = 0; i < 2; i++) { const a = ph + i * Math.PI, sg = i ? 1 : -1;
     wF[i].set(lerp(Math.sin(a) * .13 * walk, .47 - g.position.x, sit), .08 + Math.max(0, Math.cos(a)) * .045 * walk * (1 - sit), sg * lerp(.09, .1, sit));
     wH[i].set(lerp(.05 - Math.sin(a) * .09 * walk, .3, sit), lerp(.84, .63, sit), sg * lerp(.2, .11, sit)); }
-  const hold = Math.max(scan, 1 - sst(5.6, 6.4, t)) * (t > 2.4 ? 1 : 0) || (t <= 2.4 ? .0 : 0), up = scan;      // the wPhone is in her right hand until she has scanned
-  const carry = t < 6.4 ? 1 : 0; wH[1].x = lerp(wH[1].x, .31, up); wH[1].y = lerp(carry ? lerp(wH[1].y, .9, .5 * (1 - sit)) : wH[1].y, .98, up); wH[1].z = lerp(wH[1].z, .1, up);
+  const up = scan;      // the wPhone is in her right hand until she has tapped the handle
+  const carry = t < 6.4 ? 1 : 0; wH[1].x = lerp(wH[1].x, .4, up); wH[1].y = lerp(carry ? lerp(wH[1].y, .9, .5 * (1 - sit)) : wH[1].y, .86, up); wH[1].z = lerp(wH[1].z, .1, up);
   pose(walker, wP, wN, wH, wF); walker.head.rotation.z = -.08 - scan * .32 - Math.sin(Math.PI * sit) * .2; walker.head.rotation.y = 0;
-  wPhone.visible = t < 6.4; wPhone.position.set(wH[1].x + .035, wH[1].y + .05, wH[1].z); wPhone.rotation.z = -.35 - up * .75;
-  const on = t > 3.3 && t < 4.4; beam.visible = on; qrGlow.visible = t > 4.4 && t < 5.6; if (qrGlow.visible) qrGlow.scale.setScalar(1 + Math.sin((t - 4.4) * 10) * .08);
-  if (on) { wA.copy(wPhone.position); g.localToWorld(wA); wB.set(QX, .52, QZ + .01); between(beam, wA, wB); beam.scale.set(1, wA.distanceTo(wB), 1); beam.material.opacity = .28 + Math.sin(t * 14) * .12; } }
+  wPhone.visible = t < 6.4; wPhone.position.set(wH[1].x + .035, wH[1].y + .05, wH[1].z); wPhone.rotation.z = -.35 - up * 1.15;
+  beam.visible = false; qrGlow.visible = t > 3.2 && t < 5.2;      // the tap: three rings ripple out of the handle, then the plan loads
+  if (qrGlow.visible) ripples.forEach((r, i) => { const k = ((t - 3.2) * 1.1 + i / 3) % 1; r.scale.setScalar(.6 + k * 2.2); r.material.opacity = (1 - k) * .9; }); }
 
 // floor and two walls
 fac(.45, -.3, 0, 0, 'grow', (g) => { box(7.7, .04, 6.3, FM.floor, 0, -.024, 0, g, .02); for (let i = -3; i <= 3; i++) box(.012, .004, 6.2, fm('#DCCFBB'), i * 1.02, -.003, 0, g, .001); });
@@ -500,6 +529,7 @@ function frame(now) {
   rob.capS.position.copy(SHO).addScaledVector(Nrm, OFF * .5); rob.capS.quaternion.setFromUnitVectors(YA, Nrm); rob.capE.position.copy(E).addScaledVector(Nrm, OFF * .5); rob.capE.quaternion.copy(rob.capS.quaternion); rob.capW.position.copy(W); rob.capW.quaternion.copy(rob.capS.quaternion);
   between(rob.l3, W, tA.copy(P).addScaledVector(U, .04 + gap)); rob.flange.position.copy(P).addScaledVector(U, .034 + gap); rob.flange.quaternion.setFromUnitVectors(YA, U); rob.ring.position.copy(P).addScaledVector(U, .048 + gap); rob.ring.quaternion.copy(rob.flange.quaternion);
   rob.grip.position.copy(P); rob.top.position.set(P.x, P.y + .078, P.z); gripHand.visible = !isLeg && rob.grip.visible; if (gripHand.visible) { gripHand.position.copy(P); gripHand.rotation.y = Math.atan2(ER.z - P.z, P.x - ER.x); }
+  knob.visible = rob.grip.visible; knobHand.visible = gripHand.visible; kX.crossVectors(U, kZ).normalize(); kM.makeBasis(kX, U, kZ); knob.quaternion.setFromRotationMatrix(kM); knob.position.copy(P).addScaledVector(U, gap); knobHand.quaternion.copy(knob.quaternion); knobHand.position.copy(knob.position);
   const pulse = .75 + Math.sin(T * 3) * .25; rob.ring.material.color.lerp(cT.set(halted ? '#FF3B2E' : COLS[s.state]), f(halted ? 30 : 8)); led.material.color.copy(rob.ring.material.color).multiplyScalar(pulse);
 
   // the path of the hand, the goal, the dot to follow, the live number
@@ -513,10 +543,10 @@ function frame(now) {
 
   // the numbers on the screen
   if (s.value !== lastVal) { lastVal = s.value; el.val.textContent = s.value; }
-  const sayNow = arriving ? (arrT < 3 ? 'Anna arrives for her session.' : arrT < 4.4 ? 'Scanning the station…' : arrT < 7.4 ? 'Station found. Hi Anna, your plan is loaded.' : 'Take a seat. We start with the forward reach.') : halted ? 'Emergency stop pressed. The arm holds still.' : s.say; if (sayNow !== lastSay && T - sayAt > .3) { lastSay = sayNow; sayAt = T; el.say.style.opacity = 0; setTimeout(() => { el.say.textContent = sayNow; el.say.style.opacity = 1; }, FREEZE ? 0 : 180); }
+  const sayNow = arriving ? (arrT < 3 ? 'Anna arrives for her session.' : arrT < 4.4 ? 'She taps her phone on the handle…' : arrT < 7.4 ? 'Station found. Hi Anna, your plan is loaded.' : 'Take a seat. We start with Push.') : halted ? 'Emergency stop pressed. The arm holds still.' : s.say; if (sayNow !== lastSay && T - sayAt > .3) { lastSay = sayNow; sayAt = T; el.say.style.opacity = 0; setTimeout(() => { el.say.textContent = sayNow; el.say.style.opacity = 1; }, FREEZE ? 0 : 180); }
 
   // the camera
-  facility(dt, T); if (active && active.dataset.cycle && !FREEZE && !paused && !arriving) { cyc += dt; if (cyc > 5.5) { cyc = 0; const nx = ORDER[(ORDER.indexOf(ex) + 1) % ORDER.length], v = VIEWS[nx]; choose(nx); view.taz = v[0]; view.tel = v[1]; view.tdist = v[2]; } } else cyc = 0; view.idle += dt; const drift = FREEZE ? 0 : Math.sin(T * .22) * .1 * clamp((view.idle - 1.5) / 2); view.az = lerp(view.az, view.taz + drift, f(2.6)); view.el = lerp(view.el, view.tel, f(2.6)); view.dist = lerp(view.dist, view.tdist, f(2.6));
+  facility(dt, T); if (active && active.dataset.cycle && !FREEZE && !paused && !arriving) { cyc += dt; if (cyc > 5.5) { cyc = 0; const OR = active.dataset.order ? active.dataset.order.split(' ') : ORDER, nx = OR[(OR.indexOf(ex) + 1) % OR.length], v = VIEWS[nx]; choose(nx); view.taz = v[0]; view.tel = v[1]; view.tdist = v[2]; } } else cyc = 0; view.idle += dt; const drift = FREEZE ? 0 : Math.sin(T * .22) * .1 * clamp((view.idle - 1.5) / 2); view.az = lerp(view.az, view.taz + drift, f(2.6)); view.el = lerp(view.el, view.tel, f(2.6)); view.dist = lerp(view.dist, view.tdist, f(2.6));
   const narrow = phone, dist = view.dist * (narrow ? (cam.aspect < 1.15 ? 1.12 : .9) : 1.16); look.set(narrow ? .42 : .5, narrow ? .66 : .74, -.05);
   cam.position.set(look.x + Math.sin(view.az) * Math.cos(view.el) * dist, look.y + Math.sin(view.el) * dist, look.z + Math.cos(view.az) * Math.cos(view.el) * dist); cam.lookAt(look);
   voff = lerp(voff, BARE ? 0 : document.documentElement.classList.contains('nohud') ? -.17 : -.09, FREEZE ? 1 : 1 - Math.exp(-dt * 3)); if (!narrow) cam.setViewOffset(VW, VH, VW * voff, VH * -.03, VW, VH); else cam.clearViewOffset();

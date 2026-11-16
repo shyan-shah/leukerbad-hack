@@ -60,6 +60,7 @@
   .deck .cur .bm > div { animation: rise .65s cubic-bezier(.22,.8,.2,1) both; animation-delay: calc(.6s + var(--i, 0) * .1s); } .deck .cur .bm > div:nth-child(2) { --i: 1; } .deck .cur .bm > div:nth-child(3) { --i: 2; }
   @media (max-width: 899px) { .bm { grid-template-columns: 1fr; } }
   .exl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; } .exl li { display: flex; align-items: baseline; gap: 12px; padding: 9px 14px; border-radius: 14px; transition: background .4s, transform .4s; } .exl b { flex: none; font: 600 clamp(16px, 1.3vw, 19px) var(--display); } .exl span { font-size: clamp(13.5px, 1.05vw, 15.5px); color: var(--soft); line-height: 1.3; } .exl li.on { background: var(--mint); transform: translateX(6px); } .exl li.on b { color: var(--forest); }
+  #later .what { font-size: clamp(16px, 1.25vw, 19px) !important; color: var(--forest); font-weight: 600; } #later .panel.card { gap: 20px; }
   #product .what { font-size: clamp(16px, 1.25vw, 19px) !important; color: var(--forest); font-weight: 600; } #product .panel.card { gap: 20px; }
   .phones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; } .phones figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; } .phones figcaption b { display: block; font: 600 21px var(--display); } .phones figcaption span { display: block; margin-top: 3px; font-size: 16px; color: #CFE0E3; }
   .phone { width: 196px; height: 388px; padding: 8px; border-radius: 32px; background: #0F191B; box-shadow: 0 30px 60px rgba(0,0,0,.35), inset 0 0 0 1.5px rgba(255,255,255,.12); }
@@ -86,6 +87,8 @@
   .scr .cnt { text-align: center; font: 600 10px var(--display); color: #5E6A6D; } .scr .cnt b { font: 700 26px/1 var(--display); color: #0A4552; margin-right: 3px; } .scr .pbar { height: 5px; border-radius: 5px; background: #DFE6E7; overflow: hidden; } .scr .pbar i { display: block; width: 58%; height: 100%; border-radius: 5px; background: #58E6F2; }
   .scr .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .scr .two .btn { margin: 0; padding: 7px; font-size: 11px; } .scr .sw { width: 24px; height: 14px; border-radius: 14px; background: #0B7F91; position: relative; } .scr .sw::after { content: ""; position: absolute; right: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
   .scr .tabs { margin: auto -12px -12px !important; display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 4px 8px; background: #fff; box-shadow: 0 -1px 0 #DFE6E7; font: 600 7.5px var(--text); color: #5E6A6D; text-align: center; } .scr .tabs span { display: flex; flex-direction: column; align-items: center; gap: 2px; } .scr .tabs i { width: 11px; height: 11px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px currentColor; background: none; } .scr .tabs .on { color: #0A4552; } .scr .tabs .on i { background: #0A4552; }
+  .scr .nfc { flex: 1; min-height: 0; border-radius: 16px; background: #1C272A; display: grid; place-items: center; } .scr .nfc svg { width: 78%; } .nfc .waves path { animation: nfcw 1.8s ease-out infinite; } .nfc .waves path:nth-child(2) { animation-delay: .2s; } .nfc .waves path:nth-child(3) { animation-delay: .4s; } .nfc .ph { animation: nfcp 1.8s ease-in-out infinite; } @keyframes nfcw { 0%, 30% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } } @keyframes nfcp { 0%, 100% { transform: translateY(0); } 40%, 60% { transform: translateY(14px); } } .still .nfc * { animation: none !important; }
+  .scr .lv { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; } .scr .lv span { padding: 5px 0; border-radius: 8px; background: #fff; box-shadow: 0 0 0 1px rgba(30,40,42,.08); text-align: center; font: 700 11px var(--display); color: #5E6A6D; } .scr .lv .on { background: #0A4552; color: #fff; }
   .scr .demo { padding: 2px 4px; } .demo svg { display: block; width: 100%; } .demo path { fill: none; stroke-linecap: round; stroke-linejoin: round; } .demo .fl { fill: #ECF2F2; } .demo .st { stroke: #D8C9AE; stroke-width: 3; } .demo .tb { fill: #F1F3F3; stroke: #C5CDCE; stroke-width: 1.2; } .demo .tg { fill: #0A4552; } .demo .rc { stroke: #C3CBD0; stroke-width: 7; } .demo .rb { stroke: #C3CBD0; stroke-width: 5.5; } .demo .jt { fill: #E4E8EA; stroke: #58D5E2; stroke-width: 1.4; } .demo .lg { stroke: #4E6F9E; stroke-width: 7; } .demo .sh { stroke: #F3F5F6; stroke-width: 4.5; filter: drop-shadow(0 0 .4px #8A9294); } .demo .tr { stroke: #E8705F; stroke-width: 11; } .demo .am { stroke: #F08A7A; stroke-width: 5.5; } .demo .sk { fill: #F3CDAE; } .demo .hr { fill: #DCE1E4; stroke: #CFC9BE; stroke-width: .6; } .demo .hn { fill: #D9483F; } .demo .gd { fill: none; stroke: #58E6F2; stroke-width: 1.4; stroke-dasharray: 2.5 2.5; } .demo .t1 { font: 700 9px var(--display); fill: #0A4552; } .demo .t2 { font: 500 6.5px var(--text); fill: #5E6A6D; }
   .fine a { color: inherit; } .refs a { color: inherit; } #basis .in { gap: 24px; } #basis .biz b { font-size: clamp(32px, 3.6vw, 52px); } #basis .biz span { font-size: clamp(15px, 1.15vw, 17px); line-height: 1.35; } #basis .biz > div { padding: 22px 24px; } #basis .why li { padding: 8px 0; font-size: clamp(15.5px, 1.2vw, 18px); }
   .solid { pointer-events: auto; }
@@ -212,10 +215,10 @@
     </nav>
   </div>
   <div class="hud">
-    <div class="nm" id="mName">Forward reach</div>
+    <div class="nm" id="mName">Push</div>
     <div class="md"><i></i><span>Robot <span id="mode"></span></span></div>
-    <div class="lb" id="mLab">Reach</div>
-    <div class="big"><span id="mVal">0</span><small id="mUnit">cm</small></div>
+    <div class="lb" id="mLab">Band force</div>
+    <div class="big"><span id="mVal">0</span><small id="mUnit">N</small></div>
     <div class="tg"><span>Muscles at work</span><b id="tName"></b>
       <svg class="dia" id="map" viewBox="-27 -134 116 86" aria-hidden="true"></svg>
       <p class="jts" id="jts" aria-label="Joint angles"></p>
@@ -228,11 +231,11 @@
 </div>
 
 <main class="scroll">
-  <section class="ch" id="intro" data-ex="reach" data-view="wide">
+  <section class="ch" id="intro" data-ex="press" data-view="wide">
     <div class="panel">
       <p class="eyebrow">Vita Rehab · the pitch</p>
       <h1>More practice. Measured.</h1>
-      <p class="lead">A robot arm guides rehabilitation exercises and measures every repetition.</p>
+      <p class="lead">A robot arm trains strength after injury or illness and measures every repetition.</p>
       <p class="cue" aria-hidden="true"><i></i>Press → for the next slide</p>
     </div>
   </section>
@@ -252,13 +255,13 @@
       <p class="fine">Sources: WHO · Cieza et al., Lancet 2020 · APTA 2024 · Lang et al. 2009 · KNGF 2025.</p>
     </div>
   </section>
-  <section class="ch" id="who" data-ex="reach" data-view="wide">
+  <section class="ch" id="who" data-ex="press" data-view="wide">
     <div class="panel card">
       <div class="headblock"><p class="eyebrow">The market</p><h2>People who need to move again</h2></div>
       <ul class="aud">
         <li><b>After a stroke</b><span>A weak arm that needs many repetitions</span></li>
         <li><b>After a fracture or surgery</b><span>A stiff shoulder or elbow</span></li>
-        <li><b>After a knee or hip replacement</b><span>A thigh muscle that has to regain strength</span></li>
+        <li><b>After a long hospital stay</b><span>Arm and shoulder strength for daily life</span></li>
         <li><b>Older adults losing muscle</b><span>Strength to stand up and stay independent</span></li>
         <li><b>Parkinson’s and multiple sclerosis</b><span>Larger, steadier movements</span></li>
       </ul>
@@ -266,28 +269,28 @@
     </div>
   </section>
 
-  <section class="ch" id="path" data-ex="reach" data-view="gym">
+  <section class="ch" id="path" data-ex="press" data-view="gym">
     <div class="panel card">
       <div class="headblock"><p class="eyebrow">The solution</p><h2>Rehab continues close to home</h2></div>
       <ol class="flow">
         <li><b>Discharge from hospital or rehab</b></li>
         <li><b>Enrol at a nearby gym, care home or centre</b></li>
-        <li><b>Scan the station with the Vita app</b></li>
+        <li><b>Tap your phone on the handle to start</b></li>
         <li><b>Train, with staff keeping watch</b></li>
       </ol>
       <p class="what">Progress is measured and reported to their physiotherapist or rehabilitation centre.</p>
     </div>
   </section>
 
-  <section class="ch" id="product" data-ex="reach" data-cycle="1" data-fac="1" data-arrive="1">
+  <section class="ch" id="product" data-ex="press" data-cycle="1" data-fac="1" data-arrive="1">
     <div class="panel card">
-      <div class="headblock"><p class="eyebrow">The product</p><h2>One station, six exercises</h2></div>
+      <div class="headblock"><p class="eyebrow">The product</p><h2>One station, three exercises</h2></div>
       <ul class="exl" id="exl"></ul>
-      <p class="what">The robot guides, resists or measures. Every repetition is recorded.</p>
-      <p class="what" style="border-left:3px solid currentColor;padding-left:12px;font-weight:600">Exercises approved by Katja, rehabilitation specialist at Klimmendaal for over 10 years. Today this is done fully by hand, and her centre has a waiting list of over a year.</p>
+      <p class="what">Push and Row at four levels, from 10 to 28 newtons, and a strength test. Every repetition is recorded.</p>
+      <p class="what" style="border-left:3px solid currentColor;padding-left:12px;font-weight:600">Advised by Katja, rehabilitation specialist at Klimmendaal for over 10 years. Today this is done fully by hand, and her centre has a waiting list of over a year.</p>
     </div>
   </section>
-  <section class="ch" id="safety" data-ex="reach" data-view="stop" data-fac="1" data-stop="1">
+  <section class="ch" id="safety" data-ex="press" data-view="stop" data-fac="1" data-stop="1">
     <div class="panel card">
       <div class="headblock"><p class="eyebrow">Safety</p><h2>One red button stops it</h2></div>
       <ul class="exl">
@@ -298,65 +301,89 @@
     </div>
   </section>
 
-  <!-- the six exercise sections are written here from the data below -->
+  <section class="ch" id="later" data-ex="reach" data-order="reach stretch circle follow leg" data-cycle="1" data-fac="1">
+    <div class="panel card">
+      <div class="headblock"><p class="eyebrow">Future idea · not in the demo</p><h2>The same arm, more exercises</h2></div>
+      <ul class="exl" id="exl2">
+        <li data-x="reach"><b>Forward reach</b><span>The arm helps a weak arm only when it slows down</span></li>
+        <li data-x="stretch"><b>Assisted stretch</b><span>Lifts a relaxed arm, stops at a set resistance</span></li>
+        <li data-x="circle"><b>Shoulder circles</b><span>Follows the hand and can carry the arm’s weight</span></li>
+        <li data-x="follow"><b>Follow the dot</b><span>Trains control; the arm records how far off the hand is</span></li>
+        <li data-x="leg"><b>Knee extension</b><span>A cuff on the shin, gentle resistance for the thigh</span></li>
+      </ul>
+      <p class="what">Software, not new hardware: each one is a new program for the same station. They need clinical review and safety tests before anyone uses them.</p>
+    </div>
+  </section>
+
+  <!-- the exercise sections are written here from the data below -->
 </main>
 
 <section class="solid green slide" id="shift">
   <div class="in">
-    <div class="headblock"><p class="eyebrow">Why a station</p><h2>More practice between visits, for less.</h2></div>
+    <div class="headblock"><p class="eyebrow">Why a station</p><h2>More practice between visits.</h2></div>
     <div class="cols">
       <div><h3>Physiotherapy alone</h3><ul><li>$75–150 per session without insurance (US)</li><li>Practice mostly happens during visits, once or twice a week</li><li>Every extra hour of training needs a therapist</li></ul></div>
-      <div><h3>With a Vita station</h3><ul><li>A session costs a fraction of that, as part of a monthly subscription</li><li>Patients train between visits, several times a week, so they progress faster</li><li>Therapists spend their time where it is needed most, which takes pressure off care</li></ul></div>
+      <div><h3>With a Vita station</h3><ul><li>Each extra session costs a fraction of that, as part of a monthly subscription</li><li>Patients train between visits, several times a week, and every repetition is measured</li><li>Therapists spend their time where it is needed most, which takes pressure off care</li></ul></div>
     </div>
+    <p class="note" style="margin-top:26px;max-width:62ch;opacity:.9;font-size:15.5px;line-height:1.5;border-left:3px solid #58E6F2;padding-left:14px">Rehab robots exist. The largest trial (RATULS, 770 patients) found them no better than usual care, at a higher cost: each is a single-purpose machine. Vita uses a standard arm, and we do not claim better recovery. Our bet is more practice, measured, at a lower cost per session.</p>
   </div>
 </section>
 
+
 <section class="solid green slide" id="app">
   <div class="in">
-    <div class="headblock"><p class="eyebrow">The Vita app</p><h2>Scan. Train. See your progress.</h2></div>
+    <div class="headblock"><p class="eyebrow">The Vita app</p><h2>Tap. Train. See your progress.</h2></div>
     <div class="phones">
       <figure><div class="phone"><div class="scr">
         <p class="hd"><svg class="wv" viewBox="0 0 26 22" aria-hidden="true"><path d="M2 8c3 0 4 10 7 10S14 3 18 3" fill="none" stroke="#0A4552" stroke-width="3.2" stroke-linecap="round"/><circle cx="22.5" cy="4" r="2.6" fill="#58E6F2"/></svg>vita<em>Week 4 of 8</em></p>
-        <p class="ey">Scan</p><p class="h1">Point your phone at the code on the station.</p>
-        <div class="cam"><div class="qr" id="qr"></div><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><span class="beam"></span></div>
-        <p class="btn">Scan the code</p>
-        <p class="tabs"><span><i></i>Today</span><span class="on"><i></i>Scan</span><span><i></i>Progress</span><span><i></i>Report</span></p>
-      </div></div><figcaption><b>1 · Scan</b><span>Scan the station with your phone.</span></figcaption></figure>
+        <p class="ey">Tap</p><p class="h1">Hold your phone to the handle.</p>
+        <div class="nfc"><svg viewBox="0 0 120 120" aria-hidden="true"><rect x="14" y="70" width="92" height="22" rx="11" fill="#C3CBD0"/><rect x="22" y="76" width="76" height="10" rx="5" fill="#9AA6AA"/><circle cx="60" cy="81" r="4" fill="#58E6F2"/><g class="waves" fill="none" stroke="#58E6F2" stroke-width="3" stroke-linecap="round"><path d="M50 60a14 14 0 0 1 20 0"/><path d="M43 52a24 24 0 0 1 34 0"/><path d="M36 44a34 34 0 0 1 48 0"/></g><g class="ph"><rect x="44" y="6" width="32" height="34" rx="6" fill="#0F191B"/><rect x="47" y="10" width="26" height="26" rx="3" fill="#58E6F2" opacity=".85"/></g></svg></div>
+        <p class="ok"><i>✓</i>Connected to Vita station 1</p>
+        <p class="btn">Start</p>
+        <p class="tabs"><span><i></i>Today</span><span class="on"><i></i>Tap</span><span><i></i>Progress</span><span><i></i>Report</span></p>
+      </div></div><figcaption><b>1 · Tap</b><span>The NFC tag is inside the handle. One tap and the plan loads.</span></figcaption></figure>
       <figure><div class="phone"><div class="scr">
         <p class="hd"><svg class="wv" viewBox="0 0 26 22" aria-hidden="true"><path d="M2 8c3 0 4 10 7 10S14 3 18 3" fill="none" stroke="#0A4552" stroke-width="3.2" stroke-linecap="round"/><circle cx="22.5" cy="4" r="2.6" fill="#58E6F2"/></svg>vita<em>Week 4 of 8</em></p>
-        <p class="ey">Exercise 1 of 3</p><p class="h1">Your plan, set by your specialist</p>
-        <div class="tile demo"><svg viewBox="0 0 150 94" role="img" aria-label="Animated demonstration of the exercises">
-          <ellipse class="fl" cx="78" cy="88.5" rx="66" ry="3.5"/><path class="st" d="M33 36 L33 66 L62 66 M36 66 L36 87 M60 66 L60 87"/>
-          <rect class="tb" x="106" y="62" width="25" height="24" rx="4"/><rect class="tg" x="109" y="70" width="19" height="6" rx="2"/><path class="rc" d="M118 62 L118 47"/>
-          <g opacity="1"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" calcMode="discrete" values="1;0;0" keyTimes="0;.3333;.6667"/><text x="144" y="13" text-anchor="end" class="t1">Forward reach</text><circle class="gd" cx="81" cy="38.5" r="4.5"/><path class="lg" d="M47 61 L71 62"></path><path class="lg" d="M71 62 L71 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="sh" d="M71 84 L78 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="rb" d="M118 47 L91.8 30.4 L66 47.5"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M118 47 L91.8 30.4 L66 47.5;M118 47 L92.2 29.8 L66.6 47.2;M118 47 L93.4 28.1 L68.2 46.2;M118 47 L95.3 25.9 L70.6 44.7;M118 47 L97.7 23.6 L73.5 43;M118 47 L100.3 21.6 L76.4 41.3;M118 47 L102.7 20 L78.8 39.8;M118 47 L104.4 19.2 L80.4 38.8;M118 47 L105 18.9 L81 38.5;M118 47 L104.4 19.2 L80.4 38.8;M118 47 L102.7 20 L78.8 39.8;M118 47 L100.3 21.6 L76.4 41.3;M118 47 L97.7 23.6 L73.5 43;M118 47 L95.3 25.9 L70.6 44.7;M118 47 L93.4 28.1 L68.2 46.2;M118 47 L92.2 29.8 L66.6 47.2;M118 47 L91.8 30.4 L66 47.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="tr" d="M47 61 L49 34"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M47 61 L49 34;M47 61 L49.1 34;M47 61 L49.5 34.1;M47 61 L50.1 34.2;M47 61 L50.8 34.3;M47 61 L51.4 34.4;M47 61 L52 34.5;M47 61 L52.4 34.6;M47 61 L52.5 34.6;M47 61 L52.4 34.6;M47 61 L52 34.5;M47 61 L51.4 34.4;M47 61 L50.8 34.3;M47 61 L50.1 34.2;M47 61 L49.5 34.1;M47 61 L49.1 34;M47 61 L49 34" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="7" cx="50.5" cy="22"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="50.5;50.6;51;51.6;52.2;52.9;53.5;53.9;54;53.9;53.5;52.9;52.2;51.6;51;50.6;50.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="22;22;22.1;22.2;22.3;22.4;22.5;22.6;22.6;22.6;22.5;22.4;22.3;22.2;22.1;22;22" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hr" r="4" cx="45" cy="16.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="45;45.1;45.5;46.1;46.8;47.4;48;48.4;48.5;48.4;48;47.4;46.8;46.1;45.5;45.1;45" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="16.5;16.5;16.6;16.7;16.8;16.9;17;17.1;17.1;17.1;17;16.9;16.8;16.7;16.6;16.5;16.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><path class="am" d="M49 34 L49.5 48.5 L63 48"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M49 34 L49.5 48.5 L63 48;M49.1 34 L50.1 48.5 L63.6 47.7;M49.5 34.1 L51.8 48.4 L65.2 46.7;M50.1 34.2 L54.4 48 L67.6 45.2;M50.8 34.3 L57.5 47.1 L70.5 43.5;M51.4 34.4 L60.5 45.7 L73.4 41.8;M52 34.5 L62.8 44.1 L75.8 40.3;M52.4 34.6 L64.4 42.7 L77.4 39.3;M52.5 34.6 L64.9 42.2 L78 39;M52.4 34.6 L64.4 42.7 L77.4 39.3;M52 34.5 L62.8 44.1 L75.8 40.3;M51.4 34.4 L60.5 45.7 L73.4 41.8;M50.8 34.3 L57.5 47.1 L70.5 43.5;M50.1 34.2 L54.4 48 L67.6 45.2;M49.5 34.1 L51.8 48.4 L65.2 46.7;M49.1 34 L50.1 48.5 L63.6 47.7;M49 34 L49.5 48.5 L63 48" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="3.2" cx="63" cy="48"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="63;63.6;65.2;67.6;70.5;73.4;75.8;77.4;78;77.4;75.8;73.4;70.5;67.6;65.2;63.6;63" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="48;47.7;46.7;45.2;43.5;41.8;40.3;39.3;39;39.3;40.3;41.8;43.5;45.2;46.7;47.7;48" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hn" r="2.6" cx="66" cy="47.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="66;66.6;68.2;70.6;73.5;76.4;78.8;80.4;81;80.4;78.8;76.4;73.5;70.6;68.2;66.6;66" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="47.5;47.2;46.2;44.7;43;41.3;39.8;38.8;38.5;38.8;39.8;41.3;43;44.7;46.2;47.2;47.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle></g>
-          <g opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" calcMode="discrete" values="0;1;0" keyTimes="0;.3333;.6667"/><text x="144" y="13" text-anchor="end" class="t1">Shoulder circles</text><circle class="gd" cx="73" cy="42.5" r="6.5"/><path class="lg" d="M47 61 L71 62"></path><path class="lg" d="M71 62 L71 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84;M71 62 L71 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="sh" d="M71 84 L78 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84;M71 84 L78 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="rb" d="M118 47 L101.6 20.7 L79.5 42.5"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M118 47 L101.6 20.7 L79.5 42.5;M118 47 L99.7 21.9 L79 45;M118 47 L97.7 23.5 L77.6 47.1;M118 47 L95.9 25.2 L75.5 48.5;M118 47 L94.6 26.7 L73 49;M118 47 L93.6 27.8 L70.5 48.5;M118 47 L93.2 28.4 L68.4 47.1;M118 47 L93.2 28.4 L67 45;M118 47 L93.7 27.7 L66.5 42.5;M118 47 L94.8 26.4 L67 40;M118 47 L96.5 24.7 L68.4 37.9;M118 47 L98.4 23 L70.5 36.5;M118 47 L100.4 21.5 L73 36;M118 47 L102 20.4 L75.5 36.5;M118 47 L102.9 19.9 L77.6 37.9;M118 47 L102.7 20 L79 40;M118 47 L101.6 20.7 L79.5 42.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="tr" d="M47 61 L49 34"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="7" cx="50.5" cy="22"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="22;22;22;22;22;22;22;22;22;22;22;22;22;22;22;22;22" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hr" r="4" cx="45" cy="16.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="45;45;45;45;45;45;45;45;45;45;45;45;45;45;45;45;45" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><path class="am" d="M49 34 L62.7 38.9 L76.5 43"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M49 34 L62.7 38.9 L76.5 43;M49 34 L62.2 40 L76 45.5;M49 34 L61.6 41.1 L74.6 47.6;M49 34 L60.4 42.9 L72.5 49;M49 34 L56.9 46.1 L70 49.5;M49 34 L54.1 47.6 L67.5 49;M49 34 L51.9 48.2 L65.4 47.6;M49 34 L50.8 48.4 L64 45.5;M49 34 L51.1 48.3 L63.5 43;M49 34 L52.8 48 L64 40.5;M49 34 L55.1 47.1 L65.4 38.4;M49 34 L57.3 45.9 L67.5 37;M49 34 L59.1 44.4 L70 36.5;M49 34 L60.4 43 L72.5 37;M49 34 L61.4 41.4 L74.6 38.4;M49 34 L62.6 39.1 L76 40.5;M49 34 L62.7 38.9 L76.5 43" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="3.2" cx="76.5" cy="43"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="76.5;76;74.6;72.5;70;67.5;65.4;64;63.5;64;65.4;67.5;70;72.5;74.6;76;76.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="43;45.5;47.6;49;49.5;49;47.6;45.5;43;40.5;38.4;37;36.5;37;38.4;40.5;43" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hn" r="2.6" cx="79.5" cy="42.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="79.5;79;77.6;75.5;73;70.5;68.4;67;66.5;67;68.4;70.5;73;75.5;77.6;79;79.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="42.5;45;47.1;48.5;49;48.5;47.1;45;42.5;40;37.9;36.5;36;36.5;37.9;40;42.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle></g>
-          <g opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" calcMode="discrete" values="0;0;1" keyTimes="0;.3333;.6667"/><text x="144" y="13" text-anchor="end" class="t1">Knee extension</text><path class="lg" d="M47 61 L71 62"></path><path class="lg" d="M71 62 L71 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 62 L71 84;M71 62 L72 84;M71 62 L74.7 83.7;M71 62 L78.6 82.6;M71 62 L83 80.5;M71 62 L86.7 77.4;M71 62 L89.3 74.2;M71 62 L90.7 71.9;M71 62 L91.1 71;M71 62 L90.7 71.9;M71 62 L89.3 74.2;M71 62 L86.7 77.4;M71 62 L83 80.5;M71 62 L78.6 82.6;M71 62 L74.7 83.7;M71 62 L72 84;M71 62 L71 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="sh" d="M71 84 L78 84"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M71 84 L78 84;M72 84 L79 83.7;M74.7 83.7 L81.6 82.5;M78.6 82.6 L85.2 80.2;M83 80.5 L88.8 76.7;M86.7 77.4 L91.6 72.4;M89.3 74.2 L93.2 68.4;M90.7 71.9 L93.8 65.6;M91.1 71 L93.9 64.6;M90.7 71.9 L93.8 65.6;M89.3 74.2 L93.2 68.4;M86.7 77.4 L91.6 72.4;M83 80.5 L88.8 76.7;M78.6 82.6 L85.2 80.2;M74.7 83.7 L81.6 82.5;M72 84 L79 83.7;M71 84 L78 84" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="rb" d="M118 47 L87.2 50.7 L74.5 79"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M118 47 L87.2 50.7 L74.5 79;M118 47 L87.2 50.2 L75.2 78.8;M118 47 L87 48.7 L77.3 78.2;M118 47 L87 46.5 L80.2 76.7;M118 47 L87.2 43.6 L83.2 74.4;M118 47 L87.7 40.5 L85.6 71.4;M118 47 L88.5 37.6 L87.1 68.5;M118 47 L89.2 35.5 L87.8 66.5;M118 47 L89.5 34.8 L87.9 65.7;M118 47 L89.2 35.5 L87.8 66.5;M118 47 L88.5 37.6 L87.1 68.5;M118 47 L87.7 40.5 L85.6 71.4;M118 47 L87.2 43.6 L83.2 74.4;M118 47 L87 46.5 L80.2 76.7;M118 47 L87 48.7 L77.3 78.2;M118 47 L87.2 50.2 L75.2 78.8;M118 47 L87.2 50.7 L74.5 79" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><path class="tr" d="M47 61 L49 34"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34;M47 61 L49 34" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="7" cx="50.5" cy="22"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5;50.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="22;22;22;22;22;22;22;22;22;22;22;22;22;22;22;22;22" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hr" r="4" cx="45" cy="16.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="45;45;45;45;45;45;45;45;45;45;45;45;45;45;45;45;45" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5;16.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><path class="am" d="M49 34 L52.3 48.1 L62 57.5"><animate attributeName="d" dur="4s" repeatCount="indefinite" values="M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5;M49 34 L52.3 48.1 L62 57.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></path><circle class="sk" r="3.2" cx="62" cy="57.5"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="62;62;62;62;62;62;62;62;62;62;62;62;62;62;62;62;62" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5;57.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle><circle class="hn" r="2.6" cx="74.5" cy="79"><animate attributeName="cx" dur="4s" repeatCount="indefinite" values="74.5;75.2;77.3;80.2;83.2;85.6;87.1;87.8;87.9;87.8;87.1;85.6;83.2;80.2;77.3;75.2;74.5" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/><animate attributeName="cy" dur="4s" repeatCount="indefinite" values="79;78.8;78.2;76.7;74.4;71.4;68.5;66.5;65.7;66.5;68.5;71.4;74.4;76.7;78.2;78.8;79" keyTimes="0.0000;0.0625;0.1250;0.1875;0.2500;0.3125;0.3750;0.4375;0.5000;0.5625;0.6250;0.6875;0.7500;0.8125;0.8750;0.9375;1.0000"/></circle></g>
-          <circle class="jt" cx="118" cy="47" r="4.2"/>
-        </svg></div>
-        <p class="cnt"><b>7</b> of 12 reps</p><p class="pbar"><i></i></p>
+        <p class="ey">Exercise 2 of 3</p><p class="h1">Your plan, set by your specialist</p>
+        <p class="row"><i>✓</i><span>Push · Level 3</span><em>10 reps</em></p>
+        <p class="row"><i>▶</i><span>Row · Level 3</span><em>7 of 10</em></p>
+        <p class="row todo"><i></i><span>Strength test</span><em>3 tries</em></p>
+        <p class="lv"><span>1</span><span>2</span><span class="on">3</span><span>4</span></p>
+        <p class="cnt"><b>7</b> of 10 reps</p><p class="pbar"><i></i></p>
         <p class="two"><span class="btn ghost">Pause</span><span class="btn">Finish</span></p>
-        <p class="tabs"><span class="on"><i></i>Today</span><span><i></i>Scan</span><span><i></i>Progress</span><span><i></i>Report</span></p>
-      </div></div><figcaption><b>2 · Your exercises</b><span>Shown as animations. Set by your specialist for your injury.</span></figcaption></figure>
+        <p class="tabs"><span class="on"><i></i>Today</span><span><i></i>Tap</span><span><i></i>Progress</span><span><i></i>Report</span></p>
+      </div></div><figcaption><b>2 · Your exercises</b><span>Push, Row and a strength test. Pick a level, change it mid-set.</span></figcaption></figure>
       <figure><div class="phone"><div class="scr">
         <p class="hd"><svg class="wv" viewBox="0 0 26 22" aria-hidden="true"><path d="M2 8c3 0 4 10 7 10S14 3 18 3" fill="none" stroke="#0A4552" stroke-width="3.2" stroke-linecap="round"/><circle cx="22.5" cy="4" r="2.6" fill="#58E6F2"/></svg>vita<em>Week 4 of 8</em></p>
-        <p class="ey">Progress</p><p class="h1">You reach further every week.</p>
-        <div class="tile"><small>Forward reach</small><b>41 cm</b><u>+3 cm this week</u>
+        <p class="ey">Progress</p><p class="h1">Stronger every week.</p>
+        <div class="tile"><small>Push strength test</small><b>26 N</b><u>+2 N this week</u>
           <svg class="chart" viewBox="0 0 150 54" aria-hidden="true"><path d="M4 6H146" stroke="#8A979A" stroke-width="1" stroke-dasharray="3 3" fill="none"/><path class="ar" d="M4 46 24 37 44 26 64 19V54H4z"/><path class="ln" pathLength="1" d="M4 46 24 37 44 26 64 19"/><circle cx="64" cy="19" r="3.5"/></svg></div>
-        <p class="row"><span>Shoulder lift</span><em class="up">+9°</em></p>
-        <p class="row"><span>Leg strength</span><em class="up">+8%</em></p>
-        <p class="tabs"><span><i></i>Today</span><span><i></i>Scan</span><span class="on"><i></i>Progress</span><span><i></i>Report</span></p>
+        <p class="row"><span>Push</span><em class="up">Level 3</em></p>
+        <p class="row"><span>Row</span><em class="up">Level 3</em></p>
+        <p class="tabs"><span><i></i>Today</span><span><i></i>Tap</span><span class="on"><i></i>Progress</span><span><i></i>Report</span></p>
       </div></div><figcaption><b>3 · Progress</b><span>Every repetition is measured.</span></figcaption></figure>
       <figure><div class="phone"><div class="scr">
         <p class="hd"><svg class="wv" viewBox="0 0 26 22" aria-hidden="true"><path d="M2 8c3 0 4 10 7 10S14 3 18 3" fill="none" stroke="#0A4552" stroke-width="3.2" stroke-linecap="round"/><circle cx="22.5" cy="4" r="2.6" fill="#58E6F2"/></svg>vita<em>Week 4 of 8</em></p>
         <p class="ey">Report</p><p class="h1">Your weekly summary</p>
         <p class="ok"><i>✓</i>Shared with your physio or rehab centre every Friday</p>
         <p class="row"><span>Sessions</span><em>3 of 3</em></p>
-        <p class="row"><span>Forward reach</span><em class="up">+3 cm</em></p>
+        <p class="row"><span>Push strength</span><em class="up">+2 N</em></p>
         <p class="row"><span>Pain reported</span><em>None</em></p>
         <p class="row"><span>Share with my care team</span><em class="sw"></em></p>
-        <p class="tabs"><span><i></i>Today</span><span><i></i>Scan</span><span><i></i>Progress</span><span class="on"><i></i>Report</span></p>
+        <p class="tabs"><span><i></i>Today</span><span><i></i>Tap</span><span><i></i>Progress</span><span class="on"><i></i>Report</span></p>
       </div></div><figcaption><b>4 · Report</b><span>A summary goes to the physiotherapist or rehabilitation centre where they are enrolled.</span></figcaption></figure>
     </div>
+  </div>
+</section>
+
+<section class="solid green slide" id="today">
+  <div class="in">
+    <div class="headblock"><p class="eyebrow">Built this weekend · research prototype</p><h2>Three exercises on one real robot arm.</h2></div>
+    <div class="cols">
+      <div><h3>The demo</h3><ul><li><b>Push.</b> Push the handle out; the arm pushes back like an elastic band, at four levels from 10 to 28 newtons</li><li><b>Row.</b> The arm moves the handle out; you pull it back against the same band</li><li><b>Strength test.</b> The handle holds still; push as hard as is comfortable, best of three tries</li></ul></div>
+      <div><h3>How it runs</h3><ul><li>Tap your phone on the handle (NFC tag inside), pick a level, change it mid-set</li><li>Every repetition counted and measured 100 times a second: how far, and how hard</li><li>Too much force, too much speed, or one press of the red button, and it stops</li></ul></div>
+    </div>
+    <p class="note" style="margin-top:26px;max-width:62ch;opacity:.8;font-size:14px;line-height:1.5">Research prototype, not a certified medical device. A person holds the emergency stop whenever someone is at the arm. Today's session data is real; the progress history in the app is simulated.</p>
   </div>
 </section>
 
@@ -451,38 +478,22 @@
 <script>
 // The six exercises: what happens, why it should work, who it may help, what is measured, the studies, and a question for the therapist.
 const SCI = [
-  { id: 'reach', pT: 'Shoulder, triceps and trunk', pH: 'Stroke, arm fractures, bed rest', pP: 'Small gains after stroke. Equal to therapy at the same dose.', pW: 'Anna reaches to a target. The arm helps only when she slows.', jt: 'shoulder lifts, elbow straightens', tgt: 'Shoulder and upper arm (deltoid, triceps) and the trunk', tgtHow: 'They lift and straighten the arm on every reach, which rebuilds strength and timing.', sWhat: 'Anna reaches forward to a target. The arm helps only when she slows.', sWhy: 'Repeated, effortful reaching strengthens the nerve pathways that still work. Help given too early makes the patient passive.', sMeasure: 'Reach distance, and how much help was needed.', sProof: 'Robot arm training gives small gains after stroke and matches usual therapy at equal dose.', sCare: 'Never pull on a weak shoulder after stroke.', name: 'Forward reach', mode: 'Assist as needed', daily: 'reaching for a cup, a shelf, a door handle', level: 'mod', levelText: 'Evidence: moderate', effect: 'Relearning of arm movement through repetition',
-    what: 'Anna holds the handle and reaches forward to a target ring. The arm follows her and adds help only if she slows or stops short. Reaching past arm’s length also makes the trunk lean, which trains sitting balance.',
-    why: 'After a stroke or a long period of disuse, the brain’s map of the arm shrinks. Repeating a goal-directed movement with real effort strengthens the remaining nerve pathways. This is called use-dependent plasticity. Help that arrives too early lets the patient go passive, so the robot waits and gives the smallest push that completes the reach.',
-    who: ['Arm weakness after stroke', 'Shoulder or elbow after a fracture or weeks in a sling', 'Loss of condition after bed rest'],
-    measure: 'Reach distance in centimetres, and the share of the movement the robot had to help with. A related bedside measure is the Functional Reach Test.',
-    studies: [['French et al., Cochrane Review, 2016', 'Repetitive task training after stroke improves arm and leg function. The effect is modest and depends on the amount of practice.'], ['Mehrholz et al., Cochrane Review, 2018', 'Robot-assisted arm training after stroke gives small gains in arm function, strength and daily activities.'], ['Rodgers et al. (RATULS), The Lancet, 2019', 'In 770 patients, robot training did not improve arm function more than usual care, and daily activities did not improve.'], ['Dean and Shepherd, Stroke, 1997', 'Practising seated reaching beyond arm’s length improved sitting balance and reach distance after stroke.']],
-    care: 'A weak shoulder after stroke can partly slip out of its socket. The robot must never pull on the arm, and a painful shoulder needs a therapist’s check first.',
-    ask: 'Would you train forward reach in sitting this way, and what would you watch for at the shoulder?' },
-  { id: 'stretch', pT: 'Shoulder capsule and the muscles around it', pH: 'Frozen shoulder, stiffness after fracture or surgery', pP: 'Gentle movement inside the pain limit beats forceful stretching.', pW: 'The robot lifts a relaxed arm and stops at a set resistance.', jt: 'shoulder is lifted to its limit', tgt: 'Shoulder joint capsule and the muscles around it', tgtHow: 'The tissue is held at its limit, so it lengthens a little each session.', sWhat: 'The robot lifts a relaxed arm slowly and stops at a set resistance.', sWhy: 'A slow, low-force stretch lengthens a tight joint capsule. The force limit keeps it below the pain point.', sMeasure: 'Shoulder angle in degrees, and force at the end of the range.', sProof: 'Gentle movement inside the pain limit beat forceful stretching in frozen shoulder. Stretch alone does little after stroke.', sCare: 'Never past the pain limit or the surgeon’s protocol.', name: 'Assisted stretch', mode: 'Slow passive stretch', daily: 'getting an arm into a sleeve, reaching a high shelf, washing hair', level: 'mixed', levelText: 'Evidence: mixed', effect: 'Lengthening of a tight joint capsule and shortened muscle',
-    what: 'Anna lets her arm go loose. The robot lifts it slowly in front of her until it feels a set resistance, 9 newtons in this example. It holds for a few seconds and lowers the arm again.',
-    why: 'When a joint is not moved, the capsule around it tightens and the muscles shorten. A slow, low-force stretch lets this tissue lengthen gradually, an effect called creep. Repeated over weeks, the tissue remodels at the longer length. A fixed force limit keeps the stretch below the point where pain makes the muscles guard.',
-    who: ['Frozen shoulder', 'Stiffness after a shoulder or upper-arm fracture', 'After shoulder surgery, inside the surgeon’s allowed range'],
-    measure: 'Passive shoulder flexion in degrees, and the force at the end of the range. A therapist reads the same angle with a goniometer. The robot takes it in the same position every visit.',
-    studies: [['Diercks and Stevens, Journal of Shoulder and Elbow Surgery, 2004', 'In frozen shoulder, gentle movement inside the pain limit gave better results than intensive stretching past it. This supports a strict force limit.'], ['Page et al., Cochrane Review, 2014', 'For frozen shoulder, exercise and mobilisation help most when combined with other treatment such as a steroid injection. Alone, the benefit is uncertain.'], ['Harvey et al., Cochrane Review, 2017', 'In people with neurological conditions, stretching did not produce a clinically important gain in joint mobility. Stretch alone should not be offered as a treatment for contracture after stroke.']],
-    care: 'Never beyond the pain limit or the surgeon’s protocol. Not for fragile bones, an unstable shoulder or a fresh repair.',
-    ask: 'What force or pain limit would you accept for a stretch given by a machine?' },
-  { id: 'circle', pT: 'Rotator cuff and shoulder blade', pH: 'Stiff shoulders, stroke, Parkinson’s', pP: 'Arm support enlarges reach. Smoothness tracks recovery.', pW: 'Anna draws circles. The robot follows and can carry her arm.', jt: 'shoulder moves through its full circle', tgt: 'Rotator cuff and shoulder-blade muscles', tgtHow: 'They steer the arm through its full range, which keeps the joint supple and stable.', sWhat: 'Anna draws slow circles. The robot follows and can carry the weight of her arm.', sWhy: 'Moving through the full range keeps the shoulder supple. Taking weight off a weak arm enlarges the area the hand can reach.', sMeasure: 'Circle size and smoothness of the path.', sProof: 'Arm support increased reach after stroke, and smoother movement tracks recovery.', sCare: 'Stop where pain starts and make the circle smaller.', name: 'Shoulder circles', mode: 'Follows the hand, can carry the arm’s weight', daily: 'dressing, combing hair, wiping a table', level: 'early', levelText: 'Evidence: early', effect: 'Active range and control of the shoulder',
-    what: 'Anna draws slow circles with her hand. The robot follows without resisting. It can also carry part of the weight of her arm, so a weak shoulder can move through a larger range.',
-    why: 'Moving a joint through its range spreads joint fluid over the cartilage and keeps the shoulder blade and upper arm working together. After a stroke, lifting the arm against gravity often triggers unwanted bending of the elbow. Taking weight off the arm reduces this and enlarges the area the hand can reach. The smoothness of the circle shows how well the movement is controlled.',
-    who: ['Shoulder stiffness after immobilisation', 'Arm weakness after stroke', 'Parkinson’s disease, where movements become small'],
-    measure: 'Circle size and smoothness of the hand path. Smoothness is a research measure with no direct bedside equivalent.',
-    studies: [['Sukal, Ellis and Dewald, Experimental Brain Research, 2007', 'Supporting the weight of the arm increased the reaching area of people with stroke.'], ['Rohrer et al., Journal of Neuroscience, 2002', 'Hand movements of stroke patients became measurably smoother as they recovered, so smoothness tracks motor recovery.'], ['Ebersbach et al., Movement Disorders, 2010', 'In Parkinson’s disease, training large movements (LSVT BIG) improved motor scores more than general exercise.']],
-    care: 'If part of the circle hurts, stop there and make the circle smaller.',
-    ask: 'Would you rather train circles, or a real task such as combing hair or putting on a sleeve?' },
-  { id: 'follow', pT: 'Forearm, hand and movement control', pH: 'Stroke, multiple sclerosis, Parkinson’s', pP: 'Tracking training improved hand function after stroke.', pW: 'Anna follows a moving dot. The robot records the error.', jt: 'elbow and shoulder make small, quick changes', tgt: 'Forearm and hand, and the brain’s movement control', tgtHow: 'Constant small corrections train accuracy more than strength.', sWhat: 'Anna keeps her hand on a moving dot. The robot records the error.', sWhy: 'The brain corrects each movement from the error it sees. Instant feedback speeds up this learning.', sMeasure: 'Average distance from the dot.', sProof: 'Tracking training improved hand function after stroke, and robot measures predict clinical scores.', sCare: 'A better score must still be checked against a daily task.', name: 'Follow the dot', mode: 'Feather-light, records the error', daily: 'pouring, buttoning, writing', level: 'early', levelText: 'Evidence: early', effect: 'Coordination and accuracy through error-based learning',
-    what: 'A yellow dot moves along a figure of eight. Anna keeps her hand on it. The robot adds almost no force and records how far her hand is from the dot.',
-    why: 'Tracking a moving target is error-based learning. The brain compares where the hand is with where it should be and corrects the next movement, a process driven by the cerebellum. Seeing the error straight away speeds up the learning. A clear outside target also helps people with Parkinson’s disease, who find it hard to start and size movements on their own.',
-    who: ['Poor coordination after stroke', 'Tremor and unsteady movement in multiple sclerosis', 'Parkinson’s disease', 'Regaining control after an arm injury'],
-    measure: 'Average distance between hand and dot in centimetres, and where on the path control is weakest.',
-    studies: [['Carey et al., Brain, 2002', 'Finger-tracking training improved hand function in chronic stroke, and brain scans showed activity shifting back towards the damaged side.'], ['Bosecker et al., Neurorehabilitation and Neural Repair, 2010', 'Movement measures recorded by a robot predicted clinical scores such as the Fugl-Meyer Assessment.'], ['Lo et al., New England Journal of Medicine, 2010', 'Robot therapy built on reaching for targets matched intensive conventional therapy in chronic stroke.']],
-    care: 'A better tracking score does not show that daily tasks became easier. It has to be checked against a functional test.',
-    ask: 'Which everyday task should the path of the dot imitate?' },
+  { id: 'press', pT: 'Chest, shoulder and triceps', pH: 'Arm weakness after stroke, a fracture or weeks of bed rest; muscle loss with age', pP: 'Progressive resistance training builds strength at any age, also after stroke.', pW: 'Anna pushes the handle out. The arm pushes back like an elastic band, at the level she picked.', jt: 'elbow straightens, shoulder drives forward', tgt: 'Chest, front of the shoulder and triceps', tgtHow: 'They push against a steady load on every repetition, which builds strength.', sWhat: 'Anna pushes the handle out against the arm and lets it bring her back.', sWhy: 'Working against a load that rises over the weeks rebuilds strength.', sMeasure: 'Repetitions, how far each one went, and the force.', sProof: 'Strength training improves strength and arm function after stroke and in older adults.', sCare: 'Start at level 1. Breathe out while pushing.', name: 'Push', mode: 'Resists like an elastic band, 4 levels (10–28 N)', daily: 'pushing up from a chair, opening a door, pushing a trolley', level: 'strong', levelText: 'Evidence: strong', effect: 'Strength through progressive resistance',
+    what: 'Anna holds the handle and pushes it out, away from her body. The arm pushes back like an elastic band at one of four levels, from 10 to 28 newtons. She picks the level on her phone and can change it during a set. When she lets go, the arm brings the handle back.',
+    why: 'Muscles get stronger when they work against a load that is a little more than they are used to. Raising the load step by step over the weeks is progressive resistance training. A fixed band force at a chosen level makes the load the same on every repetition and every visit, so progress shows as a higher level or more repetitions.',
+    who: ['Arm weakness after stroke', 'After a shoulder, elbow or wrist fracture, once loading is allowed', 'Muscle loss with age'],
+    measure: 'Repetitions counted from the handle position, how far each one went, and the force on the handle, read 100 times a second.',
+    studies: [['Harris and Eng, Stroke, 2010', 'Strength training of the arm after stroke increased grip and arm strength and improved arm function, without increasing tone or pain.'], ['Liu and Latham, Cochrane Review, 2009', 'Progressive resistance training improves strength and daily function in older adults.'], ['Rodgers et al. (RATULS), The Lancet, 2019', 'In 770 patients, robot arm training did not improve arm function more than usual care. Vita does not claim better recovery.']],
+    care: 'Start at the lowest level. Hard pushing raises blood pressure, so breathe out while pushing; people with heart conditions need medical clearance.',
+    ask: 'Which patients would you start on Push, and at which level?' },
+  { id: 'row', pT: 'Upper back, shoulders and biceps', pH: 'Rounded posture, weak shoulders, muscle loss; balancing out pushing', pP: 'Progressive resistance training builds strength at any age.', pW: 'The arm holds the handle out. Anna pulls it back towards her against the band.', jt: 'elbow bends, shoulder draws back', tgt: 'Latissimus, upper back, rear shoulder and biceps', tgtHow: 'They pull against a steady load, the opposite of Push, so the shoulder is trained on both sides.', sWhat: 'Anna pulls the handle towards her against the arm.', sWhy: 'Pulling trains the muscles that hold the shoulders back and steady the shoulder blade.', sMeasure: 'Repetitions, how far each one went, and the force.', sProof: 'Strength training improves strength and function; pulling balances pushing.', sCare: 'Keep the back straight and the movement slow.', name: 'Row', mode: 'Moves the handle out, then resists the pull, 4 levels', daily: 'pulling a door open, getting up with a rail, carrying shopping', level: 'strong', levelText: 'Evidence: strong', effect: 'Back and shoulder strength through progressive resistance',
+    what: 'The arm first moves the handle out to the far end by itself. Then Anna pulls it back towards her body against the same elastic band as in Push, at one of the four levels. When she lets go, the handle glides back out.',
+    why: 'Pulling works the latissimus, the muscles between the shoulder blades, the back of the shoulder and the biceps. Training these alongside Push keeps the shoulder balanced and supports an upright posture. The load rises step by step over the weeks, as in all progressive resistance training.',
+    who: ['Weak shoulders and rounded posture in older adults', 'Arm weakness after stroke', 'After a shoulder injury, once loading is allowed'],
+    measure: 'Repetitions counted from the handle position, how far each one went, and the force on the handle.',
+    studies: [['Liu and Latham, Cochrane Review, 2009', 'Progressive resistance training improves strength and daily function in older adults.'], ['Saunders et al., Cochrane Review, 2020', 'After stroke, fitness and strength training improve walking and some daily activities; arm strength training alone has less evidence.']],
+    care: 'Hands off while the arm moves the handle out. Not for a shoulder that may not be loaded yet.',
+    ask: 'Would you pair Row with Push for the same patient, and which shoulder problems would make you avoid it?' },
   { id: 'push', pT: 'Chest, shoulder and triceps', pH: 'Muscle-loss screening, comparing left and right', pP: 'Removes the tester error of hand-held strength tests.', pW: 'The handle locks. Anna pushes, and the robot reads the peak force.', jt: 'elbow and shoulder hold still under load', tgt: 'Chest, shoulder and triceps', tgtHow: 'They contract hard while the joint stays still, which builds strength and lets it be measured.', sWhat: 'The handle locks. Anna pushes for a few seconds and the robot reads the peak force.', sWhy: 'Pushing against a fixed point works the muscle without moving a painful joint. Low strength is the first sign of muscle loss with age.', sMeasure: 'Peak force in newtons, taken the same way every visit.', sProof: 'Hand-held strength testing is valid but depends on the tester. A fixed robot removes that error.', sCare: 'Breathe out while pushing. Heart patients need medical clearance.', name: 'Strength test', mode: 'Holds still, reads the force', daily: 'pushing up from a chair, opening a heavy door', level: 'strong', levelText: 'Evidence: strong for measuring', effect: 'Objective strength measurement, and isometric strengthening',
     what: 'The handle locks in place. Anna pushes against it as hard as is comfortable for a few seconds. The robot reads the peak force.',
     why: 'Pushing against something that does not move is an isometric contraction. The muscle works hard while the joint stays still, which suits a painful or stiff joint. In the first weeks of training, strength rises mainly because the nervous system recruits more muscle fibres. Muscle growth follows later. Low strength is the first sign used to diagnose sarcopenia, the loss of muscle with age.',
@@ -491,26 +502,15 @@ const SCI = [
     studies: [['Stark et al., PM&R, 2011', 'Hand-held dynamometry agrees well with laboratory strength machines. The tester is the main source of error.'], ['Cruz-Jentoft et al. (EWGSOP2), Age and Ageing, 2019', 'European consensus: low muscle strength is the primary criterion for sarcopenia.'], ['Rantanen et al., JAMA, 1999', 'Grip strength in midlife predicted disability 25 years later.']],
     care: 'Hard static pushing raises blood pressure. Patients should breathe out while pushing, and people with heart conditions need medical clearance.',
     ask: 'Which strength measures do you record today, and would a force in newtons be useful in your reports?' },
-  { id: 'leg', pT: 'Thigh muscle (quadriceps)', pH: 'Knee or hip replacement, osteoarthritis, muscle loss', pP: 'Resistance training restores strength at any age.', pW: 'Anna straightens her knee against a set resistance.', jt: 'knee straightens from hanging to nearly level', tgt: 'Thigh muscle (quadriceps)', tgtHow: 'It lifts the lower leg against a load, the same work as standing up from a chair.', sWhat: 'Anna straightens her knee against a set resistance from the robot.', sWhy: 'The thigh muscle wastes fast after surgery and with knee pain. A load that rises each week rebuilds it.', sMeasure: 'Knee angle and force, left against right.', sProof: 'Resistance training restores strength at any age. Passive knee machines do not help.', sCare: 'Restricted after ligament surgery. Follow the surgeon’s protocol.', name: 'Knee extension', mode: 'Adds gentle resistance', daily: 'standing up, climbing stairs, steadier walking', level: 'strong', levelText: 'Evidence: strong', effect: 'Stronger thigh muscle through progressive resistance',
-    what: 'A cuff on the shin connects Anna’s lower leg to the robot. She straightens her knee against a set resistance, holds, and lowers slowly.',
-    why: 'The thigh muscle, the quadriceps, straightens the knee and carries the body when standing up and on stairs. It wastes quickly after surgery and with knee pain, partly because swelling and pain switch off its nerve drive. Working against a load that rises over the weeks restores the drive and rebuilds the muscle. This is progressive resistance training.',
-    who: ['After a knee or hip replacement', 'Knee osteoarthritis', 'Muscle loss with age and difficulty standing up'],
-    measure: 'Knee angle reached and force against the cuff, left compared with right. The laboratory equivalent is an isokinetic dynamometer.',
-    studies: [['Mizner et al., Journal of Bone and Joint Surgery, 2005', 'One month after knee replacement, thigh strength had fallen by more than half, mostly through loss of nerve drive.'], ['Fransen et al., Cochrane Review, 2015', 'Exercise reduces pain and improves function in knee osteoarthritis.'], ['Liu and Latham, Cochrane Review, 2009', 'Progressive resistance training improves strength and daily function in older adults.'], ['Fiatarone et al., JAMA, 1990', 'Frail people in their nineties gained substantial leg strength in eight weeks of resistance training.'], ['Harvey et al., Cochrane Review, 2014', 'Machines that bend the knee passively after replacement gave no meaningful benefit. The patient has to do the work.']],
-    care: 'After a ligament reconstruction this exercise is restricted for months. Follow the surgeon’s protocol, and stop if there is pain behind the kneecap.',
-    ask: 'Does this belong at an occupational therapy station, or should it stay with the physiotherapist?' },
 ];
 const OPTS = ['Would use it', 'With changes', 'Would not use it'];
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 document.getElementById('exl').innerHTML = SCI.map((e) => `<li data-x="${e.id}"><b>${esc(e.name)}</b><span>${esc(e.pT)}</span></li>`).join('');
-addEventListener('exchange', (ev) => { document.querySelectorAll('#exl li').forEach((li) => li.classList.toggle('on', li.dataset.x === ev.detail)); const h = document.querySelector('.hud'); if (document.documentElement.classList.contains('deck') && document.querySelector('#product.cur')) { h.classList.remove('swap'); void h.offsetWidth; h.classList.add('swap'); } });
-{ const fin = (x, y) => { for (const [ox, oy] of [[0, 0], [14, 0], [0, 14]]) { const a = x - ox, b = y - oy; if (a >= 0 && a < 7 && b >= 0 && b < 7) return a === 0 || a === 6 || b === 0 || b === 6 || (a >= 2 && a <= 4 && b >= 2 && b <= 4); if (a >= -1 && a < 8 && b >= -1 && b < 8) return false; } return (x * 7 + y * 13 + x * y * 3) % 5 < 2; };
-  let r = ''; for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) if (fin(x, y)) r += `<rect x="${x}" y="${y}" width="1.02" height="1.02"/>`;      // a mock code for the picture, not a working one
-  document.getElementById('qr').innerHTML = `<svg viewBox="-1.5 -1.5 24 24" aria-hidden="true"><rect x="-1.5" y="-1.5" width="24" height="24" rx="2" fill="#fff"/><g fill="#0F191B">${r}</g></svg>`; }
+addEventListener('exchange', (ev) => { document.querySelectorAll('#exl li, #exl2 li').forEach((li) => li.classList.toggle('on', li.dataset.x === ev.detail)); const h = document.querySelector('.hud'); if (document.documentElement.classList.contains('deck') && document.querySelector('#product.cur')) { h.classList.remove('swap'); void h.offsetWidth; h.classList.add('swap'); } });
 document.querySelector('main').insertAdjacentHTML('beforeend', SCI.map((e, i) => `
   <section class="ch" id="${e.id}" data-ex="${e.id}" data-fac="1" hidden>
     <article class="panel card">
-      <div class="headblock"><p class="eyebrow">Appendix · Exercise ${i + 1} of 6</p><h2>${esc(e.name)}</h2></div>
+      <div class="headblock"><p class="eyebrow">Appendix · Exercise ${i + 1} of ${SCI.length}</p><h2>${esc(e.name)}</h2></div>
       <p class="what">${esc(e.pW)}</p>
       <dl class="facts"><dt>Trains</dt><dd>${esc(e.pT)}</dd><dt>Helps</dt><dd>${esc(e.pH)}</dd><dt>Proof</dt><dd>${esc(e.pP)} <span class="pill ${e.level}">${esc(e.levelText.replace('Evidence: ', ''))}</span></dd></dl>
       <div class="trains"><div class="mus" data-mus="${e.id}"></div></div>
@@ -541,11 +541,11 @@ document.getElementById('copy').addEventListener('click', () => {
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => { st.textContent = 'Copied. Paste it into a message to us.'; }, manual); else manual();
 });
 </script>
-<div class="pager" aria-label="Slides"><button type="button" id="prev" aria-label="Previous slide">‹</button><span id="count">1 / 11</span><button type="button" class="tm" id="timer" title="Pitch timer: 4 minutes. Click to reset.">4:00</button><button type="button" id="nxt" aria-label="Next slide">›</button><button type="button" class="fs" id="fs" aria-label="Full screen" title="Full screen (F)">⛶</button></div>
+<div class="pager" aria-label="Slides"><button type="button" id="prev" aria-label="Previous slide">‹</button><span id="count">1 / 13</span><button type="button" class="tm" id="timer" title="Pitch timer: 4 minutes. Click to reset.">4:00</button><button type="button" id="nxt" aria-label="Next slide">›</button><button type="button" class="fs" id="fs" aria-label="Full screen" title="Full screen (F)">⛶</button></div>
 <script>
 // Deck: on desktop one slide is on screen at a time. Arrows, Space, Page Up/Down, the wheel and the buttons change slide. On phones the page scrolls normally.
-{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'who', 'business', 'next', 'vision'].map((id) => document.getElementById(id)).filter(Boolean), count = document.getElementById('count'), prog = document.getElementById('prog');
-  const wide = matchMedia('(min-width: 900px)'), plain = ['intro', 'basis', 'who', 'path'], hud = document.querySelector('.hud'), bPrev = document.getElementById('prev'), bNext = document.getElementById('nxt'); let n = 0, wheelAt = 0, lastEx = 'reach';
+{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'today', 'who', 'business', 'next', 'later', 'vision'].map((id) => document.getElementById(id)).filter(Boolean), count = document.getElementById('count'), prog = document.getElementById('prog');
+  const wide = matchMedia('(min-width: 900px)'), plain = ['intro', 'basis', 'who', 'path'], hud = document.querySelector('.hud'), bPrev = document.getElementById('prev'), bNext = document.getElementById('nxt'); let n = 0, wheelAt = 0, lastEx = 'press';
   const deck = () => root.classList.contains('deck');
   // the pitch itself ends at the long-term vision; everything after it is appendix for questions
   const main = slides.indexOf(document.getElementById('vision')) + 1, label = () => n < main ? (n + 1) + ' / ' + main : 'Appendix ' + (n - main + 1);
@@ -747,20 +747,28 @@ const EX = {
     note: 'She stays within 1.4 cm of the target on average (88%). Control is weakest when crossing from right to left.', marks: [], off: [0, 0, 0], span: 1, chase: true,
     path(t) { const a = t * Math.PI * 2; return [.55, .99 + Math.sin(a * 2) * .085, Z0 + Math.sin(a) * .18]; },
     at(t) { const p = this.path(t - .018), w = Math.sin(t * 40) * .006; return { x: p[0], y: p[1] + w, z: p[2] - w, lean: .14, value: Math.round(88 + Math.sin(t * 19) * 3), state: 'ok', say: t < .5 ? 'Follow the yellow dot with your hand.' : 'Right on it! Stay with the dot.' }; } },
-  push: { name: 'Strength test', why: 'Pushing up from a chair, opening a heavy door', period: 6.4, label: 'Push force', unit: 'N', delta: '+5 N on last week', repsLab: 'attempts', reps: 3, mode: 'holds completely still', modeVal: '38 N', modeLab: 'best today', series: [24, 27, 30, 33, 38],
-    note: 'Peak push force 38 N, up from 33 N. Left and right have not been compared yet: test the left arm next session.', marks: [], off: [0, 0, 0], span: 1, noTrail: true,
-    at(t) { const f = t < .12 ? 0 : t < .45 ? ease((t - .12) / .33) : t < .72 ? 1 : t < .88 ? 1 - ease((t - .72) / .16) : 0, shake = f * Math.sin(t * 190) * .0025; return { x: .56 + f * .012 + shake, y: .97, z: Z0, lean: .16 + f * .09, value: Math.round(f * 38 + (f === 1 ? Math.sin(t * 60) * .6 : 0)), state: f > .05 ? 'load' : 'ok', live: f > .03 ? 'N' : '',
-      say: t < .12 ? 'The handle stays still. Get ready to push.' : t < .45 ? 'Push against me, as hard as feels comfortable.' : t < .72 ? 'Hold it… 38 newtons. Stronger than last week!' : 'And relax. Very good.' }; } },
+  press: { name: 'Push', why: 'Pushing up from a chair, a door, a trolley', period: 5.2, label: 'Band force', unit: 'N', delta: 'Level 3 of 4', repsLab: 'repetitions', reps: 10, mode: 'pushes back like an elastic band', modeVal: '20 N', modeLab: 'level 3', series: [6, 8, 10, 10, 10],
+    note: 'Ten of ten pushes at level 3 (20 N), full range every time. Ready to try level 4 next session.', marks: [], off: [0, -.075, .1], span: .42,
+    at(t) { const k = there(t, .44, .54, .92); return { x: lerp(X0, .72, k), y: lerp(.95, .97, k), z: Z0, lean: .06 + k * .2, value: k > .03 ? Math.round(20 + Math.sin(t * 40) * .6) : 0, state: k > .03 ? 'load' : 'ok', live: k > .03 ? 'N' : '',
+      say: t < .44 ? 'Level 3. Push the handle out, nice and slow.' : t < .54 ? 'All the way. That one counts: 7 of 10.' : t < .92 ? 'And let it bring you back.' : 'Ready? Next one.' }; } },
+  row: { name: 'Row', why: 'Pulling a door open, getting up with a rail, carrying shopping', period: 5.2, label: 'Band force', unit: 'N', delta: 'Level 3 of 4', repsLab: 'repetitions', reps: 10, mode: 'resists as she pulls back', modeVal: '20 N', modeLab: 'level 3', series: [5, 7, 9, 10, 10],
+    note: 'Ten rows at level 3. The pull slows in the last few centimetres: keep level 3 for one more session.', marks: [], off: [0, -.075, .1], span: .42,
+    at(t) { const k = there(t, .44, .54, .92); return { x: lerp(.72, X0 + .03, k), y: lerp(.97, .95, k), z: Z0, lean: .3 - k * .34, value: k > .03 ? Math.round(20 + Math.sin(t * 40) * .6) : 0, state: k > .03 ? 'load' : 'ok', live: k > .03 ? 'N' : '',
+      say: t < .44 ? 'The arm holds the handle out. Pull it towards you.' : t < .54 ? 'Squeeze your shoulder blades. 5 of 10.' : t < .92 ? 'And slowly let it go back out.' : 'Good. Once more.' }; } },
+  push: { name: 'Strength test', why: 'Pushing up from a chair, opening a heavy door', period: 6.4, label: 'Push force', unit: 'N', delta: '+2 N on last week', repsLab: 'tries', reps: 3, mode: 'holds completely still', modeVal: '26 N', modeLab: 'best today', series: [18, 20, 22, 24, 26],
+    note: 'Peak push force 26 N, up from 24 N. Left and right have not been compared yet: test the left arm next session.', marks: [], off: [0, 0, 0], span: 1, noTrail: true,
+    at(t) { const f = t < .12 ? 0 : t < .45 ? ease((t - .12) / .33) : t < .72 ? 1 : t < .88 ? 1 - ease((t - .72) / .16) : 0, shake = f * Math.sin(t * 190) * .0025; return { x: .56 + f * .012 + shake, y: .97, z: Z0, lean: .16 + f * .09, value: Math.round(f * 26 + (f === 1 ? Math.sin(t * 60) * .6 : 0)), state: f > .05 ? 'load' : 'ok', live: f > .03 ? 'N' : '',
+      say: t < .12 ? 'The handle stays still. Get ready to push.' : t < .45 ? 'Push against me, as hard as feels comfortable.' : t < .72 ? 'Hold it… 26 newtons. Stronger than last week!' : 'And relax. Very good.' }; } },
   leg: { name: 'Knee extension', why: 'Standing up, climbing stairs, steadier walking', period: 6, label: 'Knee angle', unit: '°', delta: '+7° on last week', repsLab: 'repetitions', reps: 10, mode: 'adds gentle resistance', modeVal: '1.5 kg', modeLab: 'resistance', series: [48, 55, 60, 65, 72], leg: true, base: [.8, -.42],
     note: 'Right knee now extends to 72° against 1.5 kg. Movement is steady going up, quicker coming down: cue her to lower slowly.',
     marks: [{ p: [KNEE_R.x + CUFF_AT * Math.sin(1.25), KNEE_R.y - CUFF_AT * Math.cos(1.25), .1], text: 'Goal 72°', dy: .2, dx: .14 }], off: [0, 0, .09], span: .4,
     at(t) { const k = there(t, .4, .55, .92), th = lerp(.15, 1.25, k); return { x: KNEE_R.x + CUFF_AT * Math.sin(th), y: KNEE_R.y - CUFF_AT * Math.cos(th), z: .1, th, lean: -.03 * k, value: Math.round(lerp(8, 72, k)), state: k > .05 && t < .55 ? 'load' : 'ok', look: -.3,
       say: t < .4 ? 'Lift your foot and straighten the knee.' : t < .55 ? 'Hold… 72 degrees. That’s your best yet!' : t < .92 ? 'Lower it slowly. Slowly…' : 'Good. Rest a second.' }; } },
 };
-const ORDER = ['reach', 'stretch', 'circle', 'follow', 'push', 'leg'];
+const ORDER = ['press', 'row', 'push'];      // the three the real station runs in the demo
 let stopOn = false, stopT = 0, halted = false, reachK = 0, arrOn = false, arrT = 0, arriving = false; const ARR_END = 10.2, ARRQ = qs.get('arr');      // the arrival: she walks in, scans the station, sits down
       // the emergency-stop slide: a staff member presses the red button, the arm holds still
-let blendT = 9, blendFrom = null, ex = 'reach', exT = 0, paused = false, lastSay = '', lastVal = -1, sayAt = -1, snap = true, wasLeg = false;
+let blendT = 9, blendFrom = null, ex = 'press', exT = 0, paused = false, lastSay = '', lastVal = -1, sayAt = -1, snap = true, wasLeg = false;
 const el = { val: $('#mVal'), unit: $('#mUnit'), lab: $('#mLab'), say: $('#say'), mode: $('#mode'), name: $('#mName') };
 function choose(name) { dispatchEvent(new CustomEvent('exchange', { detail: name })); ex = name; exT = 0; trailN = 0; lastVal = -1; const d = EX[name];
   el.unit.textContent = d.unit; el.lab.textContent = d.label; el.mode.textContent = d.mode; el.name.textContent = d.name;
@@ -788,7 +796,9 @@ const TARGET = {
   stretch: { name: 'Shoulder capsule, being stretched', parts: { sh: 1, up: .35 }, act: (s) => (s.value - 60) / 58 },
   circle: { name: 'Rotator cuff and shoulder blade', parts: { sh: 1, up: .5 }, act: (s, t) => .65 + Math.sin(t * Math.PI * 2) * .3 },
   follow: { name: 'Forearm, hand and movement control', parts: { fore: 1, hand: 1, head: .6 }, act: (s, t) => .65 + Math.sin(t * Math.PI * 8) * .3 },
-  push: { name: 'Chest, shoulder and triceps', parts: { torso: .7, sh: 1, up: 1 }, act: (s) => s.value / 38 },
+  push: { name: 'Chest, shoulder and triceps', parts: { torso: .7, sh: 1, up: 1 }, act: (s) => s.value / 26 },
+  press: { name: 'Chest, shoulder and triceps', parts: { torso: .6, sh: 1, up: 1 }, act: (s) => s.value / 20 },
+  row: { name: 'Upper back, shoulders and biceps', parts: { torso: .8, sh: 1, up: .8, fore: .4 }, act: (s) => s.value / 20 },
   leg: { name: 'Thigh muscle (quadriceps)', parts: { thigh: 1 }, act: (s) => (s.value - 8) / 64 },
 };
 // Each exercise lists its muscles: id on the map, name, what it does, how hard it works (0 to 1) at a moment of the repetition, and 1 if it is being stretched rather than working.
@@ -798,6 +808,8 @@ TARGET.stretch.mus = [['cap', 'Shoulder capsule', 'is stretched', (a) => a, 1], 
 TARGET.circle.mus = [['cuff', 'Rotator cuff', 'keeps the joint centred', () => .6], ['delt', 'Deltoid', 'lifts the arm', (a, t) => .3 + .65 * osc(t, 1, Math.PI / 2)], ['pec', 'Chest muscle', 'pulls the arm inward', (a, t) => .12 + .75 * Math.max(0, Math.sin(t * Math.PI * 2))], ['lat', 'Latissimus', 'pulls it outward', (a, t) => .12 + .75 * Math.max(0, -Math.sin(t * Math.PI * 2))]];
 TARGET.follow.mus = [['brain', 'Brain: movement control', 'compares and corrects', (a, t) => .5 + .45 * osc(t, 9)], ['fore', 'Forearm muscles', 'make fine corrections', (a, t) => .35 + .55 * osc(t, 7, 1)], ['delt', 'Deltoid', 'holds the arm up', () => .5], ['cuff', 'Rotator cuff', 'steadies the shoulder', () => .45]];
 TARGET.push.mus = [['pec', 'Chest muscle', 'pushes forward', (a) => a], ['tri', 'Triceps', 'locks the elbow', (a) => a * .95], ['delt', 'Front deltoid', 'holds the arm up', (a) => .25 + a * .6], ['abs', 'Trunk muscles', 'brace the body', (a) => a * .6]];
+TARGET.press.mus = [['pec', 'Chest muscle', 'pushes the handle out', (a) => a], ['tri', 'Triceps', 'straightens the elbow', (a) => a * .9], ['delt', 'Front deltoid', 'drives the arm forward', (a) => .2 + a * .65], ['abs', 'Trunk muscles', 'brace the body', (a) => a * .5]];
+TARGET.row.mus = [['lat', 'Latissimus', 'pulls the arm back', (a) => a], ['back', 'Upper back', 'squeezes the shoulder blades', (a) => a * .85], ['bic', 'Biceps', 'bends the elbow', (a) => a * .8], ['delt', 'Rear deltoid', 'draws the arm back', (a) => .2 + a * .55]];
 TARGET.leg.mus = [['quad', 'Quadriceps', 'straightens the knee', (a) => a], ['hipf', 'Hip flexors', 'hold the thigh steady', (a) => .15 + a * .35], ['ham', 'Hamstrings', 'lengthen and let go', (a) => a * .6, 1], ['abs', 'Trunk muscles', 'keep her upright', (a) => .2 + a * .2, 0, 1]];
 const IDS = ['back', 'abs', 'lat', 'pec', 'cuff', 'cap', 'hipf', 'ham', 'quad', 'calf', 'tib', 'tri', 'bic', 'fore', 'delt'], ACT = {}; IDS.forEach((id) => { ACT[id] = { a: 0, t: 0, st: 0, on: false, name: '' }; });
 const rowsOf = (tg) => tg.mus.map((m) => `<div class="mrow"><p><b>${m[1]}</b><span>${m[2]}</span></p><div class="bar${m[4] ? ' st' : ''}"><i></i></div></div>`).join('');
@@ -861,7 +873,7 @@ function setMuscles(name) { const tg = TARGET[name]; tName.textContent = tg.name
 // ---------- the joints: a marker on each working joint, an arc that opens with the angle, and the angle in degrees ----------
 // Shoulder: how far the arm is lifted away from the body. Elbow: the angle between upper arm and forearm (180 = straight). Knee: how far the shin is lifted from hanging down.
 const JC = '#0E708F', JN = { S: 'Shoulder', E: 'Elbow', K: 'Knee' }, JOFF = { S: V(-.2, .1, 0), E: V(.02, -.13, .05), K: V(-.08, .15, 0) }, AN = 22;
-TARGET.reach.jts = ['S', 'E']; TARGET.stretch.jts = ['S']; TARGET.circle.jts = ['S']; TARGET.follow.jts = ['E', 'S']; TARGET.push.jts = ['E', 'S']; TARGET.leg.jts = ['K']; TARGET.stretch.valJ = 'S'; TARGET.leg.valJ = 'K';
+TARGET.reach.jts = ['S', 'E']; TARGET.stretch.jts = ['S']; TARGET.circle.jts = ['S']; TARGET.follow.jts = ['E', 'S']; TARGET.push.jts = ['E', 'S']; TARGET.leg.jts = ['K']; TARGET.press.jts = ['E', 'S']; TARGET.row.jts = ['E', 'S']; TARGET.stretch.valJ = 'S'; TARGET.leg.valJ = 'K';
 const ringTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.beginPath(); g.arc(64, 64, 42, 0, 7); g.fillStyle = 'rgba(255,255,255,.6)'; g.fill(); g.lineWidth = 12; g.strokeStyle = JC; g.stroke(); g.beginPath(); g.arc(64, 64, 11, 0, 7); g.fillStyle = JC; g.fill(); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
 const gJ = mk('g', {}); map.insertBefore(gJ, gTxt); const J3 = {}, jtsEl = $('#jts'), axis = V(), jq = new THREE.Quaternion(), jv = V();
 ['S', 'E', 'K'].forEach((k) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: ringTex, transparent: true, depthTest: false, toneMapped: false })); sp.renderOrder = 6; scene.add(sp);
@@ -889,7 +901,7 @@ function joints(s) { const tg = TARGET[ex], out = [];
 // the seated patient and everything drawn around her go into two groups, so they can be hidden while she is still walking in
 const annaG = new THREE.Group(), ovG = new THREE.Group(); { const kids = scene.children.slice(), a = kids.slice(AN0, AN1), o = kids.slice(OV0); scene.add(annaG, ovG); a.forEach((c) => annaG.add(c)); o.forEach((c) => ovG.add(c)); }
 // ---------- the page drives the scene: the part of the text in the middle of the screen decides the exercise and the camera ----------
-const VIEWS = { arrive: [.74, .3, 6.4], stop: [.9, .27, 4.5], gym: [.8, .36, 12.8], wide: [.72, .27, 5.5], reach: [.62, .2, 4.7], stretch: [.42, .15, 4.7], circle: [1.02, .24, 4.5], follow: [1.02, .2, 4.5], push: [.55, .17, 4.4], leg: [.36, .13, 4.5] };
+const VIEWS = { arrive: [.74, .3, 6.4], stop: [.9, .27, 4.5], gym: [.8, .36, 12.8], wide: [.72, .27, 5.5], reach: [.62, .2, 4.7], stretch: [.42, .15, 4.7], circle: [1.02, .24, 4.5], follow: [1.02, .2, 4.5], push: [.55, .17, 4.4], press: [.62, .2, 4.7], row: [.7, .2, 4.7], leg: [.36, .13, 4.5] };
 const view = { az: .72, el: .27, dist: 5.5, taz: .72, tel: .27, tdist: 5.5, drag: false, x: 0, y: 0, idle: 0 };
 const stage = $('.stage'), secs = $$('[data-ex]'), links = $$('[data-go]'); let active = null, VW = 1, VH = 1, phone = false, seen = true;
 const prog = $('#prog'), mainEl = $('main');
@@ -947,17 +959,34 @@ function pose(p, P, N, hands, feet) { between(p.torso, P, N); pD.copy(N).sub(P).
     pS.copy(P); pS.y -= .02; pS.z += sg * .09; elbow(pM, pS, feet[i], .44, .44, poleL); between(p.th[i], pS, pM); between(p.sh[i], pM, feet[i]); p.kn[i].position.copy(pM); p.feet[i].position.set(feet[i].x + .05, feet[i].y - .035, feet[i].z); } }
 const vv = () => [V(), V()];
 
-// Anna on her feet: she walks to the station, scans the code with her wPhone, turns and sits down. Then the seated model takes over.
+// the handle as it is today: a round knob, 3D printed, on a short neck from the flange; the NFC tag sits inside it (the cyan dot)
+const knob = new THREE.Group(), knobHand = new THREE.Group(); scene.add(knob, knobHand);
+{ const printed = mat('#0E5A6A', { roughness: .6 }); cyl(.012, .014, .03, M.joint, 0, .015, 0, knob); cyl(.03, .03, .006, M.cap, 0, .03, 0, knob);
+  const k = ball(.045, printed, 0, -.014, 0, knob); k.scale.set(1, .74, 1);
+  [-.024, -.012, 0, .01].forEach((y) => { const r = add(new THREE.Mesh(new THREE.TorusGeometry(.045 * Math.sqrt(1 - ((y + .014) / .0333) ** 2) + .0004, .0008, 4, 40), mat('#0A4552')), knob); r.rotation.x = Math.PI / 2; r.position.y = y; r.castShadow = false; });      // print layers
+  const tag = add(new THREE.Mesh(new THREE.CircleGeometry(.008, 24), glow('#58E6F2')), knob); tag.rotation.x = Math.PI / 2; tag.position.y = -.0475;
+  const arc = (R, tube, y, from, len) => { const m = add(new THREE.Mesh(new THREE.TorusGeometry(R, tube, 10, 24, len), M.skin), knobHand); m.rotation.set(Math.PI / 2, 0, from); m.position.y = y; ball(tube, M.skin, R * Math.cos(from + len), y, R * Math.sin(from + len), knobHand); };
+  [-.02, -.006].forEach((y, i) => arc(.05 - i * .002, .009, y, .1, Math.PI - .2));      // fingers round the far side of the knob
+  arc(.049, .01, -.016, Math.PI + 1, 1.2);      // the thumb on the near side
+  const palm = ball(.026, M.skin, -.03, -.03, .012, knobHand); palm.scale.set(.6, .9, 1); }
+gripHand.children.forEach((c) => { c.visible = false; }); rob.grip.scale.setScalar(1e-4); rob.top.scale.setScalar(1e-4);
+const kX = V(), kZ = V(0, 1, 0), kM = new THREE.Matrix4();
+// Anna on her feet: she walks to the station, taps her wPhone on the handle (the NFC tag is inside it), turns and sits down. Then the seated model takes over.
 const walker = person(scene, { top: M.cardi, legs: M.trousers, skin: M.skin, hair: M.hair, shoe: M.shell, sole: M.accent, style: 'bun', collar: M.shell, long: true }); walker.g.visible = false;
 { const gold = mat('#B98A3E', { metalness: .85, roughness: .28 }); [-.042, .042].forEach((z) => { const r = add(new THREE.Mesh(new THREE.TorusGeometry(.027, .0034, 10, 36), gold), walker.head); r.position.set(.1, .012, z); r.rotation.y = Math.PI / 2; r.castShadow = false; }); box(.004, .004, .03, gold, .1, .014, 0, walker.head, .001); }
 const wPhone = new THREE.Group(); walker.g.add(wPhone); box(.012, .135, .068, mat('#1E282A', { roughness: .3 }), 0, 0, 0, wPhone, .006); box(.003, .118, .058, glow('#BFE9F3'), .0075, 0, 0, wPhone, .002);
 const beam = new THREE.Mesh(new THREE.CylinderGeometry(.006, .03, 1, 16, 1, true), new THREE.MeshBasicMaterial({ color: '#58E6F2', transparent: true, opacity: .4, side: THREE.DoubleSide, depthWrite: false })); scene.add(beam); beam.visible = false;
-const qrGlow = add(new THREE.Mesh(new THREE.TorusGeometry(.085, .008, 8, 4), glow('#58E6F2')), base); qrGlow.position.set(.13, .52, .258); qrGlow.rotation.z = Math.PI / 4; qrGlow.castShadow = false; qrGlow.visible = false;
+const HW = V(.6, .82, -.34);      // where the handle waits during the arrival (H in the frame loop)
+const qrGlow = new THREE.Group(); scene.add(qrGlow); qrGlow.visible = false;      // the NFC tap: rings ripple out of the handle
+const ripples = [0, 1, 2].map(() => { const r = new THREE.Mesh(new THREE.TorusGeometry(.05, .008, 8, 48), new THREE.MeshBasicMaterial({ color: '#58E6F2', transparent: true, depthWrite: false, depthTest: false })); r.renderOrder = 9; r.rotation.x = Math.PI / 2; qrGlow.add(r); return r; });
+qrGlow.position.set(HW.x, HW.y + .045, HW.z);
+// no QR sticker on the trolley any more: the tag is in the handle (the sticker is built in the shared part above, so it is hidden here)
+base.children.forEach((m) => { if (Math.abs(m.position.x - .13) < .001 && Math.abs(m.position.y - .52) < .001 && m.position.z > .24) m.visible = false; });
 const wP = V(), wN = V(), wH = vv(), wF = vv(), wA = V(), wB = V();
 function arrive(dt) { walker.g.visible = arriving; if (!arriving) { beam.visible = qrGlow.visible = false; return; }
   const t = arrT, sst = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); }, QX = base.position.x + .13, QZ = base.position.z + .2535;
-  const A0 = [1.3, 2.7], A1 = [QX, QZ + .62], A2 = [.47, .06];      // the door side, in front of the code, in front of the chair
-  let x, z, th, walk = 0, dist = 0; const TH1 = Math.PI / 2, TH2 = Math.atan2(A1[1] - A2[1], A2[0] - A1[0]);
+  const A0 = [1.3, 2.7], A1 = [HW.x - .435, HW.z - .1], A2 = [.47, .06];      // the door side, in front of the handle, in front of the chair
+  let x, z, th, walk = 0, dist = 0; const TH1 = 0, TH2 = Math.atan2(A1[1] - A2[1], A2[0] - A1[0]);
   if (t < 3) { const k = sst(0, 3, t); x = lerp(A0[0], A1[0], k); z = lerp(A0[1], A1[1], k); th = Math.atan2(A0[1] - A1[1], A1[0] - A0[0]); th = lerp(th, TH1, sst(2.3, 3, t)); walk = Math.sin(Math.PI * clamp(t / 3)) > .12 ? 1 : .4; dist = k * 2.2; }
   else if (t < 5.2) { x = A1[0]; z = A1[1]; th = TH1; }
   else if (t < 6.8) { const k = sst(5.2, 6.8, t); x = lerp(A1[0], A2[0], k); z = lerp(A1[1], A2[1], k); th = lerp(TH1, TH2, sst(5.2, 5.7, t)); walk = 1; dist = k * .95; }
@@ -968,12 +997,12 @@ function arrive(dt) { walker.g.visible = arriving; if (!arriving) { beam.visible
   for (let i = 0; i < 2; i++) { const a = ph + i * Math.PI, sg = i ? 1 : -1;
     wF[i].set(lerp(Math.sin(a) * .13 * walk, .47 - g.position.x, sit), .08 + Math.max(0, Math.cos(a)) * .045 * walk * (1 - sit), sg * lerp(.09, .1, sit));
     wH[i].set(lerp(.05 - Math.sin(a) * .09 * walk, .3, sit), lerp(.84, .63, sit), sg * lerp(.2, .11, sit)); }
-  const hold = Math.max(scan, 1 - sst(5.6, 6.4, t)) * (t > 2.4 ? 1 : 0) || (t <= 2.4 ? .0 : 0), up = scan;      // the wPhone is in her right hand until she has scanned
-  const carry = t < 6.4 ? 1 : 0; wH[1].x = lerp(wH[1].x, .31, up); wH[1].y = lerp(carry ? lerp(wH[1].y, .9, .5 * (1 - sit)) : wH[1].y, .98, up); wH[1].z = lerp(wH[1].z, .1, up);
+  const up = scan;      // the wPhone is in her right hand until she has tapped the handle
+  const carry = t < 6.4 ? 1 : 0; wH[1].x = lerp(wH[1].x, .4, up); wH[1].y = lerp(carry ? lerp(wH[1].y, .9, .5 * (1 - sit)) : wH[1].y, .86, up); wH[1].z = lerp(wH[1].z, .1, up);
   pose(walker, wP, wN, wH, wF); walker.head.rotation.z = -.08 - scan * .32 - Math.sin(Math.PI * sit) * .2; walker.head.rotation.y = 0;
-  wPhone.visible = t < 6.4; wPhone.position.set(wH[1].x + .035, wH[1].y + .05, wH[1].z); wPhone.rotation.z = -.35 - up * .75;
-  const on = t > 3.3 && t < 4.4; beam.visible = on; qrGlow.visible = t > 4.4 && t < 5.6; if (qrGlow.visible) qrGlow.scale.setScalar(1 + Math.sin((t - 4.4) * 10) * .08);
-  if (on) { wA.copy(wPhone.position); g.localToWorld(wA); wB.set(QX, .52, QZ + .01); between(beam, wA, wB); beam.scale.set(1, wA.distanceTo(wB), 1); beam.material.opacity = .28 + Math.sin(t * 14) * .12; } }
+  wPhone.visible = t < 6.4; wPhone.position.set(wH[1].x + .035, wH[1].y + .05, wH[1].z); wPhone.rotation.z = -.35 - up * 1.15;
+  beam.visible = false; qrGlow.visible = t > 3.2 && t < 5.2;      // the tap: three rings ripple out of the handle, then the plan loads
+  if (qrGlow.visible) ripples.forEach((r, i) => { const k = ((t - 3.2) * 1.1 + i / 3) % 1; r.scale.setScalar(.6 + k * 2.2); r.material.opacity = (1 - k) * .9; }); }
 
 // floor and two walls
 fac(.45, -.3, 0, 0, 'grow', (g) => { box(7.7, .04, 6.3, FM.floor, 0, -.024, 0, g, .02); for (let i = -3; i <= 3; i++) box(.012, .004, 6.2, fm('#DCCFBB'), i * 1.02, -.003, 0, g, .001); });
@@ -1079,6 +1108,7 @@ function frame(now) {
   rob.capS.position.copy(SHO).addScaledVector(Nrm, OFF * .5); rob.capS.quaternion.setFromUnitVectors(YA, Nrm); rob.capE.position.copy(E).addScaledVector(Nrm, OFF * .5); rob.capE.quaternion.copy(rob.capS.quaternion); rob.capW.position.copy(W); rob.capW.quaternion.copy(rob.capS.quaternion);
   between(rob.l3, W, tA.copy(P).addScaledVector(U, .04 + gap)); rob.flange.position.copy(P).addScaledVector(U, .034 + gap); rob.flange.quaternion.setFromUnitVectors(YA, U); rob.ring.position.copy(P).addScaledVector(U, .048 + gap); rob.ring.quaternion.copy(rob.flange.quaternion);
   rob.grip.position.copy(P); rob.top.position.set(P.x, P.y + .078, P.z); gripHand.visible = !isLeg && rob.grip.visible; if (gripHand.visible) { gripHand.position.copy(P); gripHand.rotation.y = Math.atan2(ER.z - P.z, P.x - ER.x); }
+  knob.visible = rob.grip.visible; knobHand.visible = gripHand.visible; kX.crossVectors(U, kZ).normalize(); kM.makeBasis(kX, U, kZ); knob.quaternion.setFromRotationMatrix(kM); knob.position.copy(P).addScaledVector(U, gap); knobHand.quaternion.copy(knob.quaternion); knobHand.position.copy(knob.position);
   const pulse = .75 + Math.sin(T * 3) * .25; rob.ring.material.color.lerp(cT.set(halted ? '#FF3B2E' : COLS[s.state]), f(halted ? 30 : 8)); led.material.color.copy(rob.ring.material.color).multiplyScalar(pulse);
 
   // the path of the hand, the goal, the dot to follow, the live number
@@ -1092,10 +1122,10 @@ function frame(now) {
 
   // the numbers on the screen
   if (s.value !== lastVal) { lastVal = s.value; el.val.textContent = s.value; }
-  const sayNow = arriving ? (arrT < 3 ? 'Anna arrives for her session.' : arrT < 4.4 ? 'Scanning the station…' : arrT < 7.4 ? 'Station found. Hi Anna, your plan is loaded.' : 'Take a seat. We start with the forward reach.') : halted ? 'Emergency stop pressed. The arm holds still.' : s.say; if (sayNow !== lastSay && T - sayAt > .3) { lastSay = sayNow; sayAt = T; el.say.style.opacity = 0; setTimeout(() => { el.say.textContent = sayNow; el.say.style.opacity = 1; }, FREEZE ? 0 : 180); }
+  const sayNow = arriving ? (arrT < 3 ? 'Anna arrives for her session.' : arrT < 4.4 ? 'She taps her phone on the handle…' : arrT < 7.4 ? 'Station found. Hi Anna, your plan is loaded.' : 'Take a seat. We start with Push.') : halted ? 'Emergency stop pressed. The arm holds still.' : s.say; if (sayNow !== lastSay && T - sayAt > .3) { lastSay = sayNow; sayAt = T; el.say.style.opacity = 0; setTimeout(() => { el.say.textContent = sayNow; el.say.style.opacity = 1; }, FREEZE ? 0 : 180); }
 
   // the camera
-  facility(dt, T); if (active && active.dataset.cycle && !FREEZE && !paused && !arriving) { cyc += dt; if (cyc > 5.5) { cyc = 0; const nx = ORDER[(ORDER.indexOf(ex) + 1) % ORDER.length], v = VIEWS[nx]; choose(nx); view.taz = v[0]; view.tel = v[1]; view.tdist = v[2]; } } else cyc = 0; view.idle += dt; const drift = FREEZE ? 0 : Math.sin(T * .22) * .1 * clamp((view.idle - 1.5) / 2); view.az = lerp(view.az, view.taz + drift, f(2.6)); view.el = lerp(view.el, view.tel, f(2.6)); view.dist = lerp(view.dist, view.tdist, f(2.6));
+  facility(dt, T); if (active && active.dataset.cycle && !FREEZE && !paused && !arriving) { cyc += dt; if (cyc > 5.5) { cyc = 0; const OR = active.dataset.order ? active.dataset.order.split(' ') : ORDER, nx = OR[(OR.indexOf(ex) + 1) % OR.length], v = VIEWS[nx]; choose(nx); view.taz = v[0]; view.tel = v[1]; view.tdist = v[2]; } } else cyc = 0; view.idle += dt; const drift = FREEZE ? 0 : Math.sin(T * .22) * .1 * clamp((view.idle - 1.5) / 2); view.az = lerp(view.az, view.taz + drift, f(2.6)); view.el = lerp(view.el, view.tel, f(2.6)); view.dist = lerp(view.dist, view.tdist, f(2.6));
   const narrow = phone, dist = view.dist * (narrow ? (cam.aspect < 1.15 ? 1.12 : .9) : 1.16); look.set(narrow ? .42 : .5, narrow ? .66 : .74, -.05);
   cam.position.set(look.x + Math.sin(view.az) * Math.cos(view.el) * dist, look.y + Math.sin(view.el) * dist, look.z + Math.cos(view.az) * Math.cos(view.el) * dist); cam.lookAt(look);
   voff = lerp(voff, BARE ? 0 : document.documentElement.classList.contains('nohud') ? -.17 : -.09, FREEZE ? 1 : 1 - Math.exp(-dt * 3)); if (!narrow) cam.setViewOffset(VW, VH, VW * voff, VH * -.03, VW, VH); else cam.clearViewOffset();
