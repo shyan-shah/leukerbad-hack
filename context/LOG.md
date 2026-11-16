@@ -659,3 +659,7 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 
 **Gio · 2026-11-16 · pitch deck: removed "What we prove next" slide**
 - `demo/pitch-deck`: slide 11 ("Next": safe, accurate, works, then Swissmedic) removed from the deck order, its markup and the top nav, in both `index.html` and `vita-pitch-deck.html`. Deck is now 12 slides; slide 11 is the future-exercises slide, 12 is Vision.
+
+**Gio · 2026-11-16 · pitch deck: market folded into the problem slide, muscle panel on every 3D slide**
+- `demo/pitch-deck`: the "Who it is for" slide is gone; its five groups are now a row of chips ("Who it hits") under the three numbers on the problem slide. Deck is 10 slides plus Vision (11). "Market" nav link removed.
+- Muscle panel ("Muscles at work") was hidden on the title, solution, product (during Anna's 10 s arrival) and safety slides, so it only showed on the future-exercises slide. It now shows on every slide with the 3D scene; only the problem slide hides it.
