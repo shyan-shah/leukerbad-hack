@@ -227,10 +227,10 @@
   .deck #today .vid figcaption { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #fff; color: var(--forest); }
   .deck #today .vid { position: absolute; right: max(28px, 3vw); top: 50%; width: min(520px, 34vw); transform: translateY(-40%); }
   @media (max-width: 899px) { #today { flex-direction: column; align-items: stretch; gap: 18px; } }
-  #vision .end { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 32px; padding-top: 12px; border-top: 1px solid rgba(30,40,42,.1); }
-  #vision .end .brand svg { width: 46px; height: 39px; } #vision .end .wm { font-size: 38px; } #vision .end em { font-size: 15px; }
-  #vision .end a { font: 600 clamp(19px, 1.6vw, 24px) var(--display); color: var(--forest); text-decoration: none; border-bottom: 2px solid var(--mint); }
-  #vision .end p { margin: 0; flex: 1 1 320px; font-size: clamp(15px, 1.2vw, 18px); line-height: 1.4; color: var(--soft); }
+  #thanks .in { align-items: center; text-align: center; gap: 26px; }
+  #thanks .brand svg { width: 92px; height: 78px; } #thanks .brand .wm { font-size: 76px; color: #fff; } #thanks .brand em { font-size: 18px; }
+  #thanks h2 { margin: 0; font-size: clamp(48px, 6vw, 88px); color: #fff; } #thanks .lead { margin: 0; max-width: 34ch; font-size: clamp(18px, 1.6vw, 24px); line-height: 1.4; color: #CFE0E3; }
+  #thanks a { font: 600 clamp(22px, 2vw, 30px) var(--display); color: var(--mint); text-decoration: none; border-bottom: 2px solid var(--mint); }
   .deck .hz li { align-items: center; } .deck .hz h3 { margin: 0; }
 </style>
 
@@ -440,11 +440,15 @@
         <figcaption><span><i class="k1"></i>Your strength</span><span><i class="k2"></i>Load Vita sets</span><span><i class="k3"></i>Fixed weights</span></figcaption>
       </figure>
     </div>
-    <div class="end">
-      <div class="brand"><svg viewBox="0 0 76 64" aria-hidden="true"><path d="M9 24c10 0 13 31 26 31s17-33 30-41" fill="none" stroke="#58E6F2" stroke-width="8" stroke-linecap="round"/><circle cx="65" cy="13" r="8.5" fill="#0A4552"/></svg><span class="wm">vita</span><em>Rehab</em></div>
-      <a href="https://vitarehab.org" target="_blank" rel="noopener">vitarehab.org</a>
-      <p>Thank you, Leukerbad AI Hackathon, for an amazing time and for the robots, mentors and support that made this possible.</p>
-    </div>
+  </div>
+</section>
+
+<section class="solid green slide" id="thanks">
+  <div class="in">
+    <div class="brand"><svg viewBox="0 0 76 64" aria-hidden="true"><path d="M9 24c10 0 13 31 26 31s17-33 30-41" fill="none" stroke="#58E6F2" stroke-width="8" stroke-linecap="round"/><circle cx="65" cy="13" r="8.5" fill="#fff"/></svg><span class="wm">vita</span><em>Rehab</em></div>
+    <h2>Thank you</h2>
+    <p class="lead">to the Leukerbad AI Hackathon for an amazing time and for the robots, mentors and support that made this possible.</p>
+    <a href="https://vitarehab.org" target="_blank" rel="noopener">vitarehab.org</a>
   </div>
 </section>
 
@@ -557,11 +561,11 @@ document.getElementById('copy').addEventListener('click', () => {
 <div class="pager" aria-label="Slides"><button type="button" id="prev" aria-label="Previous slide">‹</button><span id="count">1 / 13</span><button type="button" class="tm" id="timer" title="Pitch timer: 4 minutes. Click to reset.">4:00</button><button type="button" id="nxt" aria-label="Next slide">›</button><button type="button" class="fs" id="fs" aria-label="Full screen" title="Full screen (F)">⛶</button></div>
 <script>
 // Deck: on desktop one slide is on screen at a time. Arrows, Space, Page Up/Down, the wheel and the buttons change slide. On phones the page scrolls normally.
-{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'today', 'business', 'later', 'vision'].map((id) => document.getElementById(id)).filter(Boolean), count = document.getElementById('count'), prog = document.getElementById('prog');
+{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'today', 'business', 'later', 'vision', 'thanks'].map((id) => document.getElementById(id)).filter(Boolean), count = document.getElementById('count'), prog = document.getElementById('prog');
   const wide = matchMedia('(min-width: 900px)'), plain = ['basis', 'today'], hud = document.querySelector('.hud'), bPrev = document.getElementById('prev'), bNext = document.getElementById('nxt'); let n = 0, wheelAt = 0, lastEx = 'press';
   const deck = () => root.classList.contains('deck');
   // the pitch itself ends at the long-term vision; everything after it is appendix for questions
-  const main = slides.indexOf(document.getElementById('vision')) + 1, label = () => n < main ? (n + 1) + ' / ' + main : 'Appendix ' + (n - main + 1);
+  const main = slides.indexOf(document.getElementById('thanks')) + 1, label = () => n < main ? (n + 1) + ' / ' + main : 'Appendix ' + (n - main + 1);
   // a four-minute pitch timer: starts when you leave the title slide, click it to reset
   const tm = document.getElementById('timer'), LIMIT = 240; let t0 = 0;
   const tick = () => { if (!t0) { tm.textContent = '4:00'; tm.classList.remove('over'); return; } const left = LIMIT - Math.floor((Date.now() - t0) / 1000), a = Math.abs(left); tm.textContent = (left < 0 ? '+' : '') + Math.floor(a / 60) + ':' + String(a % 60).padStart(2, '0'); tm.classList.toggle('over', left < 0); tm.classList.toggle('late', left >= 0 && left <= 30); };
