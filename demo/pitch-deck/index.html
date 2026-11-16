@@ -222,6 +222,7 @@
   .deck .solid.green .fine { color: #A9CDD3; max-width: 70ch; }
   .vid { margin: 0; width: min(540px, 100%); pointer-events: auto; } .vid > :is(.ph, video) { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 26px; background: #0A4552; object-fit: cover; box-shadow: 0 9px 0 #06313B, 0 30px 34px -26px rgba(10,69,82,.5); }
   .vid .ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #EAF6F7; outline: 2px dashed rgba(88,230,242,.45); outline-offset: -14px; } .vid .ph i { width: 58px; height: 58px; margin-bottom: 8px; border-radius: 50%; background: #58E6F2; clip-path: polygon(38% 28%, 38% 72%, 74% 50%); }
+  .vid a.ph { outline: 0; background-size: cover; background-position: center; text-decoration: none; transition: transform .25s; } .vid a.ph:hover { transform: translateY(-3px); } .vid a.ph:hover i { transform: scale(1.12); } .vid .ph i { transition: transform .25s; }
   .vid .ph b { font: 600 20px var(--display); } .vid .ph span { font-size: 15px; color: #A9CDD3; } .vid figcaption { margin-top: 14px; font-size: 14.5px; color: var(--soft); }
   .deck #today .vid figcaption { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #fff; color: var(--forest); }
   .deck #today .vid { position: absolute; right: max(28px, 3vw); bottom: 34px; width: min(520px, 34vw); }
@@ -232,10 +233,6 @@
   .deck .hud .tg { animation: rise .6s cubic-bezier(.22,.8,.2,1) both; }
   .hi { display: none; } .deck #today .hi { display: block; position: absolute; left: 0; top: 0; margin: 0; padding: 12px 20px; border-radius: 18px; background: #fff; color: var(--forest); font: 600 clamp(18px, 1.6vw, 24px)/1 var(--display); white-space: nowrap; box-shadow: 0 7px 0 var(--clay), 0 24px 30px -20px rgba(30,40,42,.35); pointer-events: none; z-index: 2; margin-top: -14px; }
   .deck #today .hi::after { content: ''; position: absolute; left: 50%; bottom: -9px; width: 18px; height: 18px; margin-left: -9px; background: #fff; transform: rotate(45deg); border-radius: 3px; }
-  .deck.vfull #today .vid { position: fixed; inset: 0; width: auto; transform: none; z-index: 5; background: #000; animation: vgrow .5s cubic-bezier(.22,.8,.2,1); }
-  .deck.vfull #today .vid > :is(.ph, video) { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; box-shadow: none; object-fit: contain; } .deck.vfull #today .vid figcaption { display: none; }
-  .deck.vfull #today .panel { visibility: hidden; } .deck #today .vid { cursor: zoom-in; } .deck.vfull #today .vid { cursor: zoom-out; }
-  @keyframes vgrow { from { opacity: 0; transform: scale(.4); } }
   #thanks .in { align-items: center; text-align: center; gap: 26px; }
   #thanks .brand svg { width: 92px; height: 78px; } #thanks .brand .wm { font-size: 76px; color: #fff; } #thanks .brand em { font-size: 18px; }
   #thanks h2 { margin: 0; font-size: clamp(48px, 6vw, 88px); color: #fff; } #thanks .lead { margin: 0; max-width: 34ch; font-size: clamp(18px, 1.6vw, 24px); line-height: 1.4; color: #CFE0E3; }
@@ -411,7 +408,7 @@
       <li><b>Auto stop</b><span>above 0.40 m/s</span></li>
     </ul>
   </div>
-  <figure class="vid"><video src="assets/kian-arm.mp4" autoplay muted loop playsinline preload="auto" aria-label="Kian testing Push on the real arm"></video><figcaption>Kian testing Push on the real arm</figcaption></figure>
+  <figure class="vid"><a class="ph" href="https://drive.google.com/file/d/1fB0wLW0QU1IMaTBxkmS6bhrIXTQAmjsN/view?usp=sharing" target="_blank" rel="noopener" style="background-image: linear-gradient(rgba(6,49,59,.5), rgba(6,49,59,.8)), url(assets/demo-cover.jpg)"><i aria-hidden="true"></i><b>Demo video</b><span>Play in full quality on Google Drive ↗</span></a><figcaption>Kian testing Push on the real arm</figcaption></figure>
 </section>
 
 <section class="solid slide" id="business">
@@ -566,33 +563,25 @@ document.getElementById('copy').addEventListener('click', () => {
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => { st.textContent = 'Copied. Paste it into a message to us.'; }, manual); else manual();
 });
 </script>
-<div class="pager" aria-label="Slides"><button type="button" id="prev" aria-label="Previous slide">‹</button><span id="count">1 / 13</span><button type="button" class="tm" id="timer" title="Pitch timer: 4 minutes. Click to reset.">4:00</button><button type="button" id="nxt" aria-label="Next slide">›</button><button type="button" class="fs" id="fs" aria-label="Full screen" title="Full screen (F)">⛶</button></div>
+<div class="pager" aria-label="Slides"><button type="button" id="prev" aria-label="Previous slide">‹</button><button type="button" id="nxt" aria-label="Next slide">›</button><button type="button" class="fs" id="fs" aria-label="Full screen" title="Full screen (F)">⛶</button></div>
 <script>
 // Deck: on desktop one slide is on screen at a time. Arrows, Space, Page Up/Down, the wheel and the buttons change slide. On phones the page scrolls normally.
-{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'today', 'business', 'later', 'vision', 'thanks'].map((id) => document.getElementById(id)).filter(Boolean), count = document.getElementById('count'), prog = document.getElementById('prog');
+{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'today', 'business', 'later', 'vision', 'thanks'].map((id) => document.getElementById(id)).filter(Boolean), prog = document.getElementById('prog');
   const wide = matchMedia('(min-width: 900px)'), plain = ['basis', 'today'], hud = document.querySelector('.hud'), bPrev = document.getElementById('prev'), bNext = document.getElementById('nxt'); let n = 0, wheelAt = 0, lastEx = 'press';
   const deck = () => root.classList.contains('deck');
   // the pitch itself ends at the long-term vision; everything after it is appendix for questions
-  const main = slides.indexOf(document.getElementById('thanks')) + 1, label = () => n < main ? (n + 1) + ' / ' + main : 'Appendix ' + (n - main + 1);
-  // a four-minute pitch timer: starts when you leave the title slide, click it to reset
-  const tm = document.getElementById('timer'), LIMIT = 240; let t0 = 0;
-  const tick = () => { if (!t0) { tm.textContent = '4:00'; tm.classList.remove('over'); return; } const left = LIMIT - Math.floor((Date.now() - t0) / 1000), a = Math.abs(left); tm.textContent = (left < 0 ? '+' : '') + Math.floor(a / 60) + ':' + String(a % 60).padStart(2, '0'); tm.classList.toggle('over', left < 0); tm.classList.toggle('late', left >= 0 && left <= 30); };
-  setInterval(tick, 500); tm.addEventListener('click', () => { t0 = 0; tick(); });
+  const main = slides.indexOf(document.getElementById('thanks')) + 1;
   const near = () => { let b = 0, bd = 1e9; slides.forEach((el, i) => { const d = Math.abs(el.getBoundingClientRect().top); if (d < bd) { bd = d; b = i; } }); return b; };
   const paint = () => { slides.forEach((el, i) => { el.classList.toggle('cur', deck() && i === n); el.classList.toggle('past', deck() && i < n); });
-    count.textContent = label(); bPrev.disabled = n === 0; bNext.disabled = n === slides.length - 1; root.classList.toggle('nohud', deck() && plain.includes(slides[n].id)); root.classList.toggle('nomus', deck() && ['intro', 'path', 'safety'].includes(slides[n].id)); const key = slides[n].dataset.ex || ''; if (deck() && key && key !== lastEx) { lastEx = key; hud.classList.remove('swap'); void hud.offsetWidth; hud.classList.add('swap'); } if (deck()) { prog.style.transform = 'scaleX(' + Math.min(1, n / (main - 1)).toFixed(4) + ')'; dispatchEvent(new Event('slidechange')); document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.go === slides[n].id)); } };
-  // Slide 8: the first "next" blows the video up to fill the screen for the jury; the next press moves on, "back" shrinks it again.
-  const vid = document.querySelector('#today .vid'), vfull = (on) => { root.classList.toggle('vfull', on); const v = vid.querySelector('video'); if (v) { v.muted = !on; if (on) { v.currentTime = 0; v.play().catch(() => {}); } } };
-  vid.addEventListener('click', () => { if (deck() && slides[n].id === 'today') vfull(!root.classList.contains('vfull')); });
-  const go = (i, inner) => { if (deck() && slides[n].id === 'today') { const on = root.classList.contains('vfull'); if (!on && i === n + 1 && !inner) return vfull(true); if (on) { vfull(false); if (i === n - 1) return; } }
-    n = Math.max(0, Math.min(slides.length - 1, i)); if (!t0 && n > 0) { t0 = Date.now(); tick(); }
+    bPrev.disabled = n === 0; bNext.disabled = n === slides.length - 1; root.classList.toggle('nohud', deck() && plain.includes(slides[n].id)); root.classList.toggle('nomus', deck() && ['intro', 'path', 'safety'].includes(slides[n].id)); const key = slides[n].dataset.ex || ''; if (deck() && key && key !== lastEx) { lastEx = key; hud.classList.remove('swap'); void hud.offsetWidth; hud.classList.add('swap'); } if (deck()) { prog.style.transform = 'scaleX(' + Math.min(1, n / (main - 1)).toFixed(4) + ')'; dispatchEvent(new Event('slidechange')); document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.go === slides[n].id)); } };
+  const go = (i, inner) => { n = Math.max(0, Math.min(slides.length - 1, i));
     if (deck()) { paint(); slides[n].scrollTop = 0; if (inner && inner !== slides[n]) inner.scrollIntoView({ block: 'start' }); try { history.replaceState(null, '', '#' + slides[n].id); } catch (e) {} }
     else (inner || slides[n]).scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const mode = () => { const was = deck(); if (!was) n = near(); root.classList.toggle('deck', wide.matches); if (was && !wide.matches) { paint(); slides[n].scrollIntoView(); } else paint(); };
   const q = new URLSearchParams(location.search).get('s'), start = document.getElementById(q || location.hash.slice(1));
   if (start) { const sl = start.closest('.ch, .solid'); if (sl && slides.includes(sl)) n = slides.indexOf(sl); }
   root.classList.toggle('deck', wide.matches); paint(); wide.addEventListener('change', mode);
-  addEventListener('scroll', () => { if (!deck()) { n = near(); count.textContent = label(); } }, { passive: true });
+  addEventListener('scroll', () => { if (!deck()) n = near(); }, { passive: true });
   document.getElementById('prev').addEventListener('click', () => go(n - 1)); document.getElementById('nxt').addEventListener('click', () => go(n + 1));
   const full = () => { try { const p = document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
   document.getElementById('fs').addEventListener('click', full);
@@ -600,7 +589,7 @@ document.getElementById('copy').addEventListener('click', () => {
   addEventListener('keydown', (e) => { if (e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key;
     if (k === ' ' && e.target.closest('button, a')) return;
     if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(k)) { e.preventDefault(); go(n + 1); } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(k)) { e.preventDefault(); go(n - 1); }
-    else if (k === 'Home') { e.preventDefault(); go(0); } else if (k === 'End') { e.preventDefault(); go(slides.length - 1); } else if (k === 'f' || k === 'F') full(); else if (k === 'Escape' && root.classList.contains('vfull')) vfull(false); });
+    else if (k === 'Home') { e.preventDefault(); go(0); } else if (k === 'End') { e.preventDefault(); go(slides.length - 1); } else if (k === 'f' || k === 'F') full(); });
   addEventListener('wheel', (e) => { if (!deck() || Math.abs(e.deltaY) < 24) return; const sl = slides[n];
     if (sl.scrollHeight > sl.clientHeight + 4) { const atEnd = sl.scrollTop + sl.clientHeight >= sl.scrollHeight - 2, atTop = sl.scrollTop <= 0; if (!(e.deltaY > 0 ? atEnd : atTop)) { wheelAt = e.timeStamp; return; } }
     if (e.timeStamp - wheelAt < 900) return; wheelAt = e.timeStamp; go(n + (e.deltaY > 0 ? 1 : -1)); }, { passive: true }); }
