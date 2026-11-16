@@ -1,8 +1,9 @@
-// Marketing site on vitarehab.org (static assets only, Cloudflare Workers free plan).
+// Marketing site on vitarehab.org (static assets, Cloudflare Workers free plan). website-worker.js only answers byte ranges for /pitch/assets/ (video in Safari).
 {
   "name": "vitarehab-site",
   "compatibility_date": "2026-11-01",
-  "assets": { "directory": "./website", "not_found_handling": "404-page" },
+  "main": "./website-worker.js",
+  "assets": { "directory": "./website", "binding": "ASSETS", "not_found_handling": "404-page", "run_worker_first": ["/pitch/assets/*"] },
   "routes": [
     { "pattern": "vitarehab.org", "custom_domain": true },
     { "pattern": "www.vitarehab.org", "custom_domain": true }
