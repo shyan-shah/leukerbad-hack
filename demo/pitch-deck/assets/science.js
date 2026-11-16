@@ -126,6 +126,37 @@ rob.ring.castShadow = false;
   const qm = new THREE.Mesh(new THREE.PlaneGeometry(.1, .1), new THREE.MeshPhysicalMaterial({ map: qt, roughness: .5 })); qm.position.set(.13, .52, .2535); base.add(qm); box(.112, .112, .005, mat('#58E6F2'), .13, .52, .2505, base, .008); }
 const POLE_ROB = V(0, 1, 0), E = V(), W = V(), U = V(), Nrm = V();
 
+// slides marked data-solo: the arm stands alone and waves at the audience with a robot hand on its flange (the same hand as the website hero)
+function makeHand() {
+  const HAND = new THREE.Group(), fingers = [];
+  const shell = M.arm, dark = M.joint, pad = glow('#58E6F2');
+  const mesh = (geo, m, x = 0, y = 0, z = 0, parent = HAND) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; parent.add(o); return o; };
+  const seg = (r, len) => new THREE.CapsuleGeometry(r, len, 6, 14);
+  mesh(new THREE.CylinderGeometry(.05, .056, .05, 32), dark, 0, .012, 0);                       // wrist drum, on the flange
+  mesh(new THREE.TorusGeometry(.053, .004, 8, 40), pad, 0, .03, 0).rotation.x = Math.PI / 2;   // light ring at the wrist
+  mesh(new RoundedBoxGeometry(.13, .11, .05, 4, .018), shell, 0, .09, 0);                       // palm
+  mesh(new RoundedBoxGeometry(.1, .07, .006, 3, .003), dark, 0, .09, .026);                     // dark palm plate
+  [-.045, -.015, .015, .045].forEach((x, i) => {
+    const len = i === 0 || i === 3 ? .036 : .044, k = new THREE.Group(); k.position.set(x, .148, 0); HAND.add(k);
+    mesh(new THREE.SphereGeometry(.015, 16, 12), dark, 0, 0, 0, k);
+    mesh(seg(.0125, len), shell, 0, len / 2 + .006, 0, k);
+    const k2 = new THREE.Group(); k2.position.set(0, len + .014, 0); k.add(k2);
+    mesh(new THREE.SphereGeometry(.0128, 16, 12), dark, 0, 0, 0, k2);
+    mesh(seg(.0115, len * .8), shell, 0, len * .4 + .006, 0, k2);
+    mesh(new THREE.SphereGeometry(.0085, 12, 10), pad, 0, len * .8 + .014, .006, k2);
+    fingers.push([k, k2]); });
+  const th = new THREE.Group(); th.position.set(-.068, .075, .01); th.rotation.z = .9; HAND.add(th);
+  mesh(new THREE.SphereGeometry(.016, 16, 12), dark, 0, 0, 0, th); mesh(seg(.013, .04), shell, 0, .03, 0, th);
+  const th2 = new THREE.Group(); th2.position.set(0, .058, 0); th.add(th2); mesh(new THREE.SphereGeometry(.013, 16, 12), dark, 0, 0, 0, th2); mesh(seg(.012, .03), shell, 0, .024, 0, th2); mesh(new THREE.SphereGeometry(.0085, 12, 10), pad, 0, .045, .006, th2);
+  fingers.thumb = [th, th2]; return { g: HAND, f: fingers }; }
+const { g: WHAND, f: wFingers } = makeHand(); WHAND.visible = false; scene.add(WHAND);
+const curl = (c) => { wFingers.forEach(([a, b], i) => { a.rotation.x = c * (1.15 + i * .05); b.rotation.x = c * 1.35; }); wFingers.thumb[0].rotation.x = c * .9; wFingers.thumb[1].rotation.x = c * 1.1; };
+// it waves towards the camera of the 'arm' view: 2.4 s of waving, 1.2 s rest; the palm faces the viewer and tilts with the swing
+const WAZ = .6, WD = V(Math.sin(WAZ), 0, Math.cos(WAZ)), WSIDE = V(Math.cos(WAZ), 0, -Math.sin(WAZ)), WC = V(BASE0.x, 1.3, BASE0.z).addScaledVector(WD, .5), WP = V(), WTOP = V(), qWave = new THREE.Quaternion(), qTilt = new THREE.Quaternion();
+qWave.setFromRotationMatrix(new THREE.Matrix4().makeBasis(V().crossVectors(V(0, 1, 0), WD).normalize(), V(0, 1, 0), WD));
+function wavePoint(t) { const cyc = t % 3.6, on = cyc < 2.4 ? Math.sin(Math.PI * cyc / 2.4) : 0, a = on * .62 * Math.sin(t * 7); WP.tilt = a;
+  return WP.copy(WC).addScaledVector(WSIDE, Math.sin(a) * .34).setY(WC.y + (Math.cos(a) - 1) * .34 + Math.sin(t / .9) * .015); }
+const hiEl = document.getElementById('hi');
 const OV0 = scene.children.length, ROBOT = new Set(scene.children.slice(AN1, OV0));      // the trolley and the arm, drawn alone on slides marked data-solo
 // ---------- what the exercise looks like in the air ----------
 const TRAIL = 150, trailPos = new Float32Array(TRAIL * 3), trailGeo = new THREE.BufferGeometry(); trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
@@ -323,7 +354,7 @@ function joints(s) { const tg = TARGET[ex], out = [];
 // the seated patient and everything drawn around her go into two groups, so they can be hidden while she is still walking in
 const annaG = new THREE.Group(), ovG = new THREE.Group(); { const kids = scene.children.slice(), a = kids.slice(AN0, AN1), o = kids.slice(OV0); scene.add(annaG, ovG); a.forEach((c) => annaG.add(c)); o.forEach((c) => ovG.add(c)); }
 // ---------- the page drives the scene: the part of the text in the middle of the screen decides the exercise and the camera ----------
-const SOLO_X = .2, VIEWS = { arm: [.6, .16, 3.2], arrive: [.74, .3, 6.4], stop: [.9, .27, 4.5], gym: [.8, .36, 12.8], wide: [.72, .27, 5.5], reach: [.62, .2, 4.7], stretch: [.42, .15, 4.7], circle: [1.02, .24, 4.5], follow: [1.02, .2, 4.5], push: [.55, .17, 4.4], press: [.62, .2, 4.7], row: [.7, .2, 4.7], leg: [.36, .13, 4.5] };
+const SOLO_X = .2, VIEWS = { arm: [.6, .14, 3.9], arrive: [.74, .3, 6.4], stop: [.9, .27, 4.5], gym: [.8, .36, 12.8], wide: [.72, .27, 5.5], reach: [.62, .2, 4.7], stretch: [.42, .15, 4.7], circle: [1.02, .24, 4.5], follow: [1.02, .2, 4.5], push: [.55, .17, 4.4], press: [.62, .2, 4.7], row: [.7, .2, 4.7], leg: [.36, .13, 4.5] };
 const view = { az: .72, el: .27, dist: 5.5, taz: .72, tel: .27, tdist: 5.5, drag: false, x: 0, y: 0, idle: 0 };
 const stage = $('.stage'), secs = $$('[data-ex]'), links = $$('[data-go]'); let active = null, VW = 1, VH = 1, phone = false, seen = true;
 const prog = $('#prog'), mainEl = $('main');
@@ -524,13 +555,15 @@ function frame(now) {
   S.copy(SH_L); torso.localToWorld(S); elbow(Eh, S, REST_L, UP, FORE, POLE_L); armL.sh.position.copy(S); armL.hand.position.copy(REST_L); between(armL.up, S, Eh); between(armL.fore, Eh, REST_L); armL.el.position.copy(Eh); tC.copy(REST_L).sub(Eh).normalize(); armL.cf.position.copy(REST_L).addScaledVector(tC, -.042); armL.cf.quaternion.copy(armL.fore.quaternion);
 
   // the robot: its wrist sits just beside the point it holds, on its own side; shoulder and elbow follow from that
-  const P = isLeg && travel > 10 ? CUFFP : H, gap = isLeg ? .07 : 0; U.set(SHO.x - P.x, 0, SHO.z - P.z).normalize(); W.copy(P).addScaledVector(U, WR + gap); elbow(E, SHO, W, L1, L2, POLE_ROB);
+  const waving = !!(active && active.dataset.solo), P = waving ? wavePoint(T) : isLeg && travel > 10 ? CUFFP : H, gap = !waving && isLeg ? .07 : 0; U.set(SHO.x - P.x, 0, SHO.z - P.z).normalize(); W.copy(P).addScaledVector(U, WR + gap); elbow(E, SHO, W, L1, L2, POLE_ROB);
   Nrm.copy(W).sub(SHO).cross(POLE_ROB).normalize();      // the axis the shoulder and the elbow turn about
   between(rob.l1, tB.copy(SHO).addScaledVector(Nrm, OFF), tC.copy(E).addScaledVector(Nrm, OFF)); between(rob.l2, E, W); rob.elb.position.copy(E); rob.wr.position.copy(W);      // the upper link rides on the side of both drums
   rob.capS.position.copy(SHO).addScaledVector(Nrm, OFF * .5); rob.capS.quaternion.setFromUnitVectors(YA, Nrm); rob.capE.position.copy(E).addScaledVector(Nrm, OFF * .5); rob.capE.quaternion.copy(rob.capS.quaternion); rob.capW.position.copy(W); rob.capW.quaternion.copy(rob.capS.quaternion);
   between(rob.l3, W, tA.copy(P).addScaledVector(U, .04 + gap)); rob.flange.position.copy(P).addScaledVector(U, .034 + gap); rob.flange.quaternion.setFromUnitVectors(YA, U); rob.ring.position.copy(P).addScaledVector(U, .048 + gap); rob.ring.quaternion.copy(rob.flange.quaternion);
   rob.grip.position.copy(P); rob.top.position.set(P.x, P.y + .078, P.z); gripHand.visible = !isLeg && rob.grip.visible; if (gripHand.visible) { gripHand.position.copy(P); gripHand.rotation.y = Math.atan2(ER.z - P.z, P.x - ER.x); }
   knob.visible = rob.grip.visible; knobHand.visible = gripHand.visible; kX.crossVectors(U, kZ).normalize(); kM.makeBasis(kX, U, kZ); knob.quaternion.setFromRotationMatrix(kM); knob.position.copy(P).addScaledVector(U, gap); knobHand.quaternion.copy(knob.quaternion); knobHand.position.copy(knob.position);
+  WHAND.visible = waving; if (waving) { WHAND.position.copy(P); WHAND.quaternion.copy(qWave); qTilt.setFromAxisAngle(WD, -WP.tilt * .8); WHAND.quaternion.premultiply(qTilt); curl(.08 + .06 * Math.sin(T * 3.3));
+    if (hiEl) { WHAND.updateMatrixWorld(true); WHAND.localToWorld(WTOP.set(0, .3, 0)).project(cam); hiEl.style.transform = 'translate(' + ((WTOP.x + 1) / 2 * VW).toFixed(1) + 'px,' + ((1 - WTOP.y) / 2 * VH).toFixed(1) + 'px) translate(-50%, -100%)'; } }
   const pulse = .75 + Math.sin(T * 3) * .25; rob.ring.material.color.lerp(cT.set(halted ? '#FF3B2E' : COLS[s.state]), f(halted ? 30 : 8)); led.material.color.copy(rob.ring.material.color).multiplyScalar(pulse);
 
   // the path of the hand, the goal, the dot to follow, the live number
