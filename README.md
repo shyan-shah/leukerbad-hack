@@ -128,7 +128,6 @@ On the station laptop wired to the arm: `python -m server.run --robot --lan` (Pu
 | `software/` | Engines (Push, Row, Strength; the earlier adaptive engine), simulated arm and patient, metrics, rep detection | Shiv, Shyan |
 | `server/` | API, live feed, storage, exports, session note, screens, real-arm bring-up scripts (`server/hw/`) | Shyan |
 | `demo/` | Patient app, website, pitch deck | Mat, Gio |
-| `cad/` | End-effector handle and flange adapter (ISO 9409-1-50-4-M6) | Shyan |
 | `context/` | Shared plan, decisions and log the five people and their AI agents worked from | everyone |
 
 ## How we worked
