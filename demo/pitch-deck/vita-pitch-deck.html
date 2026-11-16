@@ -235,7 +235,7 @@
   <div class="top">
     <div class="brand"><svg viewBox="0 0 76 64" aria-hidden="true"><path d="M9 24c10 0 13 31 26 31s17-33 30-41" fill="none" stroke="#58E6F2" stroke-width="8" stroke-linecap="round"/><circle cx="65" cy="13" r="8.5" fill="#0A4552"/></svg><span class="wm">vita</span><em>Rehab</em></div>
     <nav class="nav" aria-label="Sections">
-      <a href="#basis" data-go="basis">Problem</a><a href="#path" data-go="path">Solution</a><a href="#product" data-go="product">Product</a><a href="#app" data-go="app">App</a><a href="#who" data-go="who">Market</a><a href="#business" data-go="business">Business</a><a href="#next" data-go="next">Next</a><a href="#vision" data-go="vision">Vision</a>
+      <a href="#basis" data-go="basis">Problem</a><a href="#path" data-go="path">Solution</a><a href="#product" data-go="product">Product</a><a href="#app" data-go="app">App</a><a href="#who" data-go="who">Market</a><a href="#business" data-go="business">Business</a><a href="#vision" data-go="vision">Vision</a>
     </nav>
   </div>
   <div class="hud">
@@ -420,17 +420,6 @@
   </div>
 </section>
 
-<section class="solid green slide" id="next">
-  <div class="in">
-    <div class="headblock"><p class="eyebrow">Next</p><h2>What we prove next</h2></div>
-    <div class="steps">
-      <div><b>1</b><h3>Safe</h3><p>Limits, stop button, healthy volunteers</p></div>
-      <div><b>2</b><h3>Accurate</h3><p>Compared with therapists’ tools</p></div>
-      <div><b>3</b><h3>Works</h3><p>6–8 week pilot in one practice</p></div>
-    </div>
-    <p class="lead">Then Swissmedic certification.</p>
-  </div>
-</section>
 
 <section class="solid slide" id="vision">
   <div class="in">
@@ -564,7 +553,7 @@ document.getElementById('copy').addEventListener('click', () => {
 <div class="pager" aria-label="Slides"><button type="button" id="prev" aria-label="Previous slide">‹</button><span id="count">1 / 13</span><button type="button" class="tm" id="timer" title="Pitch timer: 4 minutes. Click to reset.">4:00</button><button type="button" id="nxt" aria-label="Next slide">›</button><button type="button" class="fs" id="fs" aria-label="Full screen" title="Full screen (F)">⛶</button></div>
 <script>
 // Deck: on desktop one slide is on screen at a time. Arrows, Space, Page Up/Down, the wheel and the buttons change slide. On phones the page scrolls normally.
-{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'today', 'who', 'business', 'next', 'later', 'vision'].map((id) => document.getElementById(id)).filter(Boolean), count = document.getElementById('count'), prog = document.getElementById('prog');
+{ const root = document.documentElement, slides = ['intro', 'basis', 'path', 'shift', 'product', 'safety', 'app', 'today', 'who', 'business', 'later', 'vision'].map((id) => document.getElementById(id)).filter(Boolean), count = document.getElementById('count'), prog = document.getElementById('prog');
   const wide = matchMedia('(min-width: 900px)'), plain = ['intro', 'basis', 'who', 'path'], hud = document.querySelector('.hud'), bPrev = document.getElementById('prev'), bNext = document.getElementById('nxt'); let n = 0, wheelAt = 0, lastEx = 'press';
   const deck = () => root.classList.contains('deck');
   // the pitch itself ends at the long-term vision; everything after it is appendix for questions
