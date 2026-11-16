@@ -228,7 +228,8 @@
   .deck #today .panel { position: absolute; right: max(28px, 3vw); top: 84px; width: min(520px, 34vw); margin: 0; padding: 24px 30px; gap: 12px; } .deck #today h2 { font-size: clamp(26px, 2.5vw, 38px); } .deck #today .exl li { padding: 6px 16px; }
   @media (max-width: 899px) { #today { flex-direction: column; align-items: stretch; gap: 18px; } }
   #intro .brand.big { margin-top: clamp(20px, 5vh, 56px); gap: 14px; } #intro .brand.big svg { width: clamp(64px, 6vw, 96px); height: auto; } #intro .brand.big .wm { font-size: clamp(54px, 5.4vw, 84px); } #intro .brand.big em { font-size: clamp(14px, 1.2vw, 19px); padding: 4px 12px; }
-  .deck.nomus .hud .tg { display: none; }
+  .deck.nomus .hud .tg, .deck.arr .hud .tg { display: none; }      /* slide 5: the muscles appear once Anna has sat down and starts */
+  .deck .hud .tg { animation: rise .6s cubic-bezier(.22,.8,.2,1) both; }
   .hi { display: none; } .deck #today .hi { display: block; position: absolute; left: 0; top: 0; margin: 0; padding: 12px 20px; border-radius: 18px; background: #fff; color: var(--forest); font: 600 clamp(18px, 1.6vw, 24px)/1 var(--display); white-space: nowrap; box-shadow: 0 7px 0 var(--clay), 0 24px 30px -20px rgba(30,40,42,.35); pointer-events: none; z-index: 2; margin-top: -14px; }
   .deck #today .hi::after { content: ''; position: absolute; left: 50%; bottom: -9px; width: 18px; height: 18px; margin-left: -9px; background: #fff; transform: rotate(45deg); border-radius: 3px; }
   .deck.vfull #today .vid { position: fixed; inset: 0; width: auto; transform: none; z-index: 5; background: #000; animation: vgrow .5s cubic-bezier(.22,.8,.2,1); }
