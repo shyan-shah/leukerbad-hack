@@ -15,7 +15,7 @@
 - **Compute/sensing:** 5x RDK X5, Jetson Orin Nano, 2x Raspberry Pi 5, 3x Omnicor chips, 5x NormaCore, MetaCam Lite scanner, RealSense, 2x webcams
 
 ## Google Cloud sandbox
-- Email chalemba@google.com with (1) team name, (2) number of hackers.
+- Request access from the Google Cloud contact at the event with (1) team name, (2) number of hackers.
 
 ## Jury
 Thomas Johannes Dittler (Industrial Makers), Raphael Levy (Foxglove), Adrián Sager (Latent Engineering),
