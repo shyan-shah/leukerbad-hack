@@ -15,7 +15,8 @@ const qs = new URLSearchParams(location.search), FREEZE = qs.get('t');      // ?
 if (FREEZE) document.documentElement.classList.add('still'); const BARE = qs.has('bare'); if (BARE) document.documentElement.classList.add('bare');      // ?bare hides the page and centres the scene (for a clean picture)
 const canvas = $('#stage');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-let dpr = Math.min(devicePixelRatio, 1.75); renderer.setPixelRatio(dpr);
+let dpr = Math.min(devicePixelRatio, 2); renderer.setPixelRatio(dpr);
+const DPR_MIN = Math.min(devicePixelRatio, 1.5);      // slow frames lower the resolution, but never below this: at 1 the scene looked pixelated on Retina screens
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene(); scene.background = new THREE.Color('#ECF3F4');
@@ -503,7 +504,7 @@ function frame(now) {
     if (was && !arriving) { blendT = 0; blendFrom = H.clone(); exT = 0; cyc = 0; trailN = 0; const v = VIEWS[ex]; view.taz = v[0]; view.tel = v[1]; view.tdist = v[2]; }
     if (arriving) { exT = 0; const v = VIEWS.arrive; view.taz = v[0]; view.tel = v[1]; view.tdist = v[2]; } annaG.visible = ovG.visible = !arriving; if (was !== arriving) document.documentElement.classList.toggle('arr', arriving); arrive(dt); }
   if (blendT < 1.4 && !arriving) blendT += dt; if (!paused && !halted && !arriving && blendT >= 1.4) exT += dt;
-  if (T > 2.5 && !FREEZE) { fAcc += raw; if (++fN >= 45) { const avg = fAcc / fN; fAcc = fN = 0; if (avg > 1 / 44 && dpr > 1) { dpr = Math.max(1, dpr - .25); renderer.setPixelRatio(dpr); } } }
+  if (T > 2.5 && !FREEZE) { fAcc += raw; if (++fN >= 45) { const avg = fAcc / fN; fAcc = fN = 0; if (avg > 1 / 44 && dpr > DPR_MIN) { dpr = Math.max(DPR_MIN, dpr - .25); renderer.setPixelRatio(dpr); } } }
   const d = EX[ex];
   const t = FREEZE ? +FREEZE : (exT / d.period) % 1, s = d.at(t), f = (r) => (FREEZE || snap ? 1 : 1 - Math.exp(-dt * r));
   const isLeg = !!d.leg, travel = isLeg !== wasLeg || exT < .6 ? 5 : 18; wasLeg = isLeg;      // changing exercise: the arm travels to its new place

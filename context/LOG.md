@@ -647,3 +647,7 @@ Append-only. Each sync: date/time + name, then 3–5 lines (what changed, what's
 
 **2026-11-16 11:05 · Shyan · app: the station screen is an NFC tap, no camera (one-feature edit in demo/app/index.html)**
 - The "Scan" tab is now "Tap": "Tap your phone on the handle.", a phone-and-waves picture and one "Tap to connect" button (the old demo-scan path, then the station plan). No QR code, no camera button; Today says "Tap the station to start". Checked in Chrome on the real-arm server. **Mat, Gio: copy this into your app source before any rebuild.**
+
+**Gio · 2026-11-16 · pitch deck: concrete text, sharper 3D**
+- `demo/pitch-deck`: cut vague lines and replaced them with facts. The arm is named (Flexiv Rizon 4) on the intro and demo slides. The safety slide gives the real limits: band 10 to 28 N, readings capped at about 30 N, stop above 0.40 m/s. "A fraction of the cost" became the CHF 20 per session example. "Best way to train" and "pays for itself" are gone. Edited in both `index.html` and the single-file `vita-pitch-deck.html`, because `build_deck.py` reads from `~/vitalis-website`, which is only on Mat's laptop.
+- 3D scene looked pixelated: when frames were slow it lowered the render resolution to 1x and never raised it again. It now stops at 1.5x (and starts at up to 2x on Retina). Same change in `assets/science.js` and the single-file deck; cache version v=39.
